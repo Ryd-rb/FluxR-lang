@@ -1,0 +1,26 @@
+[package]
+name = "fluxr"
+version = "0.1.0"
+edition = "2024"
+description = "A compact, embeddable language for deterministic programs"
+license = "MIT"
+repository = "https://github.com/Ryd-rb/FluxR-lang"
+publish = false
+
+[features]
+native-jit = []
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "fluxr-cli"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.130"

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FluxR Scene Lab</title>
+<style>
+  :root{color-scheme:dark;font:16px system-ui;background:#172022;color:#dce7dd}
+  body{margin:auto;max-width:1040px;padding:32px}
+  h1{margin:0 0 .25rem} p{color:#abc0b4;margin:.5rem 0 1rem}
+  main{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  svg,section{background:#213032;border:1px solid #405555;border-radius:10px;width:100%;box-sizing:border-box}
+  section{padding:16px} label{display:block;margin-top:8px;color:#c1d6c7}
+  textarea{box-sizing:border-box;width:100%;min-height:100px;margin:.5rem 0 1rem;padding:10px;background:#131c1d;border:1px solid #526660;border-radius:4px;color:#e2eddb;font:14px ui-monospace,monospace}
+  output{display:block;min-height:2rem;color:#a5d6ad;overflow-wrap:anywhere}
+  output[data-error=true]{color:#ffc489}
+  @media(max-width:760px){main{grid-template-columns:1fr}body{padding:16px}}
+</style>
+<h1>FluxR Scene Lab</h1>
+<p>One running timeline driven by either AI authoring format. The bucket height is channel 41.1 in millimeters.</p>
+<main>
+  <svg viewBox="0 0 440 320" aria-label="Animated well bucket">
+    <defs><clipPath id="shaft"><path d="M125 25H315V187H286V287H154V187H125Z"/></clipPath></defs>
+    <path d="M30 200L220 126L410 200L220 290Z" fill="#405344"/>
+    <path d="M151 173H289V264Q220 298 151 264Z" fill="#101b20"/>
+    <path d="M156 264Q220 236 284 264V274Q220 300 156 274Z" fill="#386b77"/>
+    <g clip-path="url(#shaft)">
+      <path id="rope" stroke="#d3ad75" stroke-width="5" d="M220 76V145"/>
+      <g id="bucket">
+        <path d="M201 -13Q220 -39 239 -13" fill="none" stroke="#c6a885" stroke-width="4"/>
+        <path d="M197 -15H243L238 12Q220 23 202 12Z" fill="#b17a47" stroke="#553b2d" stroke-width="4"/>
+        <path d="M200 -2H240M202 7H238" stroke="#57423b" stroke-width="3"/>
+      </g>
+    </g>
+    <path d="M144 174Q220 201 296 174V203Q220 228 144 203Z" fill="#80908b" stroke="#526763" stroke-width="4"/>
+    <path d="M150 176Q220 148 290 176" fill="none" stroke="#9eaca2" stroke-width="9"/>
+    <path d="M157 174V62L283 65V174M151 65L291 69" fill="none" stroke="#805836" stroke-width="13" stroke-linejoin="round"/>
+    <path d="M161 76H280" stroke="#b28554" stroke-width="8"/>
+  </svg>
+  <section>
+    <output id="status">Loading the Rust runtime…</output>
+    <label for="text">Compact source</label>
+    <textarea id="text" spellcheck="false" aria-label="Compact source"></textarea>
+    <label for="typed">Typed command stream</label>
+    <textarea id="typed" spellcheck="false" aria-label="Typed command stream"></textarea>
+  </section>
+</main>
+<script type="module" src="editor.js"></script>
+</html>
