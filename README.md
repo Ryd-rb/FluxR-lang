@@ -15,6 +15,30 @@ cargo run --locked --bin fluxr-cli -- test web/well.fluxr web/well.replay.json
 
 Run the structured example with the command in [Structured modules](#structured-modules). New text sources use `.fluxr`. The timeline and rule CLI also accepts the earlier `.flux` suffix.
 
+The [MIT-licensed TextMate grammar](syntaxes/fluxr.tmLanguage.json) provides
+the scope `source.fluxr` for editors that support TextMate grammars. It covers
+timelines, postfix rules, compact and JSON structured modules, and lazy gates.
+Try the [fan controller](examples/fan-speed.fluxr), the
+[compact counter module](examples/structured-counter.fluxr), and the
+[route admission gate](examples/route-gate.fluxr) from the repository root.
+
+```sh
+cargo run --locked --bin fluxr-cli -- test examples/fan-speed.fluxr examples/fan-speed.replay.json
+cargo run --locked --bin fluxr-cli -- encode-structured examples/structured-counter.fluxr target/counter.fxr
+cargo run --locked --bin fluxr-cli -- emit-gate examples/route-gate.fluxr target/route-gate.rs
+```
+
+The counter is the compact form of the [live host module](tests/fixtures/structured_counter.fluxr).
+The gate requires authorization (`a`) and a healthy service (`b`). It accepts a
+ready primary route (`c`) or an available fallback (`d`) outside maintenance (`e`).
+
+Verify the grammar with Node.js from the repository root.
+
+```sh
+npm install --prefix target/linguist-qa --no-save --package-lock=false --ignore-scripts vscode-textmate@9.3.2 vscode-oniguruma@2.0.1
+node tests/highlighting.cjs
+```
+
 To run the browser timeline editor, install `wasm32-unknown-unknown` and `wasm-bindgen-cli` version `0.2.130`, then build and serve the demo.
 
 ```sh

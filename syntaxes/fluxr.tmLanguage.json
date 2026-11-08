@@ -1,0 +1,175 @@
+{
+  "name": "FluxR",
+  "scopeName": "source.fluxr",
+  "fileTypes": ["fluxr"],
+  "patterns": [
+    {
+      "name": "meta.rule.fluxr",
+      "begin": "^\\s*(r\\+?0*4)(?=\\s)",
+      "beginCaptures": { "1": { "name": "keyword.other.version.fluxr" } },
+      "end": "(?!)",
+      "patterns": [
+        { "match": "#.*", "name": "comment.line.number-sign.fluxr" },
+        { "include": "#rule" }
+      ]
+    },
+    {
+      "name": "meta.rule.fluxr",
+      "begin": "^\\s*(r\\+?0*[1-3])(?=\\s)",
+      "beginCaptures": { "1": { "name": "keyword.other.version.fluxr" } },
+      "end": "(?!)",
+      "patterns": [{ "include": "#rule" }]
+    },
+    {
+      "name": "meta.timeline.fluxr",
+      "begin": "^\\s*(v\\+?0*1)\\s+(\\+?[0-9]+)\\s*$",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.version.fluxr" },
+        "2": { "name": "constant.numeric.integer.fluxr" }
+      },
+      "end": "(?!)",
+      "patterns": [
+        {
+          "match": "(?<!\\S)(\\+?[0-9]+)(:)([+-]?[0-9]+)(?!\\S)",
+          "captures": {
+            "1": { "name": "constant.numeric.integer.fluxr" },
+            "2": { "name": "punctuation.separator.key-value.fluxr" },
+            "3": { "name": "constant.numeric.integer.fluxr" }
+          }
+        },
+        {
+          "match": "^\\s*(\\+?[0-9]+)\\s+(\\+?[0-9]+)\\s+(\\+?0*[0-2])(?!\\S)",
+          "captures": {
+            "1": { "name": "constant.numeric.integer.fluxr" },
+            "2": { "name": "constant.numeric.integer.fluxr" },
+            "3": { "name": "constant.numeric.curve.fluxr" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "meta.module.compact.fluxr",
+      "begin": "^\\s*(v\\+?0*[12])(?=\\s|\\()",
+      "beginCaptures": { "1": { "name": "keyword.other.version.fluxr" } },
+      "end": "(?!)",
+      "patterns": [{ "include": "#compact" }]
+    },
+    {
+      "name": "meta.module.json.fluxr",
+      "begin": "^\\s*(?=\\{)",
+      "end": "(?!)",
+      "patterns": [{ "include": "#json" }]
+    },
+    {
+      "name": "meta.gate.fluxr",
+      "match": "^\\s*([&|])([a-p]{2,16})\\s*$",
+      "captures": {
+        "1": { "name": "keyword.operator.logical.fluxr" },
+        "2": { "name": "variable.parameter.fluxr" }
+      }
+    },
+    {
+      "name": "meta.gate.fluxr",
+      "begin": "^\\s*(?=\\()",
+      "end": "(?!)",
+      "patterns": [
+        { "include": "#compact" },
+        { "match": "(?<![^\\s()])[a-p](?=[\\s()]|$)", "name": "variable.parameter.fluxr" }
+      ]
+    },
+    { "match": "^\\s*[a-p]\\s*$", "name": "variable.parameter.fluxr" }
+  ],
+  "repository": {
+    "rule": {
+      "patterns": [
+        { "match": "(?<!\\S)i\\+?[0-9]+(?=[\\s#]|$)", "name": "variable.parameter.fluxr" },
+        {
+          "match": "(?<!\\S)f32:[+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?|(?i:inf(?:inity)?|nan))(?=[\\s#]|$)",
+          "name": "constant.numeric.float.fluxr"
+        },
+        { "match": "(?<!\\S)[+-]?[0-9]+(?=[\\s#]|$)", "name": "constant.numeric.integer.fluxr" },
+        { "match": "(?<!\\S)(?:guard|\\?)(?=[\\s#]|$)", "name": "keyword.control.fluxr" },
+        { "match": "(?<!\\S)(?:f(?:<=|[<+*/-])|[+*/%<=&mM-])(?=[\\s#]|$)", "name": "keyword.operator.fluxr" }
+      ]
+    },
+    "compact": {
+      "patterns": [
+        {
+          "match": "(\\()\\s*(pub|fn|rec|enum)\\s+(?:([A-Za-z_][A-Za-z_0-9]*)(\\.))?([A-Za-z_][A-Za-z_0-9]*)(?=[\\s()]|$)",
+          "captures": {
+            "1": { "name": "punctuation.section.group.begin.fluxr" },
+            "2": { "name": "keyword.declaration.fluxr" },
+            "3": { "name": "entity.name.type.fluxr" },
+            "4": { "name": "punctuation.accessor.fluxr" },
+            "5": { "name": "entity.name.fluxr" }
+          }
+        },
+        {
+          "match": "(\\()\\s*(inputs|pub|fn|rec|enum|if|when|while|break|continue|ret|find|indices)(?=[\\s()]|$)",
+          "captures": {
+            "1": { "name": "punctuation.section.group.begin.fluxr" },
+            "2": { "name": "keyword.control.fluxr" }
+          }
+        },
+        {
+          "match": "(\\()\\s*(abs|tof|new|list|local|input|field|at|empty|last|minidx|tag|is|payload|m|call|push|pop)(?=[\\s()]|$)",
+          "captures": {
+            "1": { "name": "punctuation.section.group.begin.fluxr" },
+            "2": { "name": "support.function.fluxr" }
+          }
+        },
+        {
+          "match": "(\\()\\s*(&&?|\\|\\|?|==|<=|[!+*/%<=-])(?=[\\s()]|$)",
+          "captures": {
+            "1": { "name": "punctuation.section.group.begin.fluxr" },
+            "2": { "name": "keyword.operator.fluxr" }
+          }
+        },
+        {
+          "match": "([A-Za-z_][A-Za-z_0-9]*)(:)",
+          "captures": {
+            "1": { "name": "variable.parameter.fluxr" },
+            "2": { "name": "punctuation.separator.type.fluxr" }
+          }
+        },
+        { "match": "(?<![^\\s(])\\$[A-Za-z_][A-Za-z_0-9]*", "name": "variable.other.input.fluxr" },
+        { "match": "[#@][A-Za-z_][A-Za-z_0-9]*", "name": "entity.name.type.fluxr" },
+        { "match": "(?<![\\w$.])(?:true|false|unit)(?=[\\s()]|$)", "name": "constant.language.fluxr" },
+        { "match": "(?<![\\w$.])(?:unit|bool|i64|u64|f32)(?=[\\s()\\]]|$)", "name": "storage.type.fluxr" },
+        { "match": "(?<=[:\\[])[A-Za-z_][A-Za-z_0-9]*", "name": "entity.name.type.fluxr" },
+        {
+          "match": "(?<![^\\s(])(?:0x[0-9a-fA-F]+|-?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?|-(?i:inf(?:inity)?|nan))f(?=[\\s()]|$)",
+          "name": "constant.numeric.float.fluxr"
+        },
+        { "match": "(?<![^\\s(])(?:[0-9]+u|-?[0-9]+)(?=[\\s()]|$)", "name": "constant.numeric.integer.fluxr" },
+        { "match": "\\(", "name": "punctuation.section.group.begin.fluxr" },
+        { "match": "\\)", "name": "punctuation.section.group.end.fluxr" },
+        { "match": "[\\[\\]]", "name": "punctuation.section.brackets.fluxr" },
+        { "match": "\\.", "name": "punctuation.accessor.fluxr" }
+      ]
+    },
+    "json": {
+      "patterns": [
+        {
+          "match": "(\"(?:[^\"\\\\]|\\\\.)*\")\\s*(:)",
+          "captures": {
+            "1": { "name": "support.type.property-name.json.fluxr" },
+            "2": { "name": "punctuation.separator.key-value.json.fluxr" }
+          }
+        },
+        {
+          "name": "string.quoted.double.json.fluxr",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4})", "name": "constant.character.escape.json.fluxr" }
+          ]
+        },
+        { "match": "-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", "name": "constant.numeric.json.fluxr" },
+        { "match": "\\b(?:true|false|null)\\b", "name": "constant.language.json.fluxr" },
+        { "match": "[{}\\[\\]]", "name": "punctuation.section.json.fluxr" },
+        { "match": ",", "name": "punctuation.separator.sequence.json.fluxr" }
+      ]
+    }
+  }
+}

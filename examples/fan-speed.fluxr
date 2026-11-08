@@ -1,0 +1,4 @@
+r4 2 # Enabled flag, then temperature as binary32 bits.
+i0 guard
+i1 f32:75.0 f<
+f32:0.5 f32:0.5 f* f32:0.75 ?
