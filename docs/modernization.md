@@ -42,6 +42,7 @@ declarations and scoped edits against equal Rust controls. FXM-02.D.5 bounds
 export resolution and admission costs and measures long-scan tail variation.
 FXM-03.B.3 expands migration replay and cuts FXH guard preparation time.
 FXM-05.C extends the independent effect specification to compound calls.
+FXM-02.D.6 pairs long-scan wall time with thread-cycle counts.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -966,4 +967,49 @@ compound_effects_match_specification`, or call `compound_effect_check()` in
 the Node Wasm build of that example. Local `compound-effects/manifest.json`
 SHA-256 `11415DA9BEFE89131B9EC43FF82C1F98B53FBCEF75CA286B58C28A8A0F0E22CB`
 binds the frozen checker, exact routes, replays, builds and seal recovery.
-FXM-02.D.6 resumes the matched host and injection parity work.
+
+## FXM-02.D.6 thread cycles in paired scan tails
+
+The D.5 diagnostic ran on the frozen Windows x64 corpus with Rust 1.99.1
+release, typed JIT, telemetry off, and one timing lane pinned to logical CPU
+12. Both repositories ran ABBA and BAAB with the same diagnostic executable
+per repository and the thread-cycle probe off or on. Each scan length used
+672 timed blocks of 64 calls per route after an untimed pass that checked
+every input. The eight routes kept the same input blocks, rotation and
+checksums. The probe samples the current thread's cycle count around the
+wall-timed loop. Its sleep control records far fewer cycles than its busy
+control. Counts include user and kernel execution on the measured thread.
+[Windows thread cycle counter](https://learn.microsoft.com/en-us/windows/win32/api/realtimeapiset/nf-realtimeapiset-querythreadcycletime)
+
+After subtracting each route's median for each input block, 32–34 of the 34
+largest 256-element wall times were also among the 34 highest cycle counts
+for each route in every probed process. The Rust host, forced portable,
+bundled, source and artifact routes all show this overlap. The probed
+long-scan bundled p50 differed from the unprobed diagnostic by −0.7% to
++2.4% across the four matched order summaries. Its p95 differed by −7.3%
+to +8.8%. The overlap shows that most large wall deviations also carry
+higher accounted cycle counts. Kernel scheduling and instruction-level
+attribution still require a trace.
+
+The clean release binaries ran separately in both orders. Across the four
+two-process summaries, bundled execution over the six matched workloads
+took 2.24–2.35× Rust host time at p50 and 2.03–2.21× at p95 by geometric mean.
+Long-scan 64-call source and artifact p95 deltas ranged from −1.4% to +2.1%
+against bundled execution. The full-pass short-scan source p95 missed at
+−11.1% in one summary, and the long-scan artifact p50 missed at +19.1% in
+another. Across the named, matched and block comparisons, seven summarized
+comparisons and 24 individual process comparisons exceeded the injection
+thresholds. Both numeric parity gates remain open. This measurement
+checkpoint retains the two D.5 reverts.
+
+Both independent repositories passed 61 portable, 61 native-JIT and 63
+typed-JIT Windows release tests, including exact scan budgets at both
+lengths and the compound effect oracle. Pinned host checks, six Node Wasm
+suites, three released FXH fixtures, browser edit and rollback, highlighting,
+all three token seals, and historical replays at 18/843/15 and 19/82/10
+passed. Timeline and counter artifacts match prior bytes. Linux x64 compiled.
+Local `runtime-parity-d6/manifest.json` SHA-256
+`543BD0B3C947CEA8AEF7F295D545AEC75EFB5F04FF7816BF6401A1D235E8962F`
+binds raw blocks, binaries and symbols, diagnostic patches, clean release
+timings and compatibility logs. FXM-05.D can advance recursive effect coverage
+on this baseline.

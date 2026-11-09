@@ -21,11 +21,11 @@ one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
 gates can reach that target. Reusing typed declarations and supplying only the
 edited function body reduces repeated prompt context in both FluxR and Rust.
 Typed source and edit bodies still exceed the target. In the frozen Windows
-host benchmark, bundled execution takes just over twice as long as the
-matched Rust host on the geometric mean. Source and artifact injection can
-still miss the latency targets, especially in scan tails. Broader language
-and safety coverage, native Linux and ARM64 validation, and an isolated
-release launch remain open. The [modernization plan](docs/modernization.md)
+host benchmark, bundled calls take about twice as long as the matched Rust
+host by geometric mean. Source and artifact injection can miss the warm
+latency targets, and long scans show tail variation on both FluxR and Rust.
+Broader language and safety coverage, native Linux and ARM64 validation,
+and an isolated release launch remain open. The [modernization plan](docs/modernization.md)
 records the acceptance criteria and measurements.
 
 ## Quick start
