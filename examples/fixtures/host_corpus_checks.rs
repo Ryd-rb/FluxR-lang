@@ -61,6 +61,11 @@ mod loop_exits_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use loop_exits_checks::check_loop_exits;
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "method_call_order_checks.rs"]
+mod method_call_order_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use method_call_order_checks::check_method_call_order;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "nested_loop_calls_checks.rs"]
 mod nested_loop_calls_checks;
 #[cfg(any(test, target_arch = "wasm32"))]

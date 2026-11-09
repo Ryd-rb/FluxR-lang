@@ -1118,6 +1118,18 @@ fn shared_host_values_match_admission_ledger() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn method_call_order_check() -> u32 {
+    corpus_checks::check_method_call_order() as u32
+}
+
+#[cfg(test)]
+#[test]
+fn methods_match_ordered_call_ledger() {
+    assert_eq!(corpus_checks::check_method_call_order(), 41_940);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;

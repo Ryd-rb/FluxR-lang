@@ -1,0 +1,18 @@
+v2
+(rec Point value:i64 audit:u64)
+(rec Holder point:Point)
+(rec Outcome changed:Point original:Point)
+(enum Scale Skip Use:u64)
+(inputs pool:[Point] snapshot:Point)
+(fn Point.update (self:Point delta:i64 scale:u64) Point ()
+  (= self.value (+ self.value delta))
+  (= self.audit (/ self.audit scale))
+  (ret self))
+(pub indexed (index:u64 divisor:i64 scale:#Scale) Outcome ()
+  (ret (new Outcome
+    (m (at (input pool) index) update (/ 12 divisor) (payload scale Use))
+    (input snapshot))))
+(pub projected (holder:Holder divisor:i64 scale:#Scale) Outcome ()
+  (ret (new Outcome
+    (m holder.point update (/ 12 divisor) (payload scale Use))
+    (input snapshot))))

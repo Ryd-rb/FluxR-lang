@@ -57,6 +57,7 @@ FXM-03.B.6 adds a second FR1 packet with ordered effects and list-boundary
 replay against the released reader.
 FXM-05.K checks admission of mixed host values with repeated references.
 FXM-03.B.7 replays released FR1 semantic edits against checked ingress.
+FXM-05.L verifies method call order, frame entry, and receiver ownership.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2141,3 +2142,42 @@ Local `fr1-semantic-edit-replay/manifest.json` SHA-256
 binds the frozen inputs, archived and current results, and validation.
 Wider HIR and safety coverage remain open. FXM-05.L next checks ordered
 method calls with a record receiver and trapping arguments.
+
+## FXM-05.L ordered method calls
+
+The fixture resolves `update` on the nominal `Point` record and passes
+an `i64` delta and a `u64` scale. The indexed receiver can trap on bounds
+before either argument runs. The first argument can trap on division by
+zero before the second tries to extract a variant payload. The independent
+ledger tests every combination of these three conditions and sweeps the
+instruction and cell limits with zero, one, and two frames.
+
+The indexed bounds, first argument, and second argument traps become
+observable at three, six, and eight instructions, respectively. For valid
+arguments, the ninth instruction dispatches the call. Frame admission comes
+before the debit for the method's three slots and frame. Success needs
+24 instructions, 31 cells, and two frames. A projected receiver saves one
+instruction and adds three admission cells. Its explicit and dotted forms
+compile to identical FSM v2 bytes.
+
+The first field write copies the two-field receiver. The second writes the
+local copy or traps on division by zero. On success, the outcome contains
+both the detached result and the original allocation. The host snapshot,
+list element, and projected argument still share the original record after
+success and failure. Six rejected replacement probes preserve the revision,
+artifact bytes, and active result, including a trap after the first write
+and a failure at result admission. An exact probe activates the edit.
+
+The ledger checks 41,940 cases per route across bundled, forced portable,
+decoded portable, source-injected, and artifact-injected calls. Win64 JIT
+preparation and native Rust generation both decline these exports. Each
+default passed 90 Win64 release tests, one focused portable test, 16 Node
+Wasm suites, five retained Node FXH cases, and Linux x64 compilation.
+Both current and two retained readers agree on FSM bytes. Run
+`cargo test --locked --release --all-features --example bench_typed
+methods_match_ordered_call_ledger` or call `method_call_order_check()`
+from the Node Wasm example.
+
+Local `method-call-order/manifest.json` SHA-256
+`5A76997B86A46E4FFB6035B40A1FA0BC503C616B0D3DA41CCD4FDFF0FDBECB31` binds the freeze and validation. FXM-05.M next
+checks method body edits and isolation across retained and active revisions.

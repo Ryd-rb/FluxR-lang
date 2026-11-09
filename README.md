@@ -8,9 +8,10 @@ One timeline row can describe hundreds of related tracks. Decision gates
 evaluate facts lazily in a predictable order. Typed modules combine compact
 source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
-frame limits. Tag tests guard access to variant payloads. Calls report the
-first trap in evaluation order, including malformed inputs, exhausted
-limits, and payload access through the wrong variant.
+frame limits. Tag tests guard access to variant payloads. A method evaluates
+its receiver first, then its arguments from left to right, before entering
+the callee frame. The first trap stops the call. A field write on the
+method's local record detaches it from the host snapshot and its aliases.
 Signed integers convert to binary32 with ties rounded to even. Converting back
 truncates toward zero, saturates at the signed limits, and returns zero for NaN.
 Square root preserves signed zero and returns a canonical NaN for invalid inputs.
@@ -61,8 +62,9 @@ the FluxR call time across seven groups. Rhai's checked Grain backend led on the
 256-element fold. The measurements separate warm calls from compilation,
 preparation, and replacement.
 Broader language and backend safety coverage, native Linux and ARM64 replay,
-hardware counters, and an isolated release launch remain open. Live model
-generation and editing still need matched trials. The
+hardware counters, and an isolated release launch remain open. The warm
+latency targets for Rust and live replacements still need to be met.
+Live model generation and editing still need matched trials. The
 [modernization plan](docs/modernization.md) records the acceptance criteria and
 measurements.
 
