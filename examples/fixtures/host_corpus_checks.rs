@@ -8,6 +8,29 @@ const FRAMES: &str = "module frame limit exceeded";
 const MATH: &str = "invalid or overflowing integer arithmetic";
 
 #[cfg(any(test, target_arch = "wasm32"))]
+struct Budget(Limits);
+
+#[cfg(any(test, target_arch = "wasm32"))]
+impl Budget {
+    fn fuel(&mut self, amount: u64) -> Result<(), &'static str> {
+        self.0.instructions = self.0.instructions.checked_sub(amount).ok_or(FUEL)?;
+        Ok(())
+    }
+
+    fn cells(&mut self, amount: usize) -> Result<(), &'static str> {
+        self.0.cells = self.0.cells.checked_sub(amount).ok_or(CELLS)?;
+        Ok(())
+    }
+
+    fn enter(&mut self, depth: usize, slots: usize) -> Result<(), &'static str> {
+        if depth > self.0.frames {
+            return Err(FRAMES);
+        }
+        self.cells(slots + 1)
+    }
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "compound_effect_checks.rs"]
 mod compound_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -17,6 +40,11 @@ pub(super) use compound_effect_checks::check_compound_effects;
 mod list_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use list_effect_checks::check_list_effects;
+#[cfg(any(test, target_arch = "wasm32"))]
+#[path = "recursive_effect_checks.rs"]
+mod recursive_effect_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use recursive_effect_checks::check_recursive_effects;
 #[cfg(any(test, target_arch = "wasm32"))]
 #[path = "structured_boundary_checks.rs"]
 mod structured_boundary_checks;

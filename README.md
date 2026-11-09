@@ -7,7 +7,8 @@ a budget, and can probe a replacement before activating it.
 One timeline row can describe hundreds of related tracks. Decision gates
 evaluate facts lazily in a predictable order. Typed modules combine compact
 source with checked arithmetic, records, variants, and collections. Procedures
-can pass nested values under explicit instruction, cell, and frame limits.
+can pass nested values and recurse under explicit instruction, cell, and
+frame limits. A call reports the first exhausted limit or arithmetic trap.
 The host can prepare supported bundled programs and live replacements for native
 execution on Windows x64. Those calls still enforce resource budgets and can
 return an unchanged host record without allocating. The portable evaluator

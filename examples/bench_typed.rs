@@ -1043,6 +1043,12 @@ pub fn compound_effect_check() -> u32 {
     corpus_checks::check_compound_effects() as u32
 }
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn recursive_effect_check() -> u32 {
+    corpus_checks::check_recursive_effects() as u32
+}
+
 #[cfg(test)]
 #[test]
 fn host_corpus_matches_reference() {
@@ -1065,6 +1071,12 @@ fn typed_effects_match_specification() {
 #[test]
 fn compound_effects_match_specification() {
     assert_eq!(corpus_checks::check_compound_effects(), 24_253);
+}
+
+#[cfg(test)]
+#[test]
+fn recursive_effects_match_specification() {
+    assert_eq!(corpus_checks::check_recursive_effects(), 27_014);
 }
 
 #[cfg(test)]

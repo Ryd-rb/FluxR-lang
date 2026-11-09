@@ -30,7 +30,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-02 | Shared optimized runtime. Match injected and bundled p50 within 5% and p95 within 10% in each supported hot workload. Target FluxR/Rust geometric mean ≤1.10 and p95 ≤1.25 over the frozen corpus. Keep individual failures visible. The optional signed-leaf JIT and three runtime optimizations are the first implementation. | FXM-01 and FXM-05 semantic contract. Profile stateful loops, validate typed SSA and test register-based portable, Cranelift, and Wasm tiers before choosing production defaults. |
 | FXM-03 | Preserve released inputs and artifact bytes. Migrate automatically with a deterministic proof receipt, old/new differential replay, and an explicit refusal if any semantic feature cannot be translated. The first pass has timeline v2, structured compact, and canonical rule migration. | FXM-05 for new core semantics. Add rule and FR1 ingress to shared HIR, historical fixture checks, migration reports, and versioned IR round trips. |
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
-| FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
+| FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. FXM-05.D checks bounded recursion and replacement probes. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
@@ -1013,3 +1013,38 @@ Local `runtime-parity-d6/manifest.json` SHA-256
 binds raw blocks, binaries and symbols, diagnostic patches, clean release
 timings and compatibility logs. FXM-05.D can advance recursive effect coverage
 on this baseline.
+
+## FXM-05.D bounded recursive effects
+
+The independent source ledger follows a signed fold that returns its seed for
+nonpositive counts. Each positive frame retains its count across a recursive
+call and combines it with the returned value using checked addition. For a
+nonnegative count `n`, success requires `12n + 6` instruction units,
+`3n + 6` cells, and `n + 1` frames when arithmetic succeeds. Each argument
+consumes a boundary cell before its tag check. Dispatch consumes fuel
+before frame admission, which checks depth before charging three cells.
+On unwind, arithmetic can trap before the frame returns. The result cell
+is charged after the outer return.
+
+The grid compares 27,014 cases per route across direct, forced portable,
+decoded artifact, and injected calls. It includes negative and zero counts,
+overflows at two unwind depths, malformed arguments, intersecting budget
+limits, and a 1,025-frame call with exact and one-short limits. A failed
+probe on each of the three budget dimensions and on checked subtraction
+preserves the revision, active bytes, and prior result. An exact probe then
+publishes the subtracting fold. Both Win64 native configurations decline
+the recursive export and execute through the portable fallback.
+
+Both repositories passed Windows x64 release with 62 portable, 62 native-JIT,
+and 64 typed-JIT tests. Seven Node Wasm suites, three released FXH fixtures,
+pinned host checks and exact budgets, browser edit and rollback, highlighting,
+all three token seals, and historical replays at 18/843/15 and 19/82/10 passed.
+Timeline and counter artifacts match prior bytes. Linux x64 compiled.
+Runtime and wire code were unchanged in this conformance slice.
+
+Run `cargo test --locked --release --all-features --example bench_typed
+recursive_effects_match_specification` or call `recursive_effect_check()`
+in the Node Wasm build of that example. Local `recursive-effects/manifest.json`
+SHA-256 `9892A6AE81461E517387E1FE877FCD6CC15BC60682ABEB417B28714C6ADCD56A` binds source, checks and compatibility logs.
+FXM-02.D.7 next isolates result handling in the matched signed-record host
+routes. Both numeric parity gates remain open.

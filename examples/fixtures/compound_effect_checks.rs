@@ -1,5 +1,5 @@
 //! A source-level contract for one nested record and enum procedure family.
-use super::{CELLS, FRAMES, FUEL, MATH, Replay};
+use super::{Budget, CELLS, FRAMES, FUEL, MATH, Replay};
 use fluxr::structured::{Binding, Invocation, Limits, Module, ModuleSlot, Type, Value, Workspace};
 
 const SOURCE: &str = "v2
@@ -18,26 +18,7 @@ const SOURCE: &str = "v2
 
 type Expected<T> = Result<T, &'static str>;
 
-struct Budget(Limits);
-
 impl Budget {
-    fn fuel(&mut self, amount: u64) -> Expected<()> {
-        self.0.instructions = self.0.instructions.checked_sub(amount).ok_or(FUEL)?;
-        Ok(())
-    }
-
-    fn cells(&mut self, amount: usize) -> Expected<()> {
-        self.0.cells = self.0.cells.checked_sub(amount).ok_or(CELLS)?;
-        Ok(())
-    }
-
-    fn enter(&mut self, depth: usize, slots: usize) -> Expected<()> {
-        if depth > self.0.frames {
-            return Err(FRAMES);
-        }
-        self.cells(slots + 1)
-    }
-
     fn integer(&mut self, value: &Value) -> Expected<i64> {
         self.cells(1)?;
         match value {
