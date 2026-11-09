@@ -6,18 +6,40 @@ impl Module {
     /// This preserves the version and the canonical portable bytes.
     pub fn compact_text(&self) -> Result<String, Error> {
         let source = self.checked_source()?;
-        let mut out = format!("v{}", source.version);
-        if !source.inputs.is_empty() {
+        let out = source.print_compact();
+        let reparsed = Source::parse_compact(&out)?;
+        let canonical = super::compile::encode_source(&reparsed)?;
+        if canonical != self.canonical_source() {
+            return Err(error("structured migration changed the canonical source"));
+        }
+        Ok(out)
+    }
+}
+
+impl Source {
+    /// Check the compact round trip directly when the compiler's input AST
+    /// is still available. The AST retains numeric bits and declaration order.
+    pub(crate) fn checked_compact_text(&self) -> Result<String, Error> {
+        let out = self.print_compact();
+        if Self::parse_compact(&out)? != *self {
+            return Err(error("structured migration changed the canonical source"));
+        }
+        Ok(out)
+    }
+
+    fn print_compact(&self) -> String {
+        let mut out = format!("v{}", self.version);
+        if !self.inputs.is_empty() {
             out.push_str("\n(inputs");
-            bindings(&mut out, &source.inputs);
+            bindings(&mut out, &self.inputs);
             out.push(')');
         }
-        for record in &source.records {
+        for record in &self.records {
             write!(out, "\n(rec {}", record.name).unwrap();
             bindings(&mut out, &record.fields);
             out.push(')');
         }
-        for enumeration in &source.enums {
+        for enumeration in &self.enums {
             write!(out, "\n(enum {}", enumeration.name).unwrap();
             for variant in &enumeration.variants {
                 write!(out, " {}", variant.name).unwrap();
@@ -28,7 +50,7 @@ impl Module {
             }
             out.push(')');
         }
-        for function in &source.functions {
+        for function in &self.functions {
             write!(out, "\n({} ", if function.export { "pub" } else { "fn" }).unwrap();
             if let Some(receiver) = &function.receiver {
                 write!(out, "{receiver}.").unwrap();
@@ -43,12 +65,7 @@ impl Module {
             statements(&mut out, &function.body);
             out.push(')');
         }
-        let reparsed = Source::parse_compact(&out)?;
-        let canonical = super::compile::encode_source(&reparsed)?;
-        if canonical != self.canonical_source() {
-            return Err(error("structured migration changed the canonical source"));
-        }
-        Ok(out)
+        out
     }
 }
 

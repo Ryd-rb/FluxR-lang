@@ -3,6 +3,27 @@ use fluxr::hir::{Artifact, Hir};
 use fluxr::structured::{Invocation, Limits, Module, Value, Workspace};
 
 #[test]
+fn released_guard_fxh_round_trips_exactly() {
+    // Frozen FXH v1 bytes from the FXM-03.B.2 reader.
+    let wire = include_bytes!("fixtures/released_guard.fxh");
+    let hir = Hir::decode(wire).unwrap();
+    assert_eq!(hir.encode().unwrap(), wire);
+    let Artifact::Rule(restored) = hir.into_artifact() else {
+        panic!("FXD origin changed");
+    };
+    let fxd = RuleProgram::compile_text("r3 2 i0 guard 120 i1 /")
+        .unwrap()
+        .encode();
+    assert_eq!(restored.encode(), fxd);
+    assert_eq!(restored.evaluate(&[0, 0]), Ok(0));
+    assert_eq!(restored.evaluate(&[1, 3]), Ok(40));
+    assert_eq!(
+        restored.evaluate(&[1, 0]).unwrap_err().to_string(),
+        "rule arithmetic overflow or division by zero"
+    );
+}
+
+#[test]
 fn shared_rule_projection_preserves_order_and_checked_arithmetic() {
     let probes = [i64::MIN, -2, -1, 0, 1, 2, i64::MAX];
     for text in [

@@ -24,8 +24,13 @@ enum Body {
     Structured(Module),
     Rule {
         origin: RuleProgram,
-        projection: Result<Module, &'static str>,
+        projection: Result<RuleProjection, &'static str>,
     },
+}
+
+struct RuleProjection {
+    module: Module,
+    compact: String,
 }
 
 impl Hir {
@@ -35,7 +40,11 @@ impl Hir {
 
     pub fn from_rule(rule: RuleProgram) -> Result<Self, Error> {
         let projection = match project_rule(&rule) {
-            Ok(source) => Ok(Module::compile(source)?),
+            Ok(source) => {
+                let module = Module::compile_borrowed(&source)?;
+                let compact = source.checked_compact_text()?;
+                Ok(RuleProjection { module, compact })
+            }
             Err(reason) => Err(reason),
         };
         Ok(Self(Body::Rule {
@@ -50,7 +59,7 @@ impl Hir {
         let module = match &self.0 {
             Body::Structured(module)
             | Body::Rule {
-                projection: Ok(module),
+                projection: Ok(RuleProjection { module, .. }),
                 ..
             } => module,
             Body::Rule {
@@ -85,8 +94,8 @@ impl Hir {
                     .map_err(|_| Error("FXH rule origin exceeds length limit".into()))?;
                 bytes.extend_from_slice(&size.to_le_bytes());
                 bytes.extend_from_slice(&origin);
-                if let Ok(module) = projection {
-                    bytes.extend_from_slice(module.compact_text()?.as_bytes());
+                if let Ok(projection) = projection {
+                    bytes.extend_from_slice(projection.compact.as_bytes());
                 }
             }
         }

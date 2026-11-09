@@ -135,13 +135,17 @@ impl Module {
     }
 
     pub fn compile(source: Source) -> Result<Self, Error> {
+        Self::compile_borrowed(&source)
+    }
+
+    pub(crate) fn compile_borrowed(source: &Source) -> Result<Self, Error> {
         if !(1..=VERSION).contains(&source.version) {
             return Err(error(format!(
                 "unsupported module version {}",
                 source.version
             )));
         }
-        let env = Environment::new(&source)?;
+        let env = Environment::new(source)?;
         let mut code = Vec::with_capacity(source.functions.len());
         let mut exports = BTreeMap::new();
         let mut signatures = BTreeMap::new();
@@ -162,7 +166,7 @@ impl Module {
             code.push(Arc::new(body));
         }
         let interface = env.interface(&source.inputs, signatures);
-        let canonical = encode_source(&source)?;
+        let canonical = encode_source(source)?;
         #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
         let native = (0..code.len()).map(|_| Default::default()).collect();
         Ok(Self {

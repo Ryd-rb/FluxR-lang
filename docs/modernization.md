@@ -40,7 +40,8 @@ Evidence and semantic work can run in parallel once case IDs and the oracle inte
 FXM-02.D.4 retains a smaller packing path. FXM-04.C measures reusable
 declarations and scoped edits against equal Rust controls. FXM-02.D.5 bounds
 export resolution and admission costs and measures long-scan tail variation.
-FXM-03.B.3 next expands migration replay and measures FXH preparation.
+FXM-03.B.3 expands migration replay and cuts FXH guard preparation time.
+FXM-05.C next broadens the independent effect specification beyond lists.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -880,5 +881,51 @@ Linux x64 compiled. Native Linux and ARM64 execution remain open.
 Local `runtime-admission/manifest.json` SHA-256
 `98C35A93BEC37FC7391B90764DED2CE2CB2F8F851065484EBF60CD4361C06B69` binds the diagnostic, reverted patches, binaries,
 symbols, per-order misses, raw scan blocks, and compatibility evidence.
-FXM-03.B.3 can advance on the restored runtime. Measure FXH preparation
-separately from execution and expand historical round-trip coverage.
+FXM-03.B.3 uses the restored runtime to expand historical replay and
+measure FXH preparation separately from execution.
+
+## FXM-03.B.3 historical round trips and FXH preparation
+
+Rule FXH v1 still checks FXD, rebuilds and compiles the shared projection,
+and compares the complete canonical envelope. It now prints the projection
+from the checked compiler input and compares the reparsed compact AST
+directly. The checked HIR retains that compact text for encoding. This
+removes a JSON decode and reserialization from projection encoding without
+changing the rule evaluator, the general structured migration path, or
+any released wire format.
+
+The frozen expansion compares 18 inputs and 843 probes with the archived
+`bd4dbca` engine. It covers eager select, both sides of a guard exit, signed
+and stack limits, raw binary32, structured budget and type errors, and
+FR1's nominal interface. New writes reproduce the old FXH v1 bytes and
+receipts. Fifteen malformed envelopes, origins and projections reproduce
+the old refusal diagnostics and leave no output. The previous FXH replay
+also passes its 19 inputs, 82 probes and ten refusals on both repositories.
+
+On Windows x64 logical CPU 12, Rust 1.99.1 portable release with telemetry
+off, `examples/bench_hir.rs` compares the same sealed files in ABBA and
+BAAB order. Each process measures 11 rounds, 10,000 operations per round
+(200 for the 255-operation guard). Each p50/p95 pair is the median of
+the two process percentiles for that binary and order. Times are µs per
+decode and restore; execution was measured separately.
+
+| Input | ABBA old → new p50 / p95 | BAAB old → new p50 / p95 |
+| --- | ---: | ---: |
+| Guard | 13.04 / 13.48 → 6.60 / 7.50 | 13.62 / 16.32 → 6.32 / 6.38 |
+| 255-operation guard | 556.50 / 604.45 → 169.60 / 251.47 | 540.73 / 692.11 → 190.16 / 274.80 |
+| Raw binary32 | 0.56 / 0.70 → 0.73 / 0.76 | 0.57 / 0.70 → 0.51 / 0.51 |
+| FR1 | 18.10 / 19.31 → 17.93 / 20.31 | 18.64 / 21.25 → 17.52 / 20.73 |
+
+Encoding an already checked guard took 0.32–0.40 µs at p50, down from
+9.24–9.69 µs. The short guard's restored execution was about 10 ns on both
+binaries. On the long guard, legacy and restored execution tracked each
+other within each binary. Raw binary32 and FR1 timings varied across orders.
+The measurements establish a guard preparation gain on this host.
+
+Both independent repositories passed 60 portable, 60 native-JIT and
+62 typed-JIT Windows release tests, the three token seals, pinned host and
+budget checks, the five Node Wasm suites and three released FXH Wasm
+fixtures, browser replay and highlighting. The timeline and counter match
+prior bytes. Linux x64 was compile-checked. Local
+`migration-roundtrip/manifest.json` SHA-256 `AD27EA89C9B28E589945319B998EA2A6E05788D2666E41BC5B3677307A7AF70C`
+binds the frozen inputs, source patch, binaries, timings and verification.

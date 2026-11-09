@@ -26,7 +26,7 @@ const VERSION: u16 = 2;
 const MAGIC: &[u8; 4] = b"FSM\0";
 const MAX_DEPTH: usize = 32;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Source {
     pub version: u16,
     pub inputs: Vec<Binding>,
@@ -76,7 +76,7 @@ pub struct Variant {
     pub payload: Option<Type>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Function {
     pub name: String,

@@ -10,8 +10,9 @@ source with checked arithmetic, records, and collections. The host can
 prepare supported bundled programs and live replacements for native
 execution on Windows x64. Those calls still enforce resource budgets and can
 return an unchanged host record without allocating. The portable evaluator
-and browser scene lab support replay, and the migration tools verify
-released artifact bytes.
+and browser scene lab support replay. The migration tools verify released
+artifact bytes, can replay results and traps against the original program,
+and can issue a receipt tying the result to the exact input.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
@@ -20,8 +21,8 @@ edited function body reduces repeated prompt context in both FluxR and Rust.
 Typed source and edit bodies still exceed the target. In the frozen Windows
 host benchmark, bundled execution takes just over twice as long as the
 matched Rust host on the geometric mean. Source and artifact injection can
-still miss the latency targets, especially in scan tails. Wider migration
-replay, safety coverage, native Linux and ARM64 validation, and an isolated
+still miss the latency targets, especially in scan tails. Broader language
+and safety coverage, native Linux and ARM64 validation, and an isolated
 release launch remain open. The [modernization plan](docs/modernization.md)
 records the acceptance criteria and measurements.
 
