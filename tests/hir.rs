@@ -131,6 +131,110 @@ fn fr1_route_and_pick_preserve_released_results_and_metering() {
 }
 
 #[test]
+fn fr1_semantic_edits_preserve_binary32_bits_and_trap_order() {
+    let wire = include_bytes!("fixtures/fr1/semantic-edits.fxh");
+    let fsm = include_bytes!("fixtures/fr1/semantic-edits.fsm");
+    let hir = Hir::decode(wire).unwrap();
+    assert_eq!(hir.encode().unwrap(), wire);
+    let compiled = Module::compile(hir.source().unwrap()).unwrap();
+    let Artifact::Structured(restored) = hir.into_artifact() else {
+        panic!("FR1 origin changed");
+    };
+
+    let sample = |bits| Value::Variant(1, Some(Value::F32(bits).into()));
+    let arguments = |index| {
+        vec![
+            Value::List(vec![Value::U64(13), Value::U64(u64::MAX)].into()),
+            Value::U64(index),
+        ]
+    };
+    let cases = [
+        (
+            "route",
+            vec![Value::Record([Value::Bool(false)].into())],
+            Ok(Value::List(vec![sample(0x8000_0001)].into())),
+            14,
+            11,
+        ),
+        (
+            "route",
+            vec![Value::Record([Value::Bool(true)].into())],
+            Ok(Value::List(
+                vec![
+                    sample(0x8000_0001),
+                    Value::Variant(0, Some(Value::F32(0x8000_0000).into())),
+                    sample(0),
+                    sample(0x7fc0_0031),
+                ]
+                .into(),
+            )),
+            32,
+            23,
+        ),
+        ("pick", arguments(0), Ok(Value::U64(u64::MAX)), 6, 8),
+        ("pick", arguments(1), Err("list index out of bounds"), 5, 7),
+        (
+            "pick",
+            arguments(u64::MAX),
+            Err("invalid or overflowing integer arithmetic"),
+            4,
+            7,
+        ),
+    ];
+
+    for module in [compiled, restored, Module::decode(fsm).unwrap()] {
+        assert_eq!(module.encode(), fsm);
+        let mut workspace = Workspace::default();
+        for (export, arguments, expected, instructions, cells) in &cases {
+            let mut run = |limits| {
+                module
+                    .run_portable_with(
+                        Invocation {
+                            export,
+                            inputs: &[],
+                            arguments,
+                            limits,
+                        },
+                        &mut workspace,
+                    )
+                    .map_err(|error| error.to_string())
+            };
+            let limits = Limits {
+                instructions: *instructions,
+                cells: *cells,
+                frames: 1,
+            };
+            assert_eq!(run(limits), expected.clone().map_err(str::to_owned));
+            for (limits, error) in [
+                (
+                    Limits {
+                        instructions: instructions - 1,
+                        ..Limits::default()
+                    },
+                    "module instruction budget exhausted",
+                ),
+                (
+                    Limits {
+                        cells: cells - 1,
+                        ..Limits::default()
+                    },
+                    "module cell budget exhausted",
+                ),
+                (
+                    Limits {
+                        frames: 0,
+                        ..Limits::default()
+                    },
+                    "module frame limit exceeded",
+                ),
+            ] {
+                assert_eq!(run(limits).unwrap_err(), error);
+            }
+        }
+    }
+}
+
+#[test]
 fn shared_rule_projection_preserves_order_and_checked_arithmetic() {
     let probes = [i64::MIN, -2, -1, 0, 1, 2, i64::MAX];
     for text in [

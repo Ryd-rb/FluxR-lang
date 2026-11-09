@@ -56,7 +56,7 @@ FXM-03.B.5 extends that route to raw binary32 and mixed rules.
 FXM-03.B.6 adds a second FR1 packet with ordered effects and list-boundary
 replay against the released reader.
 FXM-05.K checks admission of mixed host values with repeated references.
-FXM-03.B.7 next replays released FR1 semantic edits against checked ingress.
+FXM-03.B.7 replays released FR1 semantic edits against checked ingress.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2093,3 +2093,51 @@ shared_host_values_match_admission_ledger` or call
 Local `shared-host-admission/manifest.json` SHA-256
 `166FC99D75D21CF9741666CC079CDA549F46F76EF374EA1E729E492541F33D41`
 binds the freeze, validation and artifacts. Wider safety remains open.
+
+## FXM-03.B.7 released FR1 semantic edits
+
+The archived B.6 packet supplies the guard and indexed collection shape. Its
+archived writer seals a related packet with raw binary32 effect payloads.
+The effect edit targets one tag and matches negative zero by bits. The
+combined batch replaces it with the smallest positive subnormal, shifts
+the collection index from `index` to `index + 1`, then replaces the new
+literal with the smallest negative subnormal. Another tag's negative zero,
+the target tag's positive zero, and its NaN payload remain exact.
+
+The original, effect-only, collection-only, and combined packets match
+the archived reader byte for byte after editing, lowering to compact source,
+and compiling to FSM v2. The B.2 migration tools and both defaults agree on
+canonical compact source, FXH v1, and both receipt types. The receipts
+cover 123 probes per packet around observed transitions. The full replay
+uses 664 probes per packet through direct compile, compact compile, compact
+migration, current FXH restoration, and released FXH restoration.
+
+The guard exits after the first effect at 14 instructions and 11 cells.
+The complete effect list needs 32 instructions and 23 cells. The shifted
+index returns the second element at six instructions and eight cells.
+An index of one on that two-element list traps at five instructions and
+seven cells. An index of `u64::MAX` traps on overflow at four instructions
+and seven cells. All these paths require one frame. The unedited collection
+reports a bounds trap at `u64::MAX`.
+
+Three batches fail on their last edit. The reader refuses a missing effect
+literal, an unknown collection export, and an incompatible collection
+result. Every refusal leaves fresh output paths absent and preserves
+preexisting packet, source, FSM, and generated Rust files. The archived
+reader reports the incompatible result from the compiler. B.2 and both
+defaults report it from the FR1 binder. Migrate the emitted edited packet
+in a separate invocation, as the migration flags reject `--edits`.
+
+Each default passed 89 Win64 release tests, one focused portable check,
+15 Node Wasm suites, five FXH cases in Node, and Linux x64 compilation.
+B.3 repeats 18 inputs, 843 probes, and 15 refusals per default. B.6 repeats
+256 probes across five routes. Run `cargo test --locked --release --test
+hir fr1_semantic_edits_preserve_binary32_bits_and_trap_order` to check
+the retained combined fixture. This checkpoint preserves the alphabet,
+runtime, and readers.
+
+Local `fr1-semantic-edit-replay/manifest.json` SHA-256
+`8E89B512D15DB0E35A12FE90CA9F38E680DF19C26ECBFF59A04BBD4F4411A7E3`
+binds the frozen inputs, archived and current results, and validation.
+Wider HIR and safety coverage remain open. FXM-05.L next checks ordered
+method calls with a record receiver and trapping arguments.
