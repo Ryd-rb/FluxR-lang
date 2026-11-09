@@ -9,12 +9,12 @@ evaluate facts lazily in a predictable order. Typed modules combine compact
 source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
 frame limits. A call reports the first exhausted limit or arithmetic trap.
-On Windows x64, the host can prepare bundled programs and live replacements
-for native execution under the same resource limits as portable calls. An
-unchanged record can share the host's allocation, and a write returns a
-separately owned record. The portable evaluator and browser scene lab support
-replay. A failed replacement probe leaves the
-active revision and the host's values intact. The migration tools verify released
+On Windows x64, the host can prepare supported bundled programs and live
+replacements for native execution. Signed branches and loops use the same
+resource limits in JIT, generated Rust, and portable execution. An unchanged
+record can share the host's allocation, and a write returns a separately
+owned record. A failed replacement probe preserves the active revision and
+the host's values. The portable evaluator and browser scene lab support replay. The migration tools verify released
 artifact bytes, can replay results and traps against the original program,
 and can issue a receipt tying the result to the exact input.
 

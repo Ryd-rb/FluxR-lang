@@ -1,0 +1,12 @@
+v2
+(rec State total:i64 marker:i64)
+(fn quotient (total:i64 divisor:i64) i64 ()
+  (ret (/ total divisor)))
+(pub walk (state:State n:i64 step:i64) State (total:i64)
+  (if (<= n 0) ((ret state)) ())
+  (= total state.total)
+  (while (< 1 n) (
+    (= total (+ total step))
+    (= n (- n 1))))
+  (= state.total (call quotient total step))
+  (ret state))

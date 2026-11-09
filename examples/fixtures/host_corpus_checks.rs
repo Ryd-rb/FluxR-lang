@@ -36,6 +36,11 @@ mod compound_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use compound_effect_checks::check_compound_effects;
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "control_flow_checks.rs"]
+mod control_flow_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use control_flow_checks::check_control_flow;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "list_effect_checks.rs"]
 mod list_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -106,6 +111,17 @@ impl<'a> Replay<'a> {
         limits: Limits,
         expected: Result<Value, &str>,
     ) {
+        self.check_routes(inputs, arguments, limits, expected, |_| {});
+    }
+
+    fn check_routes(
+        &mut self,
+        inputs: &[Value],
+        arguments: &[Value],
+        limits: Limits,
+        expected: Result<Value, &str>,
+        inspect: impl Fn(&Value),
+    ) {
         let call = || Invocation {
             export: self.export,
             inputs,
@@ -127,6 +143,9 @@ impl<'a> Replay<'a> {
                 self.export,
                 route
             );
+            if let Ok(value) = &result {
+                inspect(value);
+            }
         }
         self.count += 1;
     }

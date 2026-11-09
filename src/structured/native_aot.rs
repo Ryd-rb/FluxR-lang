@@ -6,6 +6,45 @@ use std::fmt::Write;
 
 type Kernel = fn(&[i64; MAX_LANES], &mut [i64; MAX_LANES], u64, u64) -> u32;
 
+#[cfg(test)]
+mod control_flow {
+    use super::*;
+    use crate as fluxr;
+
+    include!("../../examples/fixtures/control_flow_aot.rs");
+
+    #[test]
+    fn exact_control_flow_can_complete_without_portable_fallback() {
+        let module = Module::compile_compact(include_str!(
+            "../../examples/fixtures/control_flow.fluxr"
+        ))
+        .unwrap();
+        let aot = prepare(&module).unwrap();
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        let jit = super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
+        for (n, step, fuel, cells, total) in [(0, 0, 6, 13, 7), (4, 2, 60, 18, 6)] {
+            let state = Value::Record([Value::I64(7), Value::I64(-11)].into());
+            let args = [state, Value::I64(n), Value::I64(step)];
+            let call = Invocation {
+                export: "walk",
+                inputs: &[],
+                arguments: &args,
+                // The native boundary reserves the export's maximum depth
+                // even when the early return skips the helper.
+                limits: Limits {
+                    instructions: fuel,
+                    cells,
+                    frames: 2,
+                },
+            };
+            let expected = Value::Record([Value::I64(total), Value::I64(-11)].into());
+            assert_eq!(aot.boundary.run(&call, aot.kernel), Some(expected.clone()));
+            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            assert_eq!(jit.run(&call), Some(expected));
+        }
+    }
+}
+
 pub struct PreparedAot<'module> {
     module: &'module Module,
     export: &'module str,

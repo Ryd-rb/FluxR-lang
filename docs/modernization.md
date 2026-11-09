@@ -44,6 +44,7 @@ FXM-03.B.3 expands migration replay and cuts FXH guard preparation time.
 FXM-05.C extends the independent effect specification to compound calls.
 FXM-02.D.6 pairs long-scan wall time with thread-cycle counts.
 FXM-02.D.7 reduces the cost of returning an unchanged host record.
+FXM-05.E verifies bounded signed branches, backedges, and record ownership.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1104,3 +1105,40 @@ Local `record-return/manifest.json` SHA-256 `C1447C892FC815CD7CFBEF985863E9757BA
 both production variants, their binaries and symbols, and the validation logs.
 FXM-05.E next checks exact effects for bounded native branches and backedges
 against an independent source ledger and the portable routes.
+
+## FXM-05.E bounded signed control flow
+
+The independent source ledger checks a signed countdown with a record return.
+A nonpositive count reuses the input allocation with 6 instruction units,
+13 cells, and one frame. For a positive count `n`, a successful call needs
+`21 + 13(n - 1)` instruction units, 18 cells, and two frames. Each backedge
+charges the loop test, checked addition, countdown update, and jump. The final
+division runs in a helper frame before the record detaches. The marker field
+and the host record retain their original values.
+
+The frozen grid checks 41,110 invocations per route through prepared Win64
+typed JIT, forced portable, decoded artifact, injected module, and generated
+AOT. Node Wasm runs the same grid with portable and generated AOT execution.
+Cases include intersecting budget limits, malformed host values, an untaken
+division by zero, signed division and addition overflow, and 1,024 backedges.
+Direct kernel checks confirm that JIT and AOT complete both return paths at
+exact instruction and cell budgets with two frames. Native admission reserves
+the export's maximum frame depth. The one-frame early return succeeds through
+the portable path. Five rejected replacement probes preserve the prior
+revision, artifact bytes, record ownership, and result. An exact probe
+publishes the subtracting replacement.
+
+Both repositories passed Windows x64 release with 64 portable, 64 native-JIT,
+and 66 typed-JIT tests. The pinned host corpus, eight Node Wasm suites, three
+released FXH fixtures, browser rollback, highlighting, all three token seals,
+historical replays at 18/843/15 and 19/82/10, and prior timeline and counter
+artifact bytes passed. Both CLIs reproduced the generated AOT fixture.
+Linux x64 compiled. The existing counter and volume workloads serve as
+differential controls for this conformance slice.
+
+Run `cargo test --locked --release --all-features control_flow` or call
+`control_flow_check()` from the Node Wasm build of `bench_typed`.
+Local `control-flow/manifest.json` SHA-256 `FCD22B2D2A94F69D611CF05E7A6C57E831B2EBE7BF3F12ADA30ACA7BBBB7255B` binds the frozen
+ledger, generated fixture, and compatibility logs. FXM-05.F next checks
+short-circuit boolean effects and explicit loop exits. Both runtime parity
+gates remain open.
