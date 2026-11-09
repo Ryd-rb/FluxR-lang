@@ -31,6 +31,9 @@ drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.
 The migration tools verify released artifact bytes, replay results and traps
 against the original program, and issue receipts that tie results to exact inputs.
+Hosts can also run an integer rule through the checked structured evaluator
+with explicit resource limits. FXH restoration keeps the original rule's
+execution contract, including raw binary32 transport.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact

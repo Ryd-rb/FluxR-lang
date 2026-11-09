@@ -623,6 +623,7 @@ fn binary(kind: Binary, left: &Value, right: &Value) -> Result<Value, Error> {
                 Mul => checked($left.checked_mul($right), $variant),
                 Div => checked($left.checked_div($right), $variant),
                 Rem => checked($left.checked_rem($right), $variant),
+                And => Ok($variant($left & $right)),
                 Eq => Ok(Value::Bool($left == $right)),
                 Lt => Ok(Value::Bool($left < $right)),
                 Le => Ok(Value::Bool($left <= $right)),

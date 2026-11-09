@@ -1,3 +1,5 @@
+use fluxr::hir::Hir;
+use fluxr::structured::{Limits, Value as HostValue, Workspace};
 use fluxr::{Program, RuleProgram, telemetry};
 use serde_json::Value;
 
@@ -18,6 +20,7 @@ fn selection_counts_exact_operations_without_changing_results() {
     let encoded = original.encode();
     let typed = original.structured();
     let rule = RuleProgram::compile_text("r1 1 i0 2 *").unwrap();
+    let bitand = RuleProgram::compile_text("r2 2 i0 i1 &").unwrap();
     assert_eq!(
         feature(&telemetry::snapshot(), "compile-text")["accepted"],
         0
@@ -40,6 +43,18 @@ fn selection_counts_exact_operations_without_changing_results() {
     telemetry::reload(false, 8, 51);
     assert_eq!(rule.evaluate(&[4]).unwrap(), 8);
     assert!(rule.evaluate(&[i64::MAX]).is_err());
+    let bitand = Hir::from_rule(bitand)
+        .unwrap()
+        .prepare_rule_projection()
+        .unwrap();
+    assert_eq!(
+        bitand.run_with(
+            &[HostValue::I64(-1), HostValue::I64(i64::MIN)],
+            Limits::default(),
+            &mut Workspace::default(),
+        ),
+        Ok(HostValue::I64(i64::MIN))
+    );
     telemetry::record_rule_evaluations(3, 2);
 
     let snapshot = telemetry::snapshot();

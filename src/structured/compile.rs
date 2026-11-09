@@ -149,13 +149,24 @@ impl Module {
     }
 
     pub(crate) fn compile_borrowed(source: &Source) -> Result<Self, Error> {
+        Self::compile_source(source, false)
+    }
+
+    /// Only the opaque checked rule projection can hold this module. Its
+    /// compiler input permits signed and and has no released encoding.
+    pub(crate) fn compile_rule_projection(source: &Source) -> Result<Self, Error> {
+        Self::compile_source(source, true)
+    }
+
+    fn compile_source(source: &Source, rule_projection: bool) -> Result<Self, Error> {
         if !(1..=VERSION).contains(&source.version) {
             return Err(error(format!(
                 "unsupported module version {}",
                 source.version
             )));
         }
-        let env = Environment::new(source)?;
+        let mut env = Environment::new(source)?;
+        env.rule_projection = rule_projection;
         let mut code = Vec::with_capacity(source.functions.len());
         let mut exports = BTreeMap::new();
         let mut signatures = BTreeMap::new();
@@ -176,12 +187,16 @@ impl Module {
             code.push(Arc::new(body));
         }
         let interface = env.interface(&source.inputs, signatures);
-        let canonical = encode_source(source)?;
+        let canonical = if rule_projection {
+            Arc::from([])
+        } else {
+            encode_source(source)?.into()
+        };
         #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
         let native = (0..code.len()).map(|_| Default::default()).collect();
         Ok(Self {
             version: source.version,
-            canonical: canonical.into(),
+            canonical,
             interface,
             records: env.records,
             enums: env.enums,
@@ -295,6 +310,7 @@ fn compile_body(env: &Environment<'_>, function: &Function, body: &[Stmt]) -> Re
 
 struct Environment<'a> {
     version: u16,
+    rule_projection: bool,
     functions: &'a [Function],
     function_ids: BTreeMap<(Option<String>, String), usize>,
     inputs: BTreeMap<String, (usize, Type)>,
@@ -312,6 +328,7 @@ impl<'a> Environment<'a> {
         }
         let mut env = Self {
             version: source.version,
+            rule_projection: false,
             functions: &source.functions,
             function_ids: BTreeMap::new(),
             inputs: bindings(source.inputs.iter())?,
@@ -874,7 +891,8 @@ impl<'a, 'src> Compiler<'a, 'src> {
         use Binary::*;
         let first = self.ops.len();
         let ty = self.expr(left, depth)?;
-        if matches!(kind, And | Or) {
+        let signed_and = self.env.rule_projection && kind == And && ty == Type::I64;
+        if matches!(kind, And | Or) && !signed_and {
             require(&ty, &Type::Bool)?;
             let branch = self.ops.len();
             self.ops.push(if matches!(kind, And) {
@@ -898,6 +916,7 @@ impl<'a, 'src> Compiler<'a, 'src> {
             Lt | Le if numeric => Type::Bool,
             Add | Sub | Mul | Div if numeric => ty,
             Rem if matches!(ty, Type::I64 | Type::U64) => ty,
+            And if signed_and => ty,
             _ => return Err(error(format!("invalid {kind:?} operands of type {ty:?}"))),
         };
         if let [Op::Operand(left), Op::Operand(right)] = &self.ops[first..] {

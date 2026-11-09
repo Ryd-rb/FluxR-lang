@@ -51,6 +51,7 @@ FXM-05.E verifies bounded signed branches, backedges, and record ownership.
 FXM-05.F verifies typed short-circuit effects and signed loop exits.
 FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
 FXM-05.G verifies nested loop exits and conditional helper calls.
+FXM-03.B.4 adds opt-in checked execution for signed integer rule bitwise and.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -1775,3 +1776,46 @@ variant_payload_matches_effect_ledger` or call `variant_payload_check()`
 in the Node Wasm example. Wider safety coverage and both warm parity gates
 remain open. FXM-03.B.4 next examines the remaining rule projection gap
 for integer bitwise and while retaining canonical FXH v1.
+
+## FXM-03.B.4 opt-in signed rule projection
+
+`Hir::prepare_rule_projection()` prepares integer rules, including signed
+bitwise and, for the portable structured evaluator. Its opaque result runs
+with explicit instruction, cell, and frame limits. The rule-only compiler
+mode checks both operands as signed integers. Ordinary structured boolean
+and retains its short-circuit semantics. FXH v1 still omits the compact
+projection for these rules, and the existing source inspection, migration,
+restoration, and rule telemetry keep their released behavior.
+
+Each platform run matched 16,195 cases against the rule evaluator and
+independent Rust oracles, including eager select in both directions, guard
+ordering, signed extrema, checked overflow and remainder, and stack and
+instruction limits. The two-input AND requires 10 instructions, eight
+cells, and one frame. Workspace reuse succeeds after budget traps. Rules
+with raw binary32 operations retain their projection refusal.
+
+Both defaults passed 85 Windows release tests, 15 Node Wasm suites, three
+historical FXH fixtures under Node, and a Linux x64 compile check. Six CLI
+builds, including four retained binaries, agreed on 15 rule and limit cases
+and a malformed FXH envelope. The replay compares canonical FXD and FXH,
+restored bytes, receipts, and exact refusals. Twelve sealed FSM artifacts
+also match. The D.9 and D.10 negative results and D.11 admission evidence
+remain in the retained corpus.
+
+Windows x64 portable release on CPU 12 with telemetry off measured two
+sign distributions in four processes per default. Each reported percentile
+is the median of four process percentiles over 21 round averages. Projected
+AND ran at 81.18–81.40 ns p50 and 81.91–82.50 ns p95. It was within
+0.3% p50 and 1.4% p95 of a checked structured add with the same stack shape
+and host work. The legacy rule evaluator took 9.95–15.85 ns p50, and the
+optimized Rust kernel took 1.83 ns. Projection preparation took 2.01–2.02 µs
+p50 from an already checked HIR. The new route adds an explicit checked
+execution option with its own metering.
+
+Run `cargo test --locked --release --all-features --example
+bench_rule_projection` for the behavior ledger. The same example provides
+the Node Wasm check and portable host benchmark. Local
+`rule-and-projection/manifest.json` SHA-256
+`5B0BE0C2600424FC5E5A2FFA08ACC787C0C0CD87AA71FE78067D10D8721CCDE7`
+binds the freeze, source, controls, and replay. FXM-03.B.5 next scopes raw
+binary32 projection and its low-word transport contract.

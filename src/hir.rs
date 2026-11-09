@@ -2,7 +2,10 @@
 //! when the IR is restored to a released artifact.
 
 use crate::rules::{Binary as RuleBinary, Op};
-use crate::structured::{Binary, Binding, Expr, Function, Module, Source, Stmt, Type};
+use crate::structured::{
+    Binary, Binding, Expr, Function, Invocation, Limits, Module, Source, Stmt, Type, Value,
+    Workspace,
+};
 use crate::{Error, RuleProgram, bound};
 
 const MAGIC: &[u8; 4] = b"FXH\0";
@@ -33,13 +36,36 @@ struct RuleProjection {
     compact: String,
 }
 
+/// An opt-in, in-memory rule projection with the structured VM's limits.
+/// Restore the original FXD for the released rule ABI and metering.
+pub struct CheckedRuleProjection(Module);
+
+impl CheckedRuleProjection {
+    pub fn run_with(
+        &self,
+        arguments: &[Value],
+        limits: Limits,
+        workspace: &mut Workspace,
+    ) -> Result<Value, Error> {
+        self.0.run_portable_with(
+            Invocation {
+                export: "rule",
+                inputs: &[],
+                arguments,
+                limits,
+            },
+            workspace,
+        )
+    }
+}
+
 impl Hir {
     pub fn from_structured(module: Module) -> Self {
         Self(Body::Structured(module))
     }
 
     pub fn from_rule(rule: RuleProgram) -> Result<Self, Error> {
-        let projection = match project_rule(&rule) {
+        let projection = match project_rule(&rule, false) {
             Ok(source) => {
                 let module = Module::compile_borrowed(&source)?;
                 let compact = source.checked_compact_text()?;
@@ -68,6 +94,23 @@ impl Hir {
             } => return Err(Error((*reason).into())),
         };
         module.checked_source()
+    }
+
+    /// Prepare an integer rule, including signed bitwise and, for checked
+    /// structured execution. This projection is separate from FXH v1.
+    pub fn prepare_rule_projection(&self) -> Result<CheckedRuleProjection, Error> {
+        let Body::Rule { origin, projection } = &self.0 else {
+            return Err(Error(
+                "checked rule projection requires a rule origin".into(),
+            ));
+        };
+        if let Ok(projection) = projection {
+            return Ok(CheckedRuleProjection(projection.module.clone()));
+        }
+        let source = project_rule(origin, true).map_err(|reason| Error(reason.into()))?;
+        Ok(CheckedRuleProjection(Module::compile_rule_projection(
+            &source,
+        )?))
     }
 
     pub fn into_artifact(self) -> Artifact {
@@ -142,7 +185,7 @@ impl Hir {
     }
 }
 
-fn project_rule(rule: &RuleProgram) -> Result<Source, &'static str> {
+fn project_rule(rule: &RuleProgram, allow_bitand: bool) -> Result<Source, &'static str> {
     let (inputs, ops) = rule.hir_parts();
     let mut depth = 0;
     let mut slots = 0;
@@ -159,7 +202,7 @@ fn project_rule(rule: &RuleProgram) -> Result<Source, &'static str> {
             }
             Op::Binary(kind) => {
                 depth -= 1;
-                body.push(project_binary(kind, depth - 1, depth)?);
+                body.push(project_binary(kind, depth - 1, depth, allow_bitand)?);
             }
             Op::Select => {
                 depth -= 2;
@@ -209,7 +252,12 @@ fn project_rule(rule: &RuleProgram) -> Result<Source, &'static str> {
     })
 }
 
-fn project_binary(kind: RuleBinary, left: usize, right: usize) -> Result<Stmt, &'static str> {
+fn project_binary(
+    kind: RuleBinary,
+    left: usize,
+    right: usize,
+    allow_bitand: bool,
+) -> Result<Stmt, &'static str> {
     let operation = match kind {
         RuleBinary::Add => Binary::Add,
         RuleBinary::Sub => Binary::Sub,
@@ -218,6 +266,7 @@ fn project_binary(kind: RuleBinary, left: usize, right: usize) -> Result<Stmt, &
         RuleBinary::Rem => Binary::Rem,
         RuleBinary::Eq => Binary::Eq,
         RuleBinary::Lt | RuleBinary::Min | RuleBinary::Max => Binary::Lt,
+        RuleBinary::BitAnd if allow_bitand => Binary::And,
         RuleBinary::BitAnd => return Err("structured projection lacks rule integer bitwise and"),
         RuleBinary::F32Lt
         | RuleBinary::F32Le
