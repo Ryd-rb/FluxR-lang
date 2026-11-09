@@ -19,6 +19,9 @@ values cross a block boundary.
 An unchanged record can share the host's allocation, and a write returns
 a separately owned record. A failed replacement probe preserves the active
 revision and the host's values. The browser scene lab supports replay.
+An optional native host runs typed modules as windowed applications with
+drawing, input, audio, and authenticated peer exchanges. The CLI also
+invokes structured exports and replays state transitions from local manifests.
 The migration tools verify released artifact bytes, replay results and traps
 against the original program, and issue receipts that tie results to exact inputs.
 

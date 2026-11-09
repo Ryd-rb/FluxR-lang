@@ -109,7 +109,7 @@ For bundled rules, `RuleProgram::rust_function` generates a typed function for t
 ## Structured modules
 
 Structured modules are a separate versioned language for Rust embedding. The
-source is a JSON syntax tree, and Rust producers can construct the same typed
+compiler reads compact source, and Rust producers can construct the typed
 `fluxr::structured::Source` directly. The compiler validates names, nominal
 types, calls and control flow, then lowers the module to an in-memory instruction
 sequence. The portable `FSM\0` envelope stores canonical source and decoders
@@ -129,15 +129,40 @@ runs under an explicit invocation budget.
 Signed and unsigned 64-bit integer arithmetic is checked. Binary32 values cross
 the host boundary as their IEEE bits. Comparisons follow ordered IEEE behavior,
 and arithmetic canonicalizes NaNs. Boolean `and` and `or` short-circuit.
+The compact operators `i64tof` and `ftoi64` convert between signed integers
+and binary32. The latter truncates toward zero, saturates out-of-range values,
+and returns zero for NaN. `sqrt` preserves signed zero and canonicalizes NaN.
 Instruction fuel, aggregate value-cell charges and call frames are independent
 limits. Acyclic value schemas bound the nesting of records, enum payloads and
 lists. Module source, declaration count and code size have separate validation
-limits.
+limits. Compact text is limited to 256 KiB. The expanded canonical FSM payload
+can use up to 1 MiB, with at most 512 functions and 512 record and enum
+declarations combined.
 
 Structured module version 2 adds `arg_min_f32`. It returns the first index
 whose value is strictly least under the same ordered comparison, or zero for
 an empty list. The instruction charges one additional unit of fuel per value.
 Version 1 source and encoded modules still decode with their original rules.
+
+### Structured command line and native applications
+
+`fluxr-cli structured call <manifest> <export> [integer ...]` invokes an
+export with signed integer arguments. A module manifest lists compact source
+files in order, one relative path per line. `structured lines` feeds command
+names from stdin to a typed transition export. `structured series` runs a
+bounded transition sequence and emits a deterministic trace or native timing.
+Run `fluxr-cli structured` to see the argument order.
+
+Build with `--features native-runtime` to enable `structured app` and
+`structured service`. The application JSON names a module manifest, title
+and text catalogs, and an assets directory. Its module exports
+`open_window`, `app_init`, and `app_frame`. The frame callback receives
+typed host input and returns state, draw commands, an audio mix, and a marker.
+The host validates and applies these effects. Optional `--mcp <directory>`
+exposes frame inspection and capture on the process's stdin and stdout.
+The Rust host APIs are in `fluxr::native_runtime`. The `host-transport`
+feature also exposes authenticated TCP independently. Its messages are
+authenticated with a shared secret and travel in cleartext.
 
 A host supplies typed snapshot inputs in declared order, and arguments and
 results by value. The module has no ambient filesystem, network, clock or game

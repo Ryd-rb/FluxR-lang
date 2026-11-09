@@ -1,4 +1,5 @@
 mod migration;
+mod structured_cli;
 
 use fluxr::structured::Module;
 use fluxr::{Program, RuleProgram, telemetry};
@@ -6,6 +7,7 @@ use migration::{Legacy, Options};
 use std::{error::Error, fs, io::Read, path::Path};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    #[cfg(not(target_arch = "wasm32"))]
     let _ = telemetry::configure_from_env();
     let mut args: Vec<String> = std::env::args().skip(1).collect();
     let report = args.first().is_some_and(|arg| arg == "--stats");
@@ -43,6 +45,11 @@ fn run(args: &[String]) -> Result<(), Box<dyn Error>> {
     {
         return Err("--receipt and --replay require a migration command".into());
     }
+    if let [command, args @ ..] = args
+        && command == "structured"
+    {
+        return structured_cli::run(args);
+    }
     if let [command, source, export, output] = args
         && command == "emit-native-structured"
     {
@@ -51,7 +58,7 @@ fn run(args: &[String]) -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
     let [command, source, input] = args else {
-        return Err("usage: fluxr [--stats] <test|encode|encode-structured|emit-gate|restore-hir> <source> <replay-or-output>\n       fluxr emit-native-structured <source> <export> <output>\n       fluxr [--stats] [--receipt] [--replay <probes>] <migrate-timeline|migrate-structured|migrate-rule|migrate-structured-hir|migrate-rule-hir> <source> <output>".into());
+        return Err("usage: fluxr [--stats] <test|encode|encode-structured|emit-gate|restore-hir> <source> <replay-or-output>\n       fluxr emit-native-structured <source> <export> <output>\n       fluxr [--stats] [--receipt] [--replay <probes>] <migrate-timeline|migrate-structured|migrate-rule|migrate-structured-hir|migrate-rule-hir> <source> <output>\n       fluxr [--stats] structured <command> ...".into());
     };
     let bytes = if matches!(
         command.as_str(),

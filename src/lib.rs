@@ -2,12 +2,17 @@
 use std::fmt;
 use std::sync::Arc;
 
+#[cfg(all(feature = "host-transport", not(target_arch = "wasm32")))]
+pub mod authenticated_tcp;
 pub mod collaboration;
 mod gate;
 pub use gate::Gate;
 pub mod hir;
+#[cfg(all(feature = "native-runtime", not(target_arch = "wasm32")))]
+pub mod native_runtime;
 mod rules;
 pub mod structured;
+pub mod structured_series;
 pub mod telemetry;
 mod timeline_compact;
 pub use rules::{PreparedRule, RuleProgram};
