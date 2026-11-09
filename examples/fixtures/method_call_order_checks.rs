@@ -13,6 +13,9 @@ pub(crate) use method_edit_isolation::check_method_edit_isolation;
 #[path = "method_artifact_safety_checks.rs"]
 mod method_artifact_safety;
 pub(crate) use method_artifact_safety::check_method_artifact_safety;
+#[path = "method_hir_replay_checks.rs"]
+mod method_hir_replay;
+pub(crate) use method_hir_replay::check_method_hir_replay;
 
 #[derive(Clone, Copy, Debug)]
 struct Case {

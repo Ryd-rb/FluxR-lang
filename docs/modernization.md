@@ -61,6 +61,7 @@ FXM-05.L verifies method call order, frame entry, and receiver ownership.
 FXM-05.M verifies method body edits and isolation across revisions.
 FXM-05.N checks portable method artifacts and rejects malformed replacements
 before publication.
+FXM-03.B.8 replays method-bearing checked HIR through canonical FXH and FSM.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2257,3 +2258,33 @@ Local `method-artifact-safety/manifest.json` SHA-256
 `394407C1094A2CA95D30C3826B4A49710C140EE3FB6C85943A358C92E4F22A9D`
 binds the frozen ledger, pilot correction, compatibility artifacts, and
 validation. FXM-03.B.8 next checks method-bearing HIR and FXH replay.
+
+## FXM-03.B.8 method-bearing checked HIR replay
+
+The original and edited method modules migrate from explicit source, dotted
+source, and FSM v2 to the same canonical FXH v1 for each revision. The frozen
+FXH envelopes use the compact text from the prior retained-reader round trips.
+Decoding FXH and compiling its checked source both restore the sealed FSM v2
+bytes.
+
+The ordered-call oracle checks 20 calls per revision across decoded FSM,
+recompiled checked source, and restored FXH. The 120 calls check nominal
+dispatch for same-shaped Point and Twin records, receiver and argument trap
+order, frame entry, and exact instruction and cell limits. A successful write
+detaches the changed receiver and retains the original snapshot allocation.
+Each FXH revision also rejects ten malformed or noncanonical inputs with
+exact diagnostics.
+
+Two current and three retained CLIs complete 30 method round trips with 210
+bounded differential probes and 15 legacy restorations. They agree on 100
+exact refusals. The refused inputs create no new output and preserve existing
+output bytes. Each default passes 93 Win64 release tests, one focused portable
+test, 19 Node Wasm suites, five retained Node FXH cases, and Linux x64
+compilation. Run `cargo test --locked --release --all-features --example
+bench_typed method_hir_matches_bounded_replay_ledger` or call
+`method_hir_replay_check()` from the Node Wasm example.
+
+Local `method-hir-replay/manifest.json` SHA-256
+`F1856D8019BE7ADA35820B1FCAB60F087463896997F11A40536F1EC063530807`
+binds the frozen bytes, oracle, reader builds, and validation. FXM-05.O next
+checks recursive nominal methods under bounded frames, fuel, and cells.

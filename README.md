@@ -36,11 +36,12 @@ The browser scene lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.
-The migration tools check released packets against the host's nominal interface
-and can restore checked FXH to the original portable artifact. Replay checks
-compare exact values, trap order, and resource limits. FR1 can replace an effect
-literal or a collection body in a checked batch. A failed edit leaves all outputs
-intact. Receipts bind the edited packet, nominal interface, alphabet, and artifact.
+The migration tools check released packets against the host's nominal interface.
+Checked FXH restores method-bearing FSM modules byte for byte, including edited
+method bodies. Replay checks compare exact values, trap order, and resource
+limits. FR1 can replace an effect literal or a collection body in a checked
+batch. A failed edit leaves all outputs intact. Receipts bind the edited packet,
+nominal interface, alphabet, and artifact.
 Hosts can opt into structured resource limits for signed integer and
 raw binary32 rules. Float operators read the low 32 bits of each signed
 slot and return arithmetic result bits as a zero-extended integer.

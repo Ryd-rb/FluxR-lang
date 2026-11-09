@@ -1152,6 +1152,17 @@ fn method_artifacts_match_portable_safety_ledger() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn method_hir_replay_check() -> u32 {
+    corpus_checks::check_method_hir_replay() as u32
+}
+
+#[test]
+fn method_hir_matches_bounded_replay_ledger() {
+    assert_eq!(corpus_checks::check_method_hir_replay(), 140);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;

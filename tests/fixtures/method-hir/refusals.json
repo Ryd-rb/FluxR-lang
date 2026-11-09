@@ -1,0 +1,9 @@
+[
+  ["extra-whitespace", "v2\n", "v2\n\n", "noncanonical FXH payload"],
+  ["dotted-method-call", "(m holder.point update", "(holder.point.update", "noncanonical FXH payload"],
+  ["wrong-nominal-self", "Point.update (self:Point", "Point.update (self:Twin",
+    "method update needs a record self parameter"],
+  ["same-shape-wrong-dispatch-result", "m holder.point update", "m(new Twin 7 60u) update",
+    "expected Record(\"Point\"), got Record(\"Twin\")"],
+  ["swapped-method-arguments", "receiver update 4 2u", "receiver update 2u 4", "expected I64, got U64"]
+]
