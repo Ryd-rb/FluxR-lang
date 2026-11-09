@@ -21,11 +21,11 @@ Rust and the Windows JIT use the same checked operations. When a native
 invocation declines, the portable evaluator applies the path's exact
 resource limits. It also handles short-circuit boolean expressions whose
 values cross a block boundary.
-The portable evaluator checks nested host values before execution and copies
-shared lists or records on write, including values held inside variants.
-The host can reject a replacement when its probe traps after a write and
-keep the active revision and the original inputs intact. The browser scene
-lab supports replay.
+Before execution, the portable evaluator charges one cell per nested host
+value visited, even when several references share the same allocation.
+It copies shared lists or records on write, including values held inside
+variants. If a replacement probe fails, the active revision and original
+inputs remain available. The browser scene lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.

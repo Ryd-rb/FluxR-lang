@@ -1106,6 +1106,18 @@ fn variant_payload_matches_effect_ledger() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn shared_host_admission_check() -> u32 {
+    corpus_checks::check_shared_host_admission() as u32
+}
+
+#[cfg(test)]
+#[test]
+fn shared_host_values_match_admission_ledger() {
+    assert_eq!(corpus_checks::check_shared_host_admission(), 433);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;

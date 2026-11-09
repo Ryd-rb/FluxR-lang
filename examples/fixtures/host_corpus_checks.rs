@@ -71,6 +71,11 @@ mod recursive_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use recursive_effect_checks::check_recursive_effects;
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "shared_host_admission_checks.rs"]
+mod shared_host_admission_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use shared_host_admission_checks::check_shared_host_admission;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "structured_boundary_checks.rs"]
 mod structured_boundary_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
@@ -147,6 +152,25 @@ impl<'a> Replay<'a> {
         expected: Result<Value, &str>,
         inspect: impl Fn(&Value),
     ) {
+        self.check_routes_labeled(
+            inputs,
+            arguments,
+            limits,
+            expected,
+            format_args!("inputs {inputs:?}, arguments {arguments:?}"),
+            inspect,
+        );
+    }
+
+    fn check_routes_labeled(
+        &mut self,
+        inputs: &[Value],
+        arguments: &[Value],
+        limits: Limits,
+        expected: Result<Value, &str>,
+        label: impl std::fmt::Display,
+        inspect: impl Fn(&Value),
+    ) {
         let call = || Invocation {
             export: self.export,
             inputs,
@@ -164,7 +188,7 @@ impl<'a> Replay<'a> {
             assert_eq!(
                 result.as_ref().map_err(String::as_str),
                 expected.as_ref().map_err(|&err| err),
-                "{}.{} {limits:?}, inputs {inputs:?}, arguments {arguments:?}",
+                "{}.{} {limits:?}, {label}",
                 self.export,
                 route
             );

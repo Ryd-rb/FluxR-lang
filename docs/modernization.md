@@ -30,7 +30,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-02 | Shared optimized runtime. Match injected and bundled p50 within 5% and p95 within 10% in each supported hot workload. Target FluxR/Rust geometric mean ≤1.10 and p95 ≤1.25 over the frozen corpus. Keep individual failures visible. The optional signed-leaf JIT and three runtime optimizations are the first implementation. | FXM-01 and FXM-05 semantic contract. Profile stateful loops, validate typed SSA and test register-based portable, Cranelift, and Wasm tiers before choosing production defaults. |
 | FXM-03 | Preserve released inputs and artifact bytes. Migrate automatically with a deterministic proof receipt, old/new differential replay, and an explicit refusal if any semantic feature cannot be translated. The first pass has timeline v2, structured compact, and canonical rule migration. | FXM-05 for new core semantics. Add rule and FR1 ingress to shared HIR, historical fixture checks, migration reports, and versioned IR round trips. |
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
-| FXM-05 | Safety and language coverage. The bounded ledgers cover typed lists, variant payloads, nested values, procedure calls, recursion, control flow and binary32 boundaries. FXM-05.B also demonstrates a universal tape simulator. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
+| FXM-05 | Safety and language coverage. The bounded ledgers cover typed lists, variant payloads, shared host values, procedure calls, recursion, control flow and binary32 boundaries. FXM-05.B also demonstrates a universal tape simulator. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 | FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. Reconcile again at each accepted checkpoint. |
 | FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Comparison accepted on both defaults. FXM-07.A screens typed-list traversal separately. |
@@ -55,6 +55,8 @@ FXM-03.B.4 adds opt-in checked execution for signed integer rule bitwise and.
 FXM-03.B.5 extends that route to raw binary32 and mixed rules.
 FXM-03.B.6 adds a second FR1 packet with ordered effects and list-boundary
 replay against the released reader.
+FXM-05.K checks admission of mixed host values with repeated references.
+FXM-03.B.7 next replays released FR1 semantic edits against checked ingress.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2044,3 +2046,50 @@ Local `fr1-hir-replay/manifest.json` SHA-256
 `B9FA5882122B73F25E6F6D50A919258373C0CFBF1299C3C330B4662C01662F51`
 binds the frozen packet and interface, amended probes, outputs, and
 validation. Wider checked ingress and historical replay remain open.
+
+## FXM-05.K shared host-value admission
+
+The fixture nests records, lists and variant payloads down to depth 31,
+counting the root as depth zero. A deeper declared type is rejected. The
+same leaf allocation occurs at depth 27 under the tree root and at depth zero
+as a separate input or argument. The shared values use 31 allocations across
+four roots. The equal expanded values use 8,192.
+
+The independent ledger counts seven visits for the base record and uses
+`T(n + 1) = 4 + width × (1 + T(n))` for each layer. The four roots need
+13,314 admission cells. Success needs two instructions, 13,318 cells and one
+frame, including the frame, two argument slots and scalar result. Ranked
+errors verify declaration order for inputs, parameter order for arguments,
+and admission before frame and fuel checks. The first malformed scalar
+fails on cells at 41 and reports its type error at 42. Its unexpected child
+would sit at depth 32. The checker stops at the scalar's type error.
+
+Each recursive visit checks depth and debits a cell before its tag can affect
+the result. Record, variant and list children are reached through admitted
+parents. The bulk scalar-list path bounds tag reads to the affordable prefix.
+For a fixed interface and a cell cap of `C`, admission inspects at most
+`C` value tags and can attempt one more depth or cell check. The bound
+follows from the evaluator's control flow. The capped stress probes check
+observable errors on a width-eight root with 31 allocations and
+1,169,611,628 logical visits. They spend at most 4,096 cells and include
+both reachable and unaffordable malformed values. This bound covers
+admission of already-constructed host values.
+
+The ledger matches 433 cases per route, including 412 shared and expanded
+cases and 21 stress cases. It covers bundled, forced portable, decoded
+portable, source-injected and artifact-injected calls. Win64 native
+preparation declines this shape. A rejected replacement probe preserves the
+revision and bytes at both sides of the malformed leaf's cell threshold. A
+valid probe then activates the replacement.
+
+Each default passed 88 Win64 release tests, one focused portable-only test,
+15 Node Wasm suites, four FXH cases under Node, and a Linux x64 compile check.
+The new FSM fixture and 12 earlier fixtures matched both current builds and
+both retained readers byte for byte. Runtime and reader sources are unchanged.
+Run `cargo test --locked --release --all-features --example bench_typed
+shared_host_values_match_admission_ledger` or call
+`shared_host_admission_check()` in the Node Wasm example.
+
+Local `shared-host-admission/manifest.json` SHA-256
+`166FC99D75D21CF9741666CC079CDA549F46F76EF374EA1E729E492541F33D41`
+binds the freeze, validation and artifacts. Wider safety remains open.
