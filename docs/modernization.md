@@ -33,6 +33,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. FXM-05.D checks bounded recursion and replacement probes. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 | FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. FXM-02.D.9 resumes on the combined baseline. |
+| FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Dedicated research chat. Freeze the protocol before using the shared timing lane. Validate Rhai-inspired changes against released behavior and non-regression gates before integration. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
 
@@ -51,7 +52,8 @@ FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
 FXM-05.G verifies nested loop exits and conditional helper calls.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
-measurements on both defaults.
+measurements on both defaults. FXM-04.D accepts grouped bindings for
+typed source after exact artifact and behavior checks.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1371,3 +1373,69 @@ token replay.
 FXM-04.D next tests one source-density change using archived training inputs
 and a frozen behavior-matched holdout. Live generation and edit evidence
 remain gated by model budget.
+
+## FXM-04.D grouped typed bindings
+
+The archived scalar and decision examples repeat a type across adjacent
+names. Both compact source versions now accept `x y:i64` in inputs,
+record fields, parameters and locals. The parser expands the names in
+order and charges the full expanded spelling to the existing byte budget
+before copying types. Canonical printing retains explicit annotations.
+
+The freeze fixes six typed-return and six record-context tasks, their
+edits and optimized Rust controls, and the six cached tokenizers. Six
+tasks share the record declaration. Both independent defaults compiled
+each original and edited program in both spellings to identical bytes
+and replayed them against the Rust controls. A focused test checks all
+four binding positions in v1 and v2, missing types, duplicate names,
+and expanded source limits.
+
+All six tokenizers met the frozen local guard of 3% reduction in median
+and aggregate authored tokens on originals and edits, with zero individual
+regressions. Original source fell 4.9–7.1% at median and 4.4–6.6% in
+aggregate. The p95 ratio to explicit annotations was 100% on every
+tokenizer. The edit replacements were identical. None of the six met
+the project-wide 10%-of-Rust gate.
+
+Each cell gives median / aggregate / nearest-rank p95 as a percentage of
+the matched Rust count. Authored source includes the whole declaration and
+body on each task. Bindings count the logical replay adapter and the Rust
+entry expression per task. Cold context includes the language reference,
+task instructions and, for edits, the current source and unique anchor.
+
+| Tokenizer | Explicit source | Grouped source | Grouped edited source | Edit body |
+| --- | ---: | ---: | ---: | ---: |
+| o200k_base | 72.9 / 75.4 / 89.2 | 68.8 / 72.1 / 89.2 | 68.8 / 72.3 / 89.2 | 100.0 / 133.3 / 800.0 |
+| cl100k_base | 72.9 / 75.9 / 91.4 | 69.0 / 72.5 / 91.4 | 69.0 / 72.8 / 89.2 | 100.0 / 133.3 / 800.0 |
+| Qwen2.5-Coder | 75.0 / 77.7 / 97.3 | 69.6 / 73.2 / 97.3 | 69.9 / 73.4 / 94.9 | 108.3 / 136.4 / 800.0 |
+| StarCoder2 | 74.6 / 77.0 / 92.7 | 68.6 / 71.9 / 92.7 | 69.0 / 72.1 / 90.7 | 100.0 / 117.1 / 900.0 |
+| Mistral-7B | 76.9 / 77.7 / 92.9 | 69.2 / 72.8 / 92.9 | 69.9 / 72.9 / 90.9 | 100.0 / 119.0 / 900.0 |
+| OLMo 2 | 72.9 / 75.9 / 91.4 | 69.0 / 72.5 / 91.4 | 69.0 / 72.8 / 89.2 | 100.0 / 133.3 / 800.0 |
+
+| Tokenizer | Host bindings | Cold source context | Cold edit context |
+| --- | ---: | ---: | ---: |
+| o200k_base | 395.2 / 364.9 / 420.8 | 345.1 / 337.0 / 404.9 | 194.6 / 189.5 / 213.0 |
+| cl100k_base | 404.9 / 380.5 / 459.1 | 351.0 / 342.7 / 412.2 | 197.9 / 192.3 / 216.7 |
+| Qwen2.5-Coder | 426.8 / 393.3 / 459.1 | 339.3 / 331.3 / 397.7 | 192.4 / 187.7 / 214.2 |
+| StarCoder2 | 390.0 / 355.1 / 400.0 | 334.2 / 328.3 / 391.5 | 182.2 / 179.9 / 208.8 |
+| Mistral-7B | 430.7 / 391.4 / 451.0 | 348.4 / 337.8 / 392.2 | 187.2 / 185.2 / 217.3 |
+| OLMo 2 | 404.9 / 380.5 / 459.1 | 351.0 / 342.7 / 412.2 | 197.9 / 192.3 / 216.7 |
+
+Relative to explicit FluxR, the added syntax instruction increased
+aggregate cold source context 9.0–9.9% and edit context 5.4–6.0%.
+These are offline logical prompt counts. Live model success, retries
+and provider framing still require a matched generation and edit run.
+
+Both defaults passed 73 / 73 / 75 / 80 Win64 release tests across portable,
+native JIT, typed JIT and all-feature profiles. Historical artifacts, the
+host corpus, Node Wasm, browser rollback, highlighting, and the three
+archived token seals replayed. Linux x64 was compile-checked.
+
+Local `token-density-d/manifest.json` SHA-256
+`E4C33196E281A4A5E5947BF5A0234167CC29B762E2F315A1E74A6B5F1609A57B` binds the freeze, counts, artifacts and compatibility results.
+Run `token-density-d/replay-frozen.py` with the archived Python
+dependencies on `PYTHONPATH` to recompute the counts.
+
+FXM-05.H extends the executable safety inventory for signed binary32
+conversions and square root. Both warm runtime gates, native platform
+replay, hardware counters, and final release validation remain open.

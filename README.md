@@ -29,8 +29,10 @@ FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
 gates can reach that target. Reusing typed declarations and supplying only the
 edited function body reduces repeated prompt context in both FluxR and Rust.
-Typed source and edit bodies still exceed the target. In the frozen Windows
-host benchmark, bundled calls take 2.21–2.25 times as long as the matched
+Grouped bindings use one type annotation for adjacent names. They cut median
+authored source by 4.9–7.1% on the tested typed programs and preserve compiled
+bytes. Whole programs and edit bodies still exceed the target. In the frozen
+Windows host benchmark, bundled calls take 2.21–2.25 times as long as the matched
 Rust host at median latency by geometric mean across six workloads.
 Warm source and artifact injection still miss some latency targets.
 The benchmarks separate warm calls from compilation, native preparation,
@@ -174,11 +176,15 @@ This compact function checks route expiry.
 
 ```text
 v2
-(pub route_expired (now:u64 since:u64) bool ()
+(pub route_expired (now since:u64) bool ()
   (ret (&& (<= since now) (<= 6000u (- now since)))))
 ```
 
 A function declares parameters, result, locals and a sequence of statements.
+Adjacent inputs, record fields, parameters or locals of the same type can
+share the annotation on the last name. `now since:u64` declares `now:u64`
+followed by `since:u64`. The source byte budget applies after expanding the
+annotations.
 Use rec for records, enum for enums, fn for private functions and pub for
 exports. A method qualifies its name with the receiver type. Types in brackets
 are lists, and # marks a nominal enum. Field access uses a dot. Unsigned

@@ -112,6 +112,7 @@ rust_span = ["1", "2"]
 task = "Export calc(r: Rate, units: i64). Rate has signed per and base fields. Use a Rate method to multiply units by per with checked arithmetic, then add base with checked arithmetic."
 edit = "Subtract base from the product instead."
 fluxr = ["v1\n(rec Rate per:i64 base:i64)\n(fn Rate.cost (self:Rate n:i64) i64 = ", "(+ (* n self.per) self.base)", ")\n(pub calc (r:Rate units:i64) i64 = ", "(r.cost units)", ")\n"]
+fluxr_grouped = ["v1\n(rec Rate per base:i64)\n(fn Rate.cost (self:Rate n:i64) i64 = ", "(+ (* n self.per) self.base)", ")\n(pub calc (r:Rate units:i64) i64 = ", "(r.cost units)", ")\n"]
 rust = ["pub struct Rate { pub per: i64, pub base: i64 }\nimpl Rate {\n    fn cost(self, n: i64) -> Option<i64> {\n        ", "n.checked_mul(self.per)?.checked_add(self.base)", "\n    }\n}\npub fn calc(r: Rate, units: i64) -> Option<i64> {\n    ", "r.cost(units)", "\n}\n"]
 fluxr_span = ["(+", "(-"]
 rust_span = ["checked_add", "checked_sub"]
@@ -120,6 +121,7 @@ rust_span = ["checked_add", "checked_sub"]
 task = "Export calc(enabled: bool, a: i64, b: i64, cap: i64). Disabled returns false without division. Otherwise return whether the checked signed quotient a/b is strictly below cap."
 edit = "Allow the quotient to equal cap."
 fluxr = ["v1\n(pub calc (enabled:bool a:i64 b:i64 cap:i64) bool = ", "(? enabled (< (/ a b) cap) false)", ")\n"]
+fluxr_grouped = ["v1\n(pub calc (enabled:bool a b cap:i64) bool = ", "(? enabled (< (/ a b) cap) false)", ")\n"]
 rust = ["pub fn calc(enabled: bool, a: i64, b: i64, cap: i64) -> Option<bool> {\n    ", "Some(enabled && a.checked_div(b)? < cap)", "\n}\n"]
 fluxr_span = ["(<", "(<="]
 rust_span = ["< cap", "<= cap"]

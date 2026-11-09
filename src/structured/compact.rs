@@ -24,10 +24,10 @@ impl Source {
         while !p.rest.trim_start().is_empty() {
             p.expect("(")?;
             match p.word()? {
-                "inputs" => source.inputs.extend(p.items(binding)?),
+                "inputs" => source.inputs.extend(p.bindings()?),
                 "rec" => source.records.push(Record {
                     name: p.word()?.into(),
-                    fields: p.items(binding)?,
+                    fields: p.bindings()?,
                 }),
                 "enum" => source.enums.push(Enum {
                     name: p.word()?.into(),
@@ -38,7 +38,8 @@ impl Source {
                     let (receiver, name) = name
                         .split_once('.')
                         .map_or((None, name), |(ty, method)| (Some(ty.into()), method));
-                    let params = p.group(binding)?;
+                    p.expect("(")?;
+                    let params = p.bindings()?;
                     let result = ty(p.word()?)?;
                     let (locals, body) = if p.rest.trim_start().starts_with('=') {
                         p.expect("=")?;
@@ -46,7 +47,8 @@ impl Source {
                         p.expect(")")?;
                         (vec![], vec![tail])
                     } else {
-                        (p.group(binding)?, p.statements()?)
+                        p.expect("(")?;
+                        (p.bindings()?, p.statements()?)
                     };
                     source.functions.push(Function {
                         name: name.into(),
@@ -104,17 +106,6 @@ fn ty(word: &str) -> Result<Type> {
     Ok(result)
 }
 
-fn binding(p: &mut Parser<'_>) -> Result<Binding> {
-    let (name, kind) = p
-        .word()?
-        .split_once(':')
-        .ok_or_else(|| error("binding requires name:type"))?;
-    Ok(Binding {
-        name: name.into(),
-        ty: ty(kind)?,
-    })
-}
-
 fn variant(p: &mut Parser<'_>) -> Result<Variant> {
     let word = p.word()?;
     if let Some((name, kind)) = word.split_once(':') {
@@ -133,11 +124,16 @@ fn variant(p: &mut Parser<'_>) -> Result<Variant> {
 struct Parser<'a> {
     rest: &'a str,
     depth: u8,
+    expanded_len: usize,
 }
 
 impl<'a> Parser<'a> {
     fn new(rest: &'a str) -> Self {
-        Self { rest, depth: 0 }
+        Self {
+            rest,
+            depth: 0,
+            expanded_len: rest.len(),
+        }
     }
 
     fn next(&mut self) -> Result<&'a str> {
@@ -192,9 +188,36 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn group<T>(&mut self, parse: impl Fn(&mut Self) -> Result<T>) -> Result<Vec<T>> {
-        self.expect("(")?;
-        self.items(parse)
+    fn bindings(&mut self) -> Result<Vec<Binding>> {
+        let mut bindings = Vec::new();
+        let mut pending = Vec::new();
+        while !self.rest.trim_start().starts_with(')') {
+            let word = self.word()?;
+            let Some((name, kind)) = word.split_once(':') else {
+                pending.push(word);
+                continue;
+            };
+            if !pending.is_empty() {
+                // Charge each omitted `:type` before cloning its parsed type.
+                let omitted = pending.len().saturating_mul(1 + kind.len());
+                self.expanded_len = self.expanded_len.saturating_add(omitted);
+                bound(self.expanded_len)?;
+            }
+            let ty = ty(kind)?;
+            bindings.extend(pending.drain(..).map(|name| Binding {
+                name: name.into(),
+                ty: ty.clone(),
+            }));
+            bindings.push(Binding {
+                name: name.into(),
+                ty,
+            });
+        }
+        if !pending.is_empty() {
+            return Err(error("binding requires name:type"));
+        }
+        self.expect(")")?;
+        Ok(bindings)
     }
 
     fn statements(&mut self) -> Result<Vec<Stmt>> {

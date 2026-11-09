@@ -5,6 +5,44 @@ use std::hint::black_box;
 use std::time::Instant;
 
 #[test]
+fn grouped_compact_bindings_preserve_order_and_artifact_bytes() {
+    for version in ["v1", "v2"] {
+        let grouped = compile(&format!(
+            "{version} (inputs p q:i64) (rec Pair left right:i64) (enum Tag Idle Active:i64) \
+             (pub calc (x y:i64 flip:bool) Pair (a b:i64) \
+             (= a (+ x $p)) (= b (- y $q)) \
+             (if flip ((ret (new Pair b a))) ((ret (new Pair a b)))))"
+        ));
+        let expanded = compile(&format!(
+            "{version} (inputs p:i64 q:i64) (rec Pair left:i64 right:i64) (enum Tag Idle Active:i64) \
+             (pub calc (x:i64 y:i64 flip:bool) Pair (a:i64 b:i64) \
+             (= a (+ x $p)) (= b (- y $q)) \
+             (if flip ((ret (new Pair b a))) ((ret (new Pair a b)))))"
+        ));
+        assert_eq!(grouped.encode(), expanded.encode());
+        let canonical = grouped.compact_text().unwrap();
+        assert!(canonical.contains("left:i64 right:i64"));
+        assert_eq!(compile(&canonical).encode(), grouped.encode());
+    }
+    for source in [
+        "v2 (inputs x:i64 y)",
+        "v2 (rec Pair x y)",
+        "v2 (pub calc (x y) i64 = x)",
+        "v2 (pub calc () i64 (a) (ret 0))",
+        "v2 (pub calc (x x:i64) i64 = x)",
+    ] {
+        assert!(Module::compile_compact(source).is_err(), "{source}");
+    }
+
+    let long_type = "T".repeat(44_000);
+    let grouped = format!("v2 (rec First a b c d:{long_type}) (rec Second a b c d:{long_type})");
+    assert_eq!(
+        Source::parse_compact(&grouped).unwrap_err().to_string(),
+        "program exceeds byte budget"
+    );
+}
+
+#[test]
 fn compact_tail_forms_preserve_portable_bytes_and_lazy_traps() {
     for version in ["v1", "v2"] {
         let short =
