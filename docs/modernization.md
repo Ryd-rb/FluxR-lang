@@ -1858,3 +1858,52 @@ provides the Node Wasm check and portable benchmark. Local
 `842A0B17F59A35E673AE3CAB34B80AB6B2AF2AC4E39134BDA6E14516E2E22C01`
 binds source, controls and replay. FXM-02.D.12 next isolates the remaining
 per-element cost in the portable signed-list fold after D.11.
+
+## FXM-02.D.12 portable signed-list fold
+
+On both Win64 defaults, the 256-element signed fold took 43,689â€“43,826
+thread cycles with a reused portable workspace. The same admission with
+zero iterations took 347â€“350 cycles. A count-only loop on the same
+admitted list took 21,068â€“21,183 cycles at 256 iterations. The controls
+separate the loop from admission and show substantial checked loop work
+even without an indexed read. Cycle counts cover the whole call.
+
+The candidate recognized the exact checked fold instructions and borrowed
+the admitted list. It preserved fuel charges before bounds and overflow
+checks, and the frame and cell limits. Rust used a prepacked signed slice
+with the same logical debits. The table shows warm p50 across both
+defaults and all three FluxR routes on Win64 CPU 12, Rust 1.99.1 release,
+with telemetry off. Each cell spans medians of eight process p50s per
+build and default. Each process measured 21 means of 512 checked calls.
+
+| Elements read | Metered Rust | Retained FluxR | Candidate FluxR |
+| --- | ---: | ---: | ---: |
+| 16 of 16 | 13.48 ns | 1.184â€“1.190 Âµs | 42.58â€“42.87 ns |
+| 64 of 256 | 43.55â€“47.27 ns | 4.492â€“4.523 Âµs | 147.07â€“149.32 ns |
+| 256 of 256 | 164.06â€“191.02 ns | 17.45â€“17.56 Âµs | 288.87â€“291.12 ns |
+
+The candidate improved full-fold p50 about 60Ã—, but failed five
+development source-injected guards. Record reuse rose from 26.20 to
+36.24 ns at p50 and from 27.41 to 37.32 ns at p95. Signed typed calls
+had the largest p50 increase, 55.4%. The standalone build passed the
+relative guards, though its baseline already showed slow source-injected
+record reuse at 36.84 ns p50. Both defaults retain the prior runtime.
+D.9 and D.10 remain rejected. The retained one-read p50 of 220.70â€“223.73
+ns on a 256-element list reproduces the D.11 admission gain.
+
+In the retained sparse-read lifecycle, source compilation took
+5.05â€“5.10 Âµs p50 and artifact decode took 9.70â€“9.85 Âµs. The native
+preparation attempt declined in 0.10 Âµs. Activation took 0.20 Âµs and
+the first call on a reused workspace took 0.30 Âµs.
+
+Each timed process passed 41,040 exact fold comparisons. Both retained
+defaults passed 86 Windows release tests, the 16 prior Node Wasm suites
+plus the fold ledger, three historical FXH fixtures, and Linux x64
+compilation. Six CLI builds agreed on 32 rule and limit cases and a
+malformed envelope. All twelve retained FSM artifacts matched.
+The raw binary32 and signed AND controls met their matched timing guards.
+Local `runtime-parity-d12/manifest.json` SHA-256
+`4AD6C02F449B0D2F23F3AC18B5A957AB3BCBFCDB6D4D2099F0082ABBA5C517F3` binds the candidate, controls, logs, and replays.
+Both program-wide warm parity gates remain open. FXM-02.D.13 next
+isolates the source-injected native route variance on independent builds
+before reconsidering a portable fold change.
