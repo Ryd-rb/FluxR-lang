@@ -1668,3 +1668,73 @@ typed-jit --example bench_typed list_boundary_matches_effect_ledger`.
 The Node Wasm example exports `list_boundary_check()`. Wider safety
 coverage stays open. FXM-02.D.11 resumes warm measurements with a
 separately frozen residual and retains the D.9 and D.10 rejections.
+
+## FXM-02.D.11 bulk signed-list admission
+
+The pilot replayed the six retained host workloads on both defaults. To
+isolate admission, it varied a signed list from 16 to 256 elements while
+running zero fold iterations. Bundled p50 rose from 123–129 ns to
+723–729 ns. Reading one element took 193–196 ns and 789–803 ns,
+respectively. This experiment targets admission before frame entry.
+The indexed-read and signed-record paths are unchanged.
+
+The portable evaluator now checks the affordable prefix of a flat signed
+list before debiting its cells in bulk. A bad tag within that prefix
+traps before cell exhaustion. If a cell cannot be charged, exhaustion
+wins over any bad tag at or beyond that element. An empty list does not
+visit an element depth. Each nonempty flat list checks depth before
+inspecting the prefix. Nested admission retains its visit order, and
+floating-point lists use the same existing prefix rule.
+
+Win64 Rust 1.99.1 release builds ran with typed JIT enabled, telemetry off,
+and affinity set to logical CPU 12. Each default ran ABBA and BAAB twice.
+The table gives p50 ranges across defaults in ns per call. Each p50 is
+the median of eight process p50s, each from 21 means of 512 calls. All
+routes checked every timed batch checksum. The equivalent Rust host
+uses a prepacked typed slice and the same logical limit debits. The
+slice type supplies the signed element shape.
+
+| One read | Route | Before | After |
+| --- | --- | ---: | ---: |
+| 16 values | Rust host | 3.91 | 3.91 |
+| 16 values | Bundled | 193.85–195.12 | 159.47–160.84 |
+| 16 values | Source-injected | 194.04–195.61 | 159.76–160.06 |
+| 16 values | Artifact-injected | 193.45–193.94 | 159.38–159.96 |
+| 256 values | Rust host | 4.10 | 3.91 |
+| 256 values | Bundled | 786.91–802.73 | 225.39–226.56 |
+| 256 values | Source-injected | 787.60–804.98 | 224.81–226.75 |
+| 256 values | Artifact-injected | 786.62–802.63 | 224.71–226.85 |
+
+Route geometric means improved 17.3–18.1% and 71.2–72.0%, respectively.
+The full 256-value fold moved from 18.29–18.40 µs to 17.70–17.90 µs at
+p50 across all three FluxR routes. The unchanged signed-record reuse
+control increased by at most 0.94% at p50 and 3.11% at p95. All frozen
+regression guards passed on both defaults.
+
+| 256-value list, one read | Before p50, µs | After p50, µs |
+| --- | ---: | ---: |
+| Compile source | 5.05 | 5.00 |
+| Decode artifact | 9.95 | 9.75–9.80 |
+| Native preparation attempt, both routes | 0.10 | 0.10 |
+| Source activation | 0.20 | 0.20 |
+| Artifact activation | 0.20 | 0.15–0.20 |
+| First call, both routes | 0.80 | 0.30 |
+
+The fold runs in the portable evaluator. The six original workloads took
+2.29–2.31× matched Rust at p50 and 2.08–2.11× at p95 by geometric mean.
+The grouped source and artifact comparisons met both injection bounds
+in this run. Forty candidate process comparisons exceeded a bound, and
+both program-wide warm parity gates remain open.
+
+Each timing process passed 39,864 exact fold comparisons across
+fuel, cells, frames, malformed inputs, bounds, overflow and host-list
+ownership. Both defaults passed 83 all-target, all-feature Windows
+release tests, 13 Node Wasm suites, three released FXH fixtures and a
+Linux x64 compile check. The FXM-05.I ledger matched 33,601 cases per route
+including replacement rollback. Eleven artifacts matched byte for byte
+across both builds and both retained readers.
+
+Local `runtime-parity-d11/manifest.json` SHA-256
+`E69FC1A98F767E22DBB2E5BDD769C5F6F0F14C802E707D037F55F32B37956FC0` binds the sealed candidate, profiles, timing
+guards, raw results and compatibility replay. FXM-05.J next examines
+variant payload extraction under competing traps and replacement.

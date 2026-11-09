@@ -279,7 +279,14 @@ impl Machine<'_> {
                 }
             }
             (Value::List(values), Type::List(element)) if **element == Type::F32 => {
-                self.admit_f32_elements(values, depth + 1)?;
+                self.admit_scalar_elements(values, depth + 1, "F32", |value| {
+                    matches!(value, Value::F32(_))
+                })?;
+            }
+            (Value::List(values), Type::List(element)) if **element == Type::I64 => {
+                self.admit_scalar_elements(values, depth + 1, "I64", |value| {
+                    matches!(value, Value::I64(_))
+                })?;
             }
             (Value::List(values), Type::List(element)) => {
                 for value in values.iter() {
@@ -292,18 +299,21 @@ impl Machine<'_> {
     }
 
     // The caller already checked the outer list's depth, cell and tag.
-    fn admit_f32_elements(&mut self, values: &[Value], depth: usize) -> Result<(), Error> {
+    fn admit_scalar_elements(
+        &mut self,
+        values: &[Value],
+        depth: usize,
+        ty: &'static str,
+        matches_type: impl FnMut(&Value) -> bool,
+    ) -> Result<(), Error> {
         if values.is_empty() {
             return Ok(());
         }
         check_host_depth(depth)?;
         // A tag error can win only at an element whose cell can be charged.
         let affordable = values.len().min(self.remaining.cells);
-        if !values[..affordable]
-            .iter()
-            .all(|value| matches!(value, Value::F32(_)))
-        {
-            return Err(error("host value differs from F32"));
+        if !values[..affordable].iter().all(matches_type) {
+            return Err(error(format!("host value differs from {ty}")));
         }
         self.charge_cells(values.len())
     }

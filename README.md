@@ -40,9 +40,11 @@ preserving compiled bytes, trap order, and fuel. It reduced authored source
 21.4–24.1% on four matched list workloads. Whole programs and edit bodies
 still exceed the target. On the six-workload Windows host corpus, bundled
 calls take about 2.3 times the matched Rust host time by median-latency
-geometric mean. The portable evaluator handles checked list traversal, where
-long folds still have a larger gap to Rust. Source and artifact injection
-also miss some warm parity thresholds. In a separate matched Windows
+geometric mean. The portable evaluator validates flat signed lists in bulk
+before running the program. Short calls that read only part of a list benefit
+most, while full folds still spend much of their time in the interpreter.
+Source and artifact injection still vary against the bundled route on
+individual runs. In a separate matched Windows
 comparison, default Rhai AST took 11.59 times the FluxR call time across
 seven groups. Rhai's checked Grain backend led on the 256-element fold.
 The measurements distinguish warm calls from compilation, preparation, and
