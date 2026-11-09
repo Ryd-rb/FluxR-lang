@@ -37,11 +37,12 @@ FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered t
 
 Evidence and semantic work can run in parallel once case IDs and the oracle interface are frozen. Source encoding work can use the same semantic version while the runtime explores backend choices. Native tier and ABI changes share a writer until they stabilize. Benchmarks use one local measurement lane.
 
-FXM-02.D.4 narrows the remaining runtime cost and retains a smaller packing
-path. FXM-04.C can now test declaration and edit context reuse against the
-same runtime and both prior seals. Rust-host and injection parity, wider
-safety coverage, platform execution, and the isolated release launch remain
-open.
+FXM-02.D.4 retains a smaller packing path. FXM-04.C measures reusable
+declarations and scoped edits against equal Rust controls. FXM-02.D.5 next
+separates export resolution and admission from scan-tail variation on the
+frozen corpus. Keep the two injection modes, block controls and exact budget
+checks. Rust-host and injection parity, migration coverage, wider safety,
+platform execution, and the isolated release launch remain open.
 
 ### Corpus and measurement contract
 
@@ -644,7 +645,10 @@ Use the same command with `seal` to make a new seal only for a new evidence
 directory. The original FXM-04.A seal stays unchanged. To replay it against
 a newer build, run the old harness and case file from `fe3fd2f` in development
 or `88a8fbd` in standalone, and pass the newer build's directory via
-`--target-dir`. The old seal includes the whole case file.
+`--target-dir`. The old seal includes the whole case file. For the FXM-04.B
+seal, archive the harness, its inputs and the files listed in its training
+freeze from `1d7216d` in development or `8e8403e` in standalone. Pass the
+newer build's directory to that snapshot's evaluator.
 
 The FXM-04.B training freeze SHA-256 is
 `95E827180AAF6674FFE87AD40B588531144F308A8505CF85B18B36424AB9C091`.
@@ -755,3 +759,75 @@ Local `runtime-parity-next/manifest.json` SHA-256
 `3464AFAD2D10D875FB0E3D6C113220ECA79B916A9608C273070E46483B153F39`
 binds the exact binaries, symbols, patches, run orders, checks, and all
 threshold misses.
+
+## FXM-04.C reusable declarations and edit context
+
+The training examples were the structured host record read and write, each
+with a checked subtraction edit. On both examples and all six tokenizers,
+supplying the function body and exact edit span cost fewer prompt tokens
+than resending the whole program. The selected protocol pins a record and
+export signature. Generation supplies a body, and an edit supplies a
+replacement for a unique span within that body. Both languages use the
+same protocol. The replay harness binds the full draft and template by
+digest and rejects a stale draft, a missing span, or a repeated span.
+
+The fresh seal covers six original and six edited record programs, each
+tested on 343 input triples against optimized Rust 2024. The probes check
+values, arithmetic traps, and that each edit changes behavior on at least
+one input. The compact printer and released decoder replay the same
+portable bytes. The experiment uses released source forms and runs
+composition and edits in the benchmark harness.
+
+Each cell reports median / aggregate / nearest-rank p95 of FluxR divided
+by Rust. Full source includes the template in each program. The body column
+counts only newly authored bodies, with the shared definition charged
+separately. The edit column counts replacement spans.
+
+| Tokenizer | Full source | Body with reuse | Edit |
+| --- | ---: | ---: | ---: |
+| o200k_base | 72.9% / 73.0% / 77.6% | 83.3% / 81.2% / 95.2% | 112.5% / 166.7% / 800.0% |
+| cl100k_base | 72.9% / 73.0% / 77.6% | 83.3% / 81.2% / 95.2% | 112.5% / 166.7% / 800.0% |
+| Qwen2.5-Coder | 75.0% / 74.9% / 79.0% | 83.3% / 81.2% / 95.2% | 112.5% / 166.7% / 800.0% |
+| StarCoder2 | 74.6% / 75.6% / 81.7% | 61.3% / 66.7% / 84.6% | 76.2% / 128.6% / 900.0% |
+| Mistral-7B | 74.9% / 76.6% / 83.3% | 63.4% / 68.8% / 88.5% | 92.9% / 133.3% / 900.0% |
+| OLMo 2 | 72.9% / 73.0% / 77.6% | 83.3% / 81.2% / 95.2% | 112.5% / 166.7% / 800.0% |
+
+Zero tokenizers met the joint 10% gate. On o200k_base, shared definitions
+cost 27 FluxR and 37 Rust tokens, and six authored bodies cost 82 and 101.
+The shared replay binding excerpts cost 166 and 19, plus 274 Rust tokens
+for the per-case entries. Edit anchors cost 25 and 16, and edit bodies cost
+25 and 15. The comparison reversal accounts for the largest edit ratio:
+the FluxR span swaps operands and the Rust span changes a single operator.
+
+On o200k_base, the first template prompt costs 38 and 49 tokens. Across six
+generation-and-edit tasks, counting it once brings mean context from
+124.8 to 68.2 for FluxR and from 149.2 to 72.2 for Rust. This is logical
+context under reuse, without provider framing, cache or conversation costs.
+One scripted repair per arm restored the sealed conditional after the
+compiler rejected an integer condition. The failed bodies cost 11 and 18
+tokens, diagnostics 6 and 25, repair anchors 3 and 3, and replacements 7 and
+6. The scoped repair context cost 32 and 57 versus 125 and 172 cold. The
+experiment makes no live generation or runtime performance claim.
+
+Reproduce with the pinned tokenizer libraries and cache:
+
+```sh
+cargo build --locked --release --lib
+python -B tools/bench_context_tokens.py measure --evidence /path/to/context-reuse --training /path/to/context-reuse/training-freeze.json --cache /path/to/token-heldout
+```
+
+The training freeze SHA-256 is
+`C2B01C0E9A74FA9B4E51640BA14416B13EBCE67B5C5E28AE2EFD246EE9F1DD3D`.
+The validation seal is
+`CFCFA9B0F24ADBA43DCB513C13571E93F0216BDCAC114358C2CFA67B2A6EF51D`.
+The offline score digest is
+`522DB0712972976B88F4391EA8C19B1BCD6EC6CA8CA68AB21ECD0C4CCB3D6DA0`.
+
+Both repositories passed 59 portable, 59 native-JIT and 61 typed-JIT
+Windows release tests, all three sealed corpora, pinned host and budget
+checks, five Node Wasm suites, browser replay and rollback, and
+highlighting. Timeline and counter bytes match the preceding checkpoint.
+Linux x64 compiled. Local `context-reuse/manifest.json` SHA-256
+`17B865C2FA8EB15931678F20D02AD56E15304BC6D6591C493735A37B30D126DC`
+binds the training freeze, seal, scores, repair traces and compatibility
+evidence.

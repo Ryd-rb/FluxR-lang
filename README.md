@@ -15,10 +15,11 @@ released artifact bytes.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
-gates can reach that token target; typed programs still need more reuse of
-declarations and edit context. The frozen host corpus also shows a gap to
-Rust and injection tail latency still varies. Broader safety coverage and
-native validation on Linux and ARM64 remain open. The
+gates can reach that target. Reusing typed declarations and supplying only the
+edited function body reduces repeated prompt context in both FluxR and Rust.
+Typed source and edit bodies still exceed the target. The frozen host corpus
+shows a gap to Rust, and injection tail latency still varies. Broader safety
+coverage and native validation on Linux and ARM64 remain open. The
 [modernization plan](docs/modernization.md) records the acceptance criteria
 and measured results.
 

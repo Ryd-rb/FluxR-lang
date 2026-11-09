@@ -241,3 +241,57 @@ pub fn calc(r: Ledger, d: i64) -> Option<Ledger> {
 '''
 fluxr_span = ["+", "-"]
 rust_span = ["checked_add", "checked_sub"]
+# FXM-04.C. Both languages reuse the same record fields and export signature.
+[reuse.template]
+fluxr = ["v2\n(rec Reading lo:i64 hi:i64)\n(pub calc (r:Reading d:i64) i64 = ", ")\n"]
+rust = ["pub struct Reading { pub lo: i64, pub hi: i64 }\npub fn calc(r: Reading, d: i64) -> Option<i64> {\n    ", "\n}\n"]
+
+[reuse.cases.inventory]
+task = "Subtract the low reading from the high reading, then add the adjustment d. Trap on any overflow."
+edit = "Subtract d from the difference instead."
+fluxr = "(+ (- r.hi r.lo) d)"
+rust = "r.hi.checked_sub(r.lo)?.checked_add(d)"
+fluxr_span = ["(+ ", "(- "]
+rust_span = ["checked_add", "checked_sub"]
+
+[reuse.cases.gain]
+task = "Multiply the low reading by d and subtract the high reading. Trap on any overflow."
+edit = "Add the high reading to the product instead."
+fluxr = "(- (* r.lo d) r.hi)"
+rust = "r.lo.checked_mul(d)?.checked_sub(r.hi)"
+fluxr_span = ["(- ", "(+ "]
+rust_span = ["checked_sub", "checked_add"]
+
+[reuse.cases.window]
+task = "If d is positive, divide the high reading by the low reading. Otherwise return d without dividing. Trap on invalid signed division."
+edit = "Divide when d is zero as well."
+fluxr = "(? (< 0 d) (/ r.hi r.lo) d)"
+rust = "if d > 0 { r.hi.checked_div(r.lo) } else { Some(d) }"
+fluxr_span = ["(< 0 d)", "(<= 0 d)"]
+rust_span = ["d > 0", "d >= 0"]
+fluxr_fault = ["(< 0 d)", "d"]
+rust_fault = ["d > 0", "d"]
+
+[reuse.cases.spread]
+task = "Select the lesser reading, preferring low on ties, and subtract d. Trap on overflow."
+edit = "Select the greater reading, still preferring low on ties."
+fluxr = "(? (<= r.lo r.hi) (- r.lo d) (- r.hi d))"
+rust = "(if r.lo <= r.hi { r.lo } else { r.hi }).checked_sub(d)"
+fluxr_span = ["(<= r.lo r.hi)", "(<= r.hi r.lo)"]
+rust_span = ["<=", ">="]
+
+[reuse.cases.cycle]
+task = "Add the readings and take the checked signed remainder with divisor d. Trap on any arithmetic error."
+edit = "Use the checked signed quotient instead of the remainder."
+fluxr = "(% (+ r.lo r.hi) d)"
+rust = "r.lo.checked_add(r.hi)?.checked_rem(d)"
+fluxr_span = ["(% ", "(/ "]
+rust_span = ["checked_rem", "checked_div"]
+
+[reuse.cases.bias]
+task = "When the readings differ, multiply the high reading by d. When they are equal return the low reading without multiplying. Trap on overflow."
+edit = "Multiply the low reading instead in the differing case."
+fluxr = "(? (== r.lo r.hi) r.lo (* r.hi d))"
+rust = "if r.lo == r.hi { Some(r.lo) } else { r.hi.checked_mul(d) }"
+fluxr_span = ["(* r.hi d)", "(* r.lo d)"]
+rust_span = ["r.hi.checked_mul", "r.lo.checked_mul"]
