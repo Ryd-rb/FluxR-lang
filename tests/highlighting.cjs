@@ -92,6 +92,9 @@ async function main() {
   }
   scoped(compact, "3u", "constant.numeric.integer.fluxr");
   assert.ok(compact.every(({ scopes }) => !scopes.includes("comment.line.number-sign.fluxr")));
+  const tail = tokens("v2 (pub pick (b:bool) i64 = (? b 1 0))");
+  scoped(tail, "=", "keyword.operator.fluxr");
+  scoped(tail, "?", "keyword.control.fluxr");
   const earlier = tokens("\nr3 2\ni0 f32:+.5 f<= # no comment in v3");
   scoped(earlier, "f32:+.5", "constant.numeric.float.fluxr");
   scoped(earlier, "f<=", "keyword.operator.fluxr");

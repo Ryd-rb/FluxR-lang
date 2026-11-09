@@ -1,8 +1,61 @@
 use fluxr::structured::{
-    Binding, Invocation, Limits, Module, ModuleSlot, Source, Type, Value, Workspace,
+    Binding, Invocation, Limits, Module, ModuleSlot, Source, Stmt, Type, Value, Workspace,
 };
 use std::hint::black_box;
 use std::time::Instant;
+
+#[test]
+fn compact_tail_forms_preserve_portable_bytes_and_lazy_traps() {
+    for version in ["v1", "v2"] {
+        let short =
+            format!("{version} (pub calc (b:bool x:i64) i64 = (? b (? (< x 0) x (+ x 1)) 7))");
+        let expanded = format!(
+            "{version} (pub calc (b:bool x:i64) i64 () \
+             (if b ((if (< x 0) ((ret x)) ((ret (+ x 1))))) ((ret 7))))"
+        );
+        let short = compile(&short);
+        let long = compile(&expanded);
+        assert_eq!(short.encode(), long.encode());
+        assert_eq!(
+            short.encode(),
+            compile(&short.compact_text().unwrap()).encode()
+        );
+        let args = [Value::Bool(false), Value::I64(i64::MAX)];
+        assert_eq!(
+            run(&short, "calc", &args, Limits::default()).unwrap(),
+            Value::I64(7)
+        );
+        let args = [Value::Bool(true), Value::I64(i64::MAX)];
+        assert_eq!(
+            run(&short, "calc", &args, Limits::default())
+                .unwrap_err()
+                .to_string(),
+            "invalid or overflowing integer arithmetic"
+        );
+    }
+
+    let mut edit = Source::parse_compact("v2 (pub calc (x:i64) i64 = x)").unwrap();
+    edit.functions[0].body = Stmt::parse_compact_body("(? (< x 0) 0 x)").unwrap();
+    assert_eq!(
+        Module::compile(edit).unwrap().encode(),
+        compile("v2 (pub calc (x:i64) i64 () (if (< x 0) ((ret 0)) ((ret x))))").encode()
+    );
+    for body in [
+        "= (? 1 2 3)",
+        "= (? true 1 false)",
+        "= (? true 1)",
+        "= (? true 1 2 3)",
+        "= (missing)",
+        "= 1 (ret 2)",
+    ] {
+        assert!(
+            Module::compile_compact(&format!("v2 (pub calc () i64 {body})")).is_err(),
+            "{body}"
+        );
+    }
+    let deep = format!("{}0{}", "(? true 0 ".repeat(100), ")".repeat(100));
+    assert!(Module::compile_compact(&format!("v2 (pub calc () i64 = {deep})")).is_err());
+}
 
 #[test]
 fn adjacent_arithmetic_and_store_keep_trap_precedence() {

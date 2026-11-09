@@ -40,8 +40,14 @@ impl Source {
                         .map_or((None, name), |(ty, method)| (Some(ty.into()), method));
                     let params = p.group(binding)?;
                     let result = ty(p.word()?)?;
-                    let locals = p.group(binding)?;
-                    let body = p.statements()?;
+                    let (locals, body) = if p.rest.trim_start().starts_with('=') {
+                        p.expect("=")?;
+                        let tail = p.tail()?;
+                        p.expect(")")?;
+                        (vec![], vec![tail])
+                    } else {
+                        (p.group(binding)?, p.statements()?)
+                    };
                     source.functions.push(Function {
                         name: name.into(),
                         receiver,
@@ -123,6 +129,7 @@ fn variant(p: &mut Parser<'_>) -> Result<Variant> {
     })
 }
 
+#[derive(Clone, Copy)]
 struct Parser<'a> {
     rest: &'a str,
     depth: u8,
@@ -326,10 +333,33 @@ impl<'a> Parser<'a> {
             "ret" => Stmt::Return {
                 value: self.expr()?,
             },
+            "?" => self.selection()?,
             tag => return Err(error(format!("unknown compact statement {tag}"))),
         };
         self.expect(")")?;
         Ok(vec![item])
+    }
+
+    fn tail(&mut self) -> Result<Stmt> {
+        let mut lookahead = *self;
+        if matches!(lookahead.next(), Ok("(")) && matches!(lookahead.next(), Ok("?")) {
+            *self = lookahead;
+            let selection = self.selection()?;
+            self.expect(")")?;
+            Ok(selection)
+        } else {
+            Ok(Stmt::Return {
+                value: self.expr()?,
+            })
+        }
+    }
+
+    fn selection(&mut self) -> Result<Stmt> {
+        Ok(Stmt::If {
+            test: self.expr()?,
+            then: vec![self.tail()?],
+            otherwise: vec![self.tail()?],
+        })
     }
 
     fn boxed(&mut self) -> Result<Box<Expr>> {

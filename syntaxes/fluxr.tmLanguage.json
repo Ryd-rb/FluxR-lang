@@ -99,7 +99,7 @@
           }
         },
         {
-          "match": "(\\()\\s*(inputs|pub|fn|rec|enum|if|when|while|break|continue|ret|find|indices)(?=[\\s()]|$)",
+          "match": "(\\()\\s*(inputs|pub|fn|rec|enum|if|when|while|break|continue|ret|find|indices|\\?)(?=[\\s()]|$)",
           "captures": {
             "1": { "name": "punctuation.section.group.begin.fluxr" },
             "2": { "name": "keyword.control.fluxr" }
@@ -136,6 +136,7 @@
           "name": "constant.numeric.float.fluxr"
         },
         { "match": "(?<![^\\s(])(?:[0-9]+u|-?[0-9]+)(?=[\\s()]|$)", "name": "constant.numeric.integer.fluxr" },
+        { "match": "(?<![^\\s(])=(?=[\\s()]|$)", "name": "keyword.operator.fluxr" },
         { "match": "\\(", "name": "punctuation.section.group.begin.fluxr" },
         { "match": "\\)", "name": "punctuation.section.group.end.fluxr" },
         { "match": "[\\[\\]]", "name": "punctuation.section.brackets.fluxr" },

@@ -83,6 +83,58 @@ pub fn calc(x: i64, y: i64, flag: i64) -> Option<i64> {
 fluxr_span = ["+", "-"]
 rust_span = ["checked_add", "checked_sub"]
 
+# FXM-04.B. Source alternates declaration and body spans, starting and ending
+# with declarations. Each kind of span is counted separately from full source.
+[typed_holdout.throttle]
+task = "Export calc(live: bool, hard: bool, n: u64). Return zero when offline; otherwise triple n in hard mode or add three in soft mode. Trap on overflow."
+edit = "In hard mode multiply by four instead."
+fluxr = ["v2\n(pub calc (live:bool hard:bool n:u64) u64 = ", "(? live (? hard (* n 3u) (+ n 3u)) 0u)", ")\n"]
+rust = ["pub fn calc(live: bool, hard: bool, n: u64) -> Option<u64> {\n    ", "if live { if hard { n.checked_mul(3) } else { n.checked_add(3) } } else { Some(0) }", "\n}\n"]
+fluxr_span = ["(* n 3u)", "(* n 4u)"]
+rust_span = ["checked_mul(3)", "checked_mul(4)"]
+fluxr_fault = ["(? live", "(? n"]
+rust_fault = ["if live", "if n"]
+
+[typed_holdout.calibration]
+task = "Export calc(b: bool, x: [f32]). Pick index 1 when b is true and index 0 otherwise. Preserve the selected value's raw bits; trap if it is missing."
+edit = "When b is true, pick index 2."
+fluxr = ["v2\n(pub calc (b:bool x:[f32]) f32 = ", "(? b (at x 1u) (at x 0u))", ")\n"]
+rust = ["pub fn calc(b: bool, x: &[f32]) -> Option<f32> {\n    ", "x.get(if b { 1 } else { 0 }).copied()", "\n}\n"]
+fluxr_span = ["1u", "2u"]
+rust_span = ["1", "2"]
+
+[typed_holdout.tariff]
+task = "Export calc(r: Rate, units: i64). Rate has signed per and base fields. Use a Rate method to multiply units by per with checked arithmetic, then add base with checked arithmetic."
+edit = "Subtract base from the product instead."
+fluxr = ["v1\n(rec Rate per:i64 base:i64)\n(fn Rate.cost (self:Rate n:i64) i64 = ", "(+ (* n self.per) self.base)", ")\n(pub calc (r:Rate units:i64) i64 = ", "(r.cost units)", ")\n"]
+rust = ["pub struct Rate { pub per: i64, pub base: i64 }\nimpl Rate {\n    fn cost(self, n: i64) -> Option<i64> {\n        ", "n.checked_mul(self.per)?.checked_add(self.base)", "\n    }\n}\npub fn calc(r: Rate, units: i64) -> Option<i64> {\n    ", "r.cost(units)", "\n}\n"]
+fluxr_span = ["(+", "(-"]
+rust_span = ["checked_add", "checked_sub"]
+
+[typed_holdout.admission]
+task = "Export calc(enabled: bool, a: i64, b: i64, cap: i64). Disabled returns false without division. Otherwise return whether the checked signed quotient a/b is strictly below cap."
+edit = "Allow the quotient to equal cap."
+fluxr = ["v1\n(pub calc (enabled:bool a:i64 b:i64 cap:i64) bool = ", "(? enabled (< (/ a b) cap) false)", ")\n"]
+rust = ["pub fn calc(enabled: bool, a: i64, b: i64, cap: i64) -> Option<bool> {\n    ", "Some(enabled && a.checked_div(b)? < cap)", "\n}\n"]
+fluxr_span = ["(<", "(<="]
+rust_span = ["< cap", "<= cap"]
+
+[typed_holdout.packet]
+task = "Export calc(active: bool, n: u64). Active returns a single element list containing n. Inactive returns an empty list."
+edit = "Active returns two copies of n."
+fluxr = ["v2\n(pub calc (active:bool n:u64) [u64] = ", "(? active (list u64 n) (list u64))", ")\n"]
+rust = ["pub fn calc(active: bool, n: u64) -> Vec<u64> {\n    ", "if active { vec![n] } else { Vec::new() }", "\n}\n"]
+fluxr_span = ["(list u64 n)", "(list u64 n n)"]
+rust_span = ["vec![n]", "vec![n, n]"]
+
+[typed_holdout.ack]
+task = "Export calc(ack: Ack). Ack is either Ok with a signed payload or Pending without one. Return the payload for Ok, or -1 for Pending."
+edit = "Return -2 for Pending."
+fluxr = ["v2\n(enum Ack Ok:i64 Pending)\n(pub calc (ack:#Ack) i64 = ", "(? (is ack Ok) (payload ack Ok) -1)", ")\n"]
+rust = ["pub enum Ack { Ok(i64), Pending }\npub fn calc(ack: Ack) -> i64 {\n    ", "match ack { Ack::Ok(n) => n, Ack::Pending => -1 }", "\n}\n"]
+fluxr_span = ["-1", "-2"]
+rust_span = ["-1", "-2"]
+
 [heldout.route_gate]
 kind = "gate"
 task = "Require all eight facts a through h in order. Evaluate each at most once and stop at the first false fact."

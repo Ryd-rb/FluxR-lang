@@ -8,16 +8,19 @@ One timeline row can describe hundreds of related tracks. Decision gates
 evaluate facts lazily in a predictable order. Typed modules provide checked
 arithmetic, records, and collections. On Windows x64, prepared native execution
 uses small scratch buffers for compact signatures and can return an unchanged
-host record without allocating. The portable evaluator and browser scene lab
-support replay, and the migration tools verify released artifact bytes.
+host record without allocating. Compact return and branch forms shorten typed
+modules while preserving their portable bytes. The portable evaluator and
+browser scene lab support replay, and the migration tools verify released
+artifact bytes.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
-gates can reach that token target. The latest held-out set measured 48–51% of
-Rust's total source tokens across six tokenizers. Rust-host parity, injection
-tail latency, broader safety coverage, and native validation across supported
-platforms remain open. The [modernization plan](docs/modernization.md) records
-the acceptance criteria and measured results.
+gates can reach that token target. On six new typed workloads, the shorter
+forms saved 11–15% over expanded FluxR, while the resulting source still used
+78–81% of matched Rust's tokens. Rust host parity, injection tail latency,
+broader safety coverage, and native validation across supported platforms
+remain open. The [modernization plan](docs/modernization.md) records the
+acceptance criteria and measured results.
 
 ## Quick start
 
@@ -98,6 +101,16 @@ in compact FluxR or construct the typed `fluxr::structured::Source` directly. Th
 types, calls and control flow, then lowers the module to an in-memory instruction
 sequence. The portable `FSM\0` artifact keeps its existing encoding and is
 revalidated on decode. Timelines and scalar rules have separate entry points.
+
+With no locals, a function can use `= tail` in place of the local group and
+return statement. A tail is an expression or `(? test yes no)`; each branch
+can be another tail. Only the selected branch runs. The conditional form can
+also be a terminal statement in a block or a compact function body edit.
+
+```fluxr
+v2
+(pub clamp (x:i64) i64 = (? (< x 0) 0 x))
+```
 
 Version 1 has typed local slots, conditional branches, while loops, break and
 continue, function calls and recursion, record construction and field updates,

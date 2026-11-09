@@ -577,6 +577,91 @@ binds the exact binaries, PDBs, source patches, run scripts, logs, allocator
 probe and each missed comparison. FXM-04.B can advance on the frozen
 semantics while FXM-02.D, wider FXM-05 and FXM-06.A retain their open gates.
 
+## FXM-04.B compact typed returns
+
+Compact v1 and v2 now accept `= tail` instead of a local group and a
+return statement when a function has no locals. A tail is an expression
+or `(? test yes no)`, with two recursively defined tails. The same
+conditional form works as a terminal statement in a compact edit. It
+expands to ordinary typed branches and returns, so branch laziness,
+instruction budgets, and portable bytes match the expanded source. The
+existing printer emits the expanded form for migration and interchange.
+
+We selected the spellings on the existing scalar and host decision training
+examples before creating the validation cases. Their short spellings saved
+two tokens for the return and four or five for the branch across the pinned
+panel. Both training programs produced identical before and after artifacts.
+A synthetic arithmetic chain also saved tokens, but we found no reuse in the
+inspected training modules and left it out. This small manual selection follows
+the principle of evaluating corpus-derived abstractions separately from
+training, as in [Top-Down Synthesis for Library Learning](https://arxiv.org/abs/2211.16605).
+
+The new seal covers six original and six edited programs against optimized
+Rust 2024 using the standard library. All pairs passed on unsigned overflow,
+lazy checked division, raw binary32 indexing, a record method, list results
+and enum payloads, including trap cases. Each FluxR program also produced
+identical portable bytes after expansion and recompilation. This checkpoint
+adds parser forms with no new execution path or timing claim.
+
+| Tokenizer | Full source median / aggregate / p95 | Edit median / aggregate / p95 | Aggregate vs expanded FluxR |
+| --- | ---: | ---: | ---: |
+| o200k_base | 80.5% / 78.2% / 89.2% | 100.0% / 105.6% / 200.0% | 85.1% |
+| cl100k_base | 80.5% / 79.2% / 91.4% | 100.0% / 105.6% / 200.0% | 85.2% |
+| Qwen2.5-Coder | 81.6% / 81.0% / 97.3% | 108.3% / 111.1% / 200.0% | 86.2% |
+| StarCoder2 | 81.1% / 78.7% / 92.7% | 100.0% / 105.0% / 200.0% | 89.5% |
+| Mistral-7B | 82.8% / 78.9% / 92.9% | 100.0% / 104.8% / 150.0% | 89.4% |
+| OLMo 2 | 80.5% / 79.2% / 91.4% | 100.0% / 105.6% / 200.0% | 85.2% |
+
+No tokenizer met the joint 10% gate. On o200k_base, full source was
+222 FluxR versus 284 Rust tokens. Separately encoded declarations were
+148/185 and bodies 87/106. These counts do not add to full source counts
+because token boundaries change. Edit bodies were 19/18, anchors 17/16,
+source prompts 1,021/361, and edit prompts 1,371/771. The shared replay
+binding excerpts were 101/20; per-case Rust replay entries are counted
+separately from the excerpts and the authored program. These prompt and
+binding costs show why shorter local syntax alone cannot meet the gate.
+
+A scripted repair introduced the same non-boolean condition in each
+language, verified both compiler diagnostics, and restored the sealed
+source. On o200k_base, failed bodies were 39/55, diagnostics 6/25,
+replacement spans 2/2, and repair prompts 238/162. These are offline
+costs for one known repair, with no live model attempts or pass-rate claim.
+
+Run the new evaluator with the pinned tokenizer dependencies:
+
+```sh
+cargo build --locked --release --lib
+python -B tools/bench_typed_tokens.py measure --evidence /path/to/typed-forms --training /path/to/typed-forms/training-freeze.json --cache /path/to/token-heldout
+```
+
+Use the same command with `seal` to make a new seal only for a new evidence
+directory. The original FXM-04.A seal stays unchanged. To replay it against
+a newer build, run the old harness and case file from `fe3fd2f` in development
+or `88a8fbd` in standalone, and pass the newer build's directory via
+`--target-dir`. The old seal includes the whole case file.
+
+The FXM-04.B training freeze SHA-256 is
+`95E827180AAF6674FFE87AD40B588531144F308A8505CF85B18B36424AB9C091`.
+The final validation seal is
+`464DE04AFCDA82E93763CAA9DEA6BEE4D6B605352A9B273C6B3A2401C1AFD69E`.
+The preflight seal was retained; only the diagnostic check's case handling
+changed before counting. The offline score digest is
+`C52B08E36EE18DF6A3E2F699EB4519745E14AFC66539C00D7A1F887FF8120681`.
+
+Both repositories passed 58 portable, 58 native-JIT and 60 typed-JIT Windows
+release tests, both sealed corpora, the pinned runtime behavior checks,
+five Node Wasm suites, browser replay, editing and rollback, and TextMate
+scope checks. Timeline and counter artifacts matched across repositories.
+Linux x64 compiled; native Linux and ARM64 remain open. The local
+`typed-forms/manifest.json` SHA-256
+`489A878A00D2277C19F3ED4D1FC878CD0AB1911ACEDCAED2C84B5C02986DFE5B`
+binds the tested inputs and evidence.
+
+Retain the forms as a modest reduction with byte equivalence. The broader
+token gate still needs a shared way to remove repeated declarations and
+reduce grammar and anchor context. Future comparisons should give Rust the
+same reuse opportunity and keep the two sealed corpora as regressions.
+
 The development and standalone default branches integrate the typed runtime
 and its prerequisites in separate commits. Ordinary structured compilation
 uses compact source. The migration commands accept legacy JSON and FSM and
