@@ -1,11 +1,25 @@
 //! Compare raw binary32 rule execution with typed, legacy, and Rust controls.
 #[path = "fixtures/raw_rule_projection_checks.rs"]
 mod checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+#[path = "fixtures/composed_rule_hir_checks.rs"]
+mod composed;
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn raw_rule_projection_check() -> usize {
     checks::check()
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn composed_rule_hir_check() -> usize {
+    composed::check()
+}
+
+#[test]
+fn composed_rule_hir_matches_frozen_ledger() {
+    assert_eq!(composed::check(), 28);
 }
 
 #[test]

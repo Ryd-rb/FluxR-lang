@@ -63,6 +63,7 @@ FXM-05.N checks portable method artifacts and rejects malformed replacements
 before publication.
 FXM-03.B.8 replays method-bearing checked HIR through canonical FXH and FSM.
 FXM-05.O verifies bounded recursive nominal methods and snapshot ownership.
+FXM-03.B.9 verifies composed eager rules against archived FXD and checked FXH.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2330,3 +2331,44 @@ Local `recursive-method-safety/manifest.json` SHA-256
 binds the freeze, artifacts, reader checks, and validation. FXM-03.B.9
 next checks composed eager selects and guard exits in historical rule
 replay and checked FXH projection.
+
+## FXM-03.B.9 composed eager rule replay
+
+Two released rule versions exercise nested eager selects with two guards.
+The signed rule checks division, addition and remainder. The mixed rule
+combines checked signed arithmetic and AND with raw binary32 division
+and multiplication. The frozen ledger distinguishes both guard exits,
+arithmetic traps in unchosen arms, and all four select outcomes. It checks
+exact words for signed zero, subnormal results, canonical NaN, infinity
+and high input bits discarded by raw operators.
+
+The archived FXD reader matches all 28 expected rows. Each platform checks
+the source, archived FXD and restored FXD, plus the opt-in checked projection
+from both FXD and FXH. The checked routes make 224 calls at the exact limit
+and with one fewer instruction, cell or frame. The first guard needs ten
+instructions. Reaching the second guard exit needs 24. The signed divide
+and add can trap at 15 and 29. Successful signed and mixed calls need
+20 and 22 cells. Arithmetic traps need one cell fewer because they do
+not return a value.
+
+The signed FXH includes its canonical shared projection. The mixed FXH
+carries the checked FXD origin alone. Shared structured source cannot
+represent raw binary32 transport or signed rule AND. The opt-in checked
+rule projection handles both. The legacy FXD ABI has no per-call VM limit
+arguments.
+
+Four migration CLIs reproduce the canonical FXH and FXD bytes on four
+round trips each, with 56 replay probes and two retained rule restorations.
+Six malformed-envelope restorations and two over-limit migration replays
+per CLI preserve existing output and leave absent output absent.
+Each default passes 95 Win64 release tests, one focused portable check,
+22 Node Wasm suites, five retained Node FXH cases and Linux x64 compilation.
+Run `cargo test --locked --release --example bench_raw_rule_projection
+composed_rule_hir_matches_frozen_ledger` or call
+`composed_rule_hir_check()` from the Node Wasm example.
+
+Local `composed-rule-hir/manifest.json` SHA-256
+`501E7B61738EAEAE73008D00F850CF020B663E6C8BCEACB0461275D06B7A45DF`
+binds the fixtures, expected rows, reader runs and platform checks.
+FXM-05.P next checks malformed list and variant payloads in portable
+artifacts and verifies that decoding refuses them before publication.

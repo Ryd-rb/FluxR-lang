@@ -47,7 +47,10 @@ nominal interface, alphabet, and artifact.
 Hosts can opt into structured resource limits for signed integer and
 raw binary32 rules. Float operators read the low 32 bits of each signed
 slot and return arithmetic result bits as a zero-extended integer.
-FXH restoration preserves the original rule ABI and metering.
+Rules evaluate both select arms in postfix order. A failed guard
+returns zero before later operands run. FXH restores the released FXD
+bytes and rule ABI. Hosts can separately prepare the checked projection
+for instruction, cell, and frame limits.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact

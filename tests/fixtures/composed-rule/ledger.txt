@@ -1,0 +1,29 @@
+# case id fuel outcome followed by rule arguments
+signed first-guard 10 0 1 0 -9223372036854775808 0 0 9223372036854775807 1
+signed divide-zero 15 div 0 1 13 0 0 9223372036854775807 1
+signed divide-overflow 15 div 0 -1 -9223372036854775808 -1 0 9223372036854775807 1
+signed second-guard 24 0 0 1 13 3 0 9223372036854775807 1
+signed unchosen-add-overflow 29 add 1 1 13 3 1 9223372036854775807 1
+signed unchosen-rem-zero 45 rem 1 1 13 3 1 6 0
+signed unchosen-rem-overflow 46 rem 0 1 -9223372036854775808 2 1 8 -1
+signed then-then 54 8 1 1 13 3 1 6 8
+signed else-then 55 -8 0 1 -13 3 1 6 -8
+signed then-else 55 -2 1 1 -2 3 1 1 3
+signed else-else 56 5 0 1 13 3 1 -8 8
+signed zero-result 56 0 0 1 16 3 1 -8 8
+mixed first-guard 10 0 1 0 0x7f800001 0 0 9223372036854775807 1 -1
+mixed second-guard-after-nan 24 0 1 1 0 0 0 9223372036854775807 1 -1
+mixed unchosen-add-overflow 29 add 1 1 0x7f800001 0 1 9223372036854775807 1 -1
+mixed unchosen-rem-zero 57 rem 1 1 0x3f800000 0 1 4 0 -1
+mixed unchosen-rem-overflow 58 rem 0 1 0x3f800000 0x3f800000 1 4 -1 -9223372036854775808
+mixed negative-zero 66 0x80000000 1 1 0x80000000 0x3f800000 1 4 8 -1
+mixed positive-zero-false 67 -5 1 1 0 0x3f800000 1 4 8 -13
+mixed positive-zero-result 67 0 0 1 0 0x3f800000 1 4 8 -1
+mixed signaling-nan-high-bits 66 0x7fc00000 1 1 0x123456787f800001 0x2a0000003f800000 1 4 8 -1
+mixed product-overflow 66 0x7f800000 1 1 0x7f7fffff 0x40000000 1 4 8 -1
+mixed subnormal 66 1 1 1 1 0x3f800000 1 4 8 -1
+mixed mask-sign 66 0 1 1 0x80000000 0x3f800000 1 4 8 0x7fffffff
+mixed division-rounds-to-zero 67 -5 1 1 1 0x40000000 1 4 8 -13
+mixed else-else 68 -5 0 1 0x7f7fffff 0x40000000 1 -8 8 -13
+mixed float-divide-zero 66 0 1 1 0x3f800000 0 1 4 8 -1
+mixed zero-times-infinity 67 0x7fc00000 0 1 0 0x7f800000 1 4 8 -1
