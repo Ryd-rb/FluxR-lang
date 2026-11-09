@@ -1907,3 +1907,57 @@ Local `runtime-parity-d12/manifest.json` SHA-256
 Both program-wide warm parity gates remain open. FXM-02.D.13 next
 isolates the source-injected native route variance on independent builds
 before reconsidering a portable fold change.
+
+## FXM-02.D.13 native source-injection replay
+
+A sealed Win64 replay used the exact D.12 A and B executables, Rust
+1.99.1 release, typed JIT, CPU 12, telemetry off, and ABBA and BAAB
+process orders on both defaults. All 16 processes passed 41,040 exact
+fold comparisons and the retained host checks. Development reproduced
+all five source-injected regressions. The standalone replay crossed
+two record-reuse guards on bundled and artifact calls.
+
+| Warm source route | Development A p50 / p95 | Development B p50 / p95 | Standalone A p50 / p95 | Standalone B p50 / p95 |
+| --- | ---: | ---: | ---: | ---: |
+| Record reuse | 27.37 / 28.60 ns | 36.55 / 37.21 ns | 37.68 / 38.85 ns | 36.81 / 37.87 ns |
+| Signed typed | 17.05 / 17.40 ns | 26.68 / 27.62 ns | 27.13 / 27.83 ns | 27.25 / 27.95 ns |
+
+Each value is the median of four process percentiles. The retained
+256-element sparse read took 225.10–228.71 ns p50. The full signed fold
+took 17.81–18.07 µs on A and 296.10–299.12 ns on B across all three
+routes. The retained runtime still includes the D.11 sparse-admission gain.
+
+For the signed and record controls, source compilation took 6.00–6.60 µs
+p50 and artifact decode took 7.70–9.60 µs. Native preparation took
+55.05–78.75 µs, depending on shape and route. Prepared record reuse
+activation took 0.70–0.80 µs and its first call took 0.10 µs at p50.
+The warm timings exclude these phases.
+
+The diagnostic crossed source and artifact preparation order and swapped
+the two prepared slots at fixed closure call sites. It rotated timed calls
+and measured wall time and thread cycles separately. Generated JIT bytes
+matched across all origins, builds, and defaults for each case. Signed
+named calls took 23.05–24.23 ns p50 across source and artifact. Resolved
+calls took 14.88–15.38 ns, while prebound native calls took 11.07–11.49 ns.
+The pack-only control stopped before kernel execution and output handling.
+The control overlaps other routes and cannot provide an exclusive admission
+cost. The record and signed source gaps from the sealed executables did
+not reproduce in the crossed calls.
+
+With the diagnostic branches disabled, the rebuilt host replay still
+showed a smaller development B record-reuse gap, 32.39 ns for source versus
+30.05 ns for artifact at p50. Signed route medians differed by at most
+0.44 ns within any rebuilt binary. CDB with matching PDBs showed changes
+in host instruction selection and placement between A and B. The results
+establish sensitivity to the build and harness. They leave layout alone
+and the cause of the residual unresolved.
+
+Both defaults retain the runtime. D.9, D.10 and D.12 remain rejected.
+Both raw and signed projection timing guards passed. Each retained default
+passed 86 Windows release tests, 17 sealed Node Wasm suites, three historical
+FXH fixtures and Linux x64 compilation. Six CLI builds agreed on 32 rule
+and limit cases and a malformed envelope. All twelve retained FSM artifacts
+matched. Local `runtime-parity-d13/manifest.json` SHA-256
+`5E0D059DC1E6AA6B274451B90809A27299AB355D533C993AF105781EBF233CE5` binds the executables, diagnostic, replay, and validation.
+FXM-02.D.14 tests layout independently before another runtime candidate.
+Both program-wide warm parity gates remain open.
