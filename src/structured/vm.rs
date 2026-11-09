@@ -1,4 +1,4 @@
-use super::compile::{Code, Op, Operand};
+use super::compile::{Code, Instruction, Op, Operand};
 use super::*;
 
 impl Module {
@@ -13,17 +13,23 @@ impl Module {
         invocation: Invocation<'_>,
         workspace: &mut Workspace,
     ) -> Result<Value, Error> {
-        let result = self.evaluate(invocation, workspace);
-        workspace.operands.clear();
-        workspace.locals.clear();
-        workspace.frames.clear();
-        result
+        self.run_in(invocation, workspace, true)
     }
 
-    fn evaluate(
+    /// Execute with the portable oracle, without preparing or entering native code.
+    pub fn run_portable_with(
         &self,
         invocation: Invocation<'_>,
         workspace: &mut Workspace,
+    ) -> Result<Value, Error> {
+        self.run_in(invocation, workspace, false)
+    }
+
+    fn run_in(
+        &self,
+        invocation: Invocation<'_>,
+        workspace: &mut Workspace,
+        _native: bool,
     ) -> Result<Value, Error> {
         let function = *self
             .exports
@@ -35,6 +41,81 @@ impl Module {
         {
             return Err(error("host argument or input count differs from interface"));
         }
+        #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
+        if _native
+            && let Some(result) = code
+                .native
+                .get()
+                .and_then(Option::as_ref)
+                .and_then(|native| native.run(&invocation))
+        {
+            return result;
+        }
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        if _native
+            && let Some(result) = self.native[function]
+                .get()
+                .and_then(Option::as_ref)
+                .and_then(|native| native.run(&invocation))
+        {
+            return Ok(result);
+        }
+        self.run_portable_function(invocation, workspace, function, code, _native)
+    }
+
+    /// Prepare the configured native tier for a validated export. An
+    /// unsupported export continues to run in the portable interpreter.
+    pub fn prepare_native(&self, export: &str) -> bool {
+        self.exports
+            .get(export)
+            .is_some_and(|&index| self.prepare_function(index))
+    }
+
+    fn prepare_function(&self, _function: usize) -> bool {
+        #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
+        if self.code[_function]
+            .native_scalar(&self.interface.inputs)
+            .is_some()
+        {
+            return true;
+        }
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        return self.native[_function]
+            .get_or_init(|| super::typed_jit::Native::compile(self, _function))
+            .is_some();
+        #[cfg(not(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64")))]
+        false
+    }
+
+    // Only the portable evaluator uses scratch space. Keep its frame and
+    // cleanup outside the successful native path.
+    fn run_portable_function(
+        &self,
+        invocation: Invocation<'_>,
+        workspace: &mut Workspace,
+        function: usize,
+        code: &Code,
+        _native: bool,
+    ) -> Result<Value, Error> {
+        let result = self.evaluate_portable(invocation, workspace, function, code);
+        workspace.operands.clear();
+        workspace.locals.clear();
+        workspace.frames.clear();
+        // A rejected invocation cannot trigger automatic native compilation.
+        #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
+        if _native && result.is_ok() {
+            self.prepare_function(function);
+        }
+        result
+    }
+
+    fn evaluate_portable(
+        &self,
+        invocation: Invocation<'_>,
+        workspace: &mut Workspace,
+        function: usize,
+        code: &Code,
+    ) -> Result<Value, Error> {
         let mut machine = Machine {
             module: self,
             inputs: invocation.inputs,
@@ -49,9 +130,29 @@ impl Module {
         for (value, ty) in invocation.arguments.iter().zip(&code.params) {
             machine.check_value(value, ty, 0)?;
         }
-        machine.operands.extend_from_slice(invocation.arguments);
-        machine.call(function)?;
-        let result = machine.execute()?;
+        if machine.remaining.frames == 0 {
+            return Err(error("module frame limit exceeded"));
+        }
+        machine.charge_cells(code.slots + 1)?;
+        let result =
+            if let Some((values, scan_fuel, return_fuel)) = scan_leaf(&code.ops, &invocation) {
+                machine.charge_fuel(scan_fuel)?;
+                let index = machine.scan_min_f32(values)?;
+                machine.charge_fuel(return_fuel)?;
+                Value::U64(index)
+            } else {
+                machine
+                    .locals
+                    .extend(invocation.arguments.iter().cloned().map(Some));
+                machine.locals.resize_with(code.slots, || None);
+                machine.frames.push(Frame {
+                    function,
+                    pc: 0,
+                    slots: 0,
+                    stack: 0,
+                });
+                machine.execute()?
+            };
         machine.check_value(&result, &code.result, 0)?;
         Ok(result)
     }
@@ -80,7 +181,66 @@ struct Machine<'a> {
     frames: &'a mut Vec<Frame>,
 }
 
+fn check_host_depth(depth: usize) -> Result<(), Error> {
+    if depth >= MAX_DEPTH {
+        return Err(error("host value nesting limit exceeded"));
+    }
+    Ok(())
+}
+
+pub(super) fn scan_effect(ops: &[Instruction]) -> Option<(&Operand, u64, u64)> {
+    let [load, scan, ret] = ops else {
+        return None;
+    };
+    if !matches!(scan.op, Op::ArgMinF32) || !matches!(ret.op, Op::Return) {
+        return None;
+    }
+    let Op::Operand(operand) = &load.op else {
+        return None;
+    };
+    Some((operand, load.fuel + scan.fuel, ret.fuel))
+}
+
+fn scan_leaf<'a>(ops: &[Instruction], call: &Invocation<'a>) -> Option<(&'a [Value], u64, u64)> {
+    let (load, scan_fuel, return_fuel) = scan_effect(ops)?;
+    // After boundary admission, these loads cannot trap. Other locals still
+    // go through the interpreter to preserve uninitialized-read precedence.
+    let value = match load {
+        Operand::Input(index) => &call.inputs[*index],
+        Operand::Local(index) => call.arguments.get(*index)?,
+        _ => return None,
+    };
+    let Value::List(values) = value else {
+        unreachable!("typed list");
+    };
+    Some((values, scan_fuel, return_fuel))
+}
+
+pub(super) fn min_f32_index(values: &[Value]) -> u64 {
+    let mut best = None;
+    for (index, value) in values.iter().enumerate() {
+        let Value::F32(bits) = value else {
+            unreachable!("typed float");
+        };
+        let value = f32::from_bits(*bits);
+        // Strict less-than retains the first tie and leaves NaNs unordered.
+        if best.is_none_or(|(_, old)| value < old) {
+            best = Some((index, value));
+        }
+    }
+    best.map_or(values.len(), |(index, _)| index) as u64
+}
+
 impl Machine<'_> {
+    fn charge_fuel(&mut self, amount: u64) -> Result<(), Error> {
+        self.remaining.instructions = self
+            .remaining
+            .instructions
+            .checked_sub(amount)
+            .ok_or_else(|| error("module instruction budget exhausted"))?;
+        Ok(())
+    }
+
     fn charge_cells(&mut self, amount: usize) -> Result<(), Error> {
         self.remaining.cells = self
             .remaining
@@ -91,9 +251,7 @@ impl Machine<'_> {
     }
 
     fn check_value(&mut self, value: &Value, ty: &Type, depth: usize) -> Result<(), Error> {
-        if depth >= MAX_DEPTH {
-            return Err(error("host value nesting limit exceeded"));
-        }
+        check_host_depth(depth)?;
         self.charge_cells(1)?;
         let module = self.module;
         match (value, ty) {
@@ -120,6 +278,9 @@ impl Machine<'_> {
                     _ => return Err(error("host enum payload differs from interface")),
                 }
             }
+            (Value::List(values), Type::List(element)) if **element == Type::F32 => {
+                self.admit_f32_elements(values, depth + 1)?;
+            }
             (Value::List(values), Type::List(element)) => {
                 for value in values.iter() {
                     self.check_value(value, element, depth + 1)?;
@@ -128,6 +289,28 @@ impl Machine<'_> {
             _ => return Err(error(format!("host value differs from {ty:?}"))),
         }
         Ok(())
+    }
+
+    // The caller already checked the outer list's depth, cell and tag.
+    fn admit_f32_elements(&mut self, values: &[Value], depth: usize) -> Result<(), Error> {
+        if values.is_empty() {
+            return Ok(());
+        }
+        check_host_depth(depth)?;
+        // A tag error can win only at an element whose cell can be charged.
+        let affordable = values.len().min(self.remaining.cells);
+        if !values[..affordable]
+            .iter()
+            .all(|value| matches!(value, Value::F32(_)))
+        {
+            return Err(error("host value differs from F32"));
+        }
+        self.charge_cells(values.len())
+    }
+
+    fn scan_min_f32(&mut self, values: &[Value]) -> Result<u64, Error> {
+        self.charge_fuel(values.len() as u64)?;
+        Ok(min_f32_index(values))
     }
 
     fn call(&mut self, function: usize) -> Result<(), Error> {
@@ -179,8 +362,7 @@ impl Machine<'_> {
         })
     }
 
-    fn record_update(&mut self, index: usize, field: usize) -> Result<(), Error> {
-        let value = self.pop();
+    fn record_update(&mut self, index: usize, field: usize, value: Value) -> Result<(), Error> {
         let Value::Record(fields) = self.local(index)? else {
             unreachable!("typed record");
         };
@@ -218,17 +400,14 @@ impl Machine<'_> {
 
     fn execute(&mut self) -> Result<Value, Error> {
         let module = self.module;
+        let activate =
+            |frame: &Frame| (&module.code[frame.function].ops[..], frame.slots, frame.pc);
+        let (mut ops, mut slots, mut pc) = activate(self.frames.last().expect("active frame"));
         loop {
-            let frame = self.frames.last_mut().expect("active frame");
-            let instruction = &module.code[frame.function].ops[frame.pc];
-            self.remaining.instructions = self
-                .remaining
-                .instructions
-                .checked_sub(instruction.fuel)
-                .ok_or_else(|| error("module instruction budget exhausted"))?;
+            let instruction = &ops[pc];
+            self.charge_fuel(instruction.fuel)?;
             let op = &instruction.op;
-            let slots = frame.slots;
-            frame.pc += 1;
+            pc += 1;
             let value = match op {
                 Op::Operand(source) => self.operand(source, slots)?.clone(),
                 Op::Store(index) => {
@@ -236,18 +415,53 @@ impl Machine<'_> {
                     continue;
                 }
                 Op::StoreField(index, field) => {
-                    self.record_update(slots + index, *field)?;
+                    let value = self.pop();
+                    self.record_update(slots + index, *field, value)?;
                     continue;
                 }
                 Op::Binary(kind) => {
                     let right = self.pop();
                     binary(*kind, &self.pop(), &right)?
                 }
-                Op::BinaryOperands(kind, left, right) => binary(
-                    *kind,
-                    self.operand(left, slots)?,
-                    self.operand(right, slots)?,
-                )?,
+                Op::BinaryOperands(kind, left, right) => {
+                    let value = binary(
+                        *kind,
+                        self.operand(left, slots)?,
+                        self.operand(right, slots)?,
+                    )?;
+                    // Preserve the second instruction's charge after arithmetic
+                    // so an arithmetic failure still takes precedence.
+                    if let Some(next) = ops.get(pc) {
+                        match &next.op {
+                            Op::Store(index) => {
+                                self.charge_fuel(next.fuel)?;
+                                self.locals[slots + index] = Some(value);
+                                pc += 1;
+                                continue;
+                            }
+                            Op::StoreField(index, field) => {
+                                self.charge_fuel(next.fuel)?;
+                                self.record_update(slots + index, *field, value)?;
+                                pc += 1;
+                                continue;
+                            }
+                            Op::JumpFalse(target) | Op::JumpTrue(target) => {
+                                self.charge_fuel(next.fuel)?;
+                                let Value::Bool(condition) = value else {
+                                    unreachable!("typed branch");
+                                };
+                                pc = if condition == matches!(next.op, Op::JumpTrue(_)) {
+                                    *target
+                                } else {
+                                    pc + 1
+                                };
+                                continue;
+                            }
+                            _ => {}
+                        }
+                    }
+                    value
+                }
                 Op::Unary(kind) => unary(*kind, self.pop()),
                 Op::Record(fields) => {
                     self.charge_cells(fields + 1)?;
@@ -316,22 +530,7 @@ impl Machine<'_> {
                     let Value::List(values) = self.pop() else {
                         unreachable!("typed list");
                     };
-                    self.remaining.instructions = self
-                        .remaining
-                        .instructions
-                        .checked_sub(values.len() as u64)
-                        .ok_or_else(|| error("module instruction budget exhausted"))?;
-                    let mut best = None;
-                    for (index, value) in values.iter().enumerate() {
-                        let Value::F32(bits) = value else {
-                            unreachable!("typed float");
-                        };
-                        let value = f32::from_bits(*bits);
-                        if best.is_none_or(|(_, old)| value < old) {
-                            best = Some((index, value));
-                        }
-                    }
-                    Value::U64(best.map_or(values.len(), |(index, _)| index) as u64)
+                    Value::U64(self.scan_min_f32(&values)?)
                 }
                 Op::Push(index) => {
                     let value = self.pop();
@@ -343,11 +542,13 @@ impl Machine<'_> {
                     continue;
                 }
                 Op::Call(function) => {
+                    self.frames.last_mut().expect("active frame").pc = pc;
                     self.call(*function)?;
+                    (ops, slots, pc) = activate(self.frames.last().expect("callee frame"));
                     continue;
                 }
                 Op::Jump(target) => {
-                    frame.pc = *target;
+                    pc = *target;
                     continue;
                 }
                 Op::JumpFalse(target) | Op::JumpTrue(target) => {
@@ -356,7 +557,7 @@ impl Machine<'_> {
                         unreachable!("typed branch");
                     };
                     if condition == take_if {
-                        self.frames.last_mut().expect("active frame").pc = *target;
+                        pc = *target;
                     }
                     continue;
                 }
@@ -365,9 +566,10 @@ impl Machine<'_> {
                     let frame = self.frames.pop().expect("active frame");
                     self.locals.truncate(frame.slots);
                     self.operands.truncate(frame.stack);
-                    if self.frames.is_empty() {
+                    let Some(caller) = self.frames.last() else {
                         return Ok(value);
-                    }
+                    };
+                    (ops, slots, pc) = activate(caller);
                     value
                 }
             };

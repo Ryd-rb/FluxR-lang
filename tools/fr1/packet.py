@@ -12,12 +12,13 @@ from ordered_codec import MAX_BYTES, decode_abi, decode_code, encode_abi, encode
 
 VERSION = "fr1"
 MAX_PACKET_BYTES = 32 * 1024
+ALPHABET_SHA256 = "ad5ec04db8fd979a5a8c14c8329284fe27d7253173c268c076253ea212418ecd"
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}", re.ASCII)
 
 
 def alphabet():
     data = gzip.decompress(Path(__file__).with_name("o200k-fr1.txt.gz").read_bytes())
-    if hashlib.sha256(data).hexdigest() != "ad5ec04db8fd979a5a8c14c8329284fe27d7253173c268c076253ea212418ecd":
+    if hashlib.sha256(data).hexdigest() != ALPHABET_SHA256:
         raise ValueError("FR1 alphabet identity mismatch")
     return data.decode("utf-8").splitlines()
 
@@ -92,7 +93,7 @@ def to_tree(node):
     return op, *map(to_tree, args)
 
 
-def lower_plan(planner, inputs, outputs, code, schema):
+def lower_plan(planner, inputs, outputs, code, schema, helper_names=None):
     plan, = [function for function in schema["functions"] if function["name"] == planner and function["export"]]
     parameter, = plan["params"]
     record, = [r for r in schema["records"] if r["name"] == parameter["ty"]["record"]]
@@ -112,6 +113,7 @@ def lower_plan(planner, inputs, outputs, code, schema):
     if outputs != {tag: shape(variant["payload"]) for tag, variant in enumerate(order["variants"])}:
         raise ValueError("planner effect packet differs from released nominal shape")
     lower = Lower(parameter, ((f"s{i}", field) for i, field in enumerate(record["fields"])))
+    lower.helper_names = helper_names if helper_names is not None else {f["name"] for f in schema["functions"]}
     abi = [""]
     groups = {}
     program = []
@@ -163,8 +165,9 @@ def declarations(schema):
 
 def lower_source(envelope, words, schema):
     planner, inputs, outputs, code, decoded, decoded_abi = decode(envelope, words)
+    helper_names = {function["name"] for function in schema["functions"]}
     return (
         declarations(schema)
-        + lower_plan(planner, inputs, outputs, code, schema)
-        + lower_collections(planner, decoded, decoded_abi, schema)
+        + lower_plan(planner, inputs, outputs, code, schema, helper_names)
+        + lower_collections(planner, decoded, decoded_abi, schema, helper_names)
     )

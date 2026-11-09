@@ -93,39 +93,57 @@ impl Node {
 /// short circuit and lets the host keep expensive observations as closures.
 #[derive(Debug)]
 pub struct Gate {
-    tree: Node,
+    plan: Plan,
     inputs: usize,
+}
+
+#[derive(Debug)]
+enum Plan {
+    Flat { all: bool, order: [u8; 16] },
+    Tree(Node),
 }
 
 impl Gate {
     pub fn compile_text(source: &str) -> Result<Self, Error> {
         bound(source.len())?;
         let text = source.trim();
-        let expanded;
-        let expression = if let Some((operator, names)) = flat_gate(text) {
-            expanded = format!(
-                "({operator} {})",
-                names
-                    .chars()
-                    .map(|letter| letter.to_string())
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            );
-            expanded.as_str()
-        } else {
-            text
-        };
         let mut seen = 0;
-        let tree = Node::parse(parse_expression(expression)?, &mut seen)?;
+        let plan = if let Some((operator, names)) = flat_gate(text) {
+            let mut order = [0; 16];
+            for (out, letter) in order.iter_mut().zip(names.bytes()) {
+                *out = letter - b'a';
+                let bit = 1_u16 << *out;
+                if seen & bit != 0 {
+                    return Err(Error("gate facts may be evaluated at most once".into()));
+                }
+                seen |= bit;
+            }
+            Plan::Flat {
+                all: operator == '&',
+                order,
+            }
+        } else {
+            Plan::Tree(Node::parse(parse_expression(text)?, &mut seen)?)
+        };
         let inputs = seen.count_ones() as usize;
         if inputs == 0 || u32::from(seen) != (1_u32 << inputs) - 1 {
             return Err(Error("gate facts must be consecutive from a".into()));
         }
-        Ok(Self { tree, inputs })
+        Ok(Self { plan, inputs })
     }
 
     pub fn evaluate(&self, mut fact: impl FnMut(usize) -> bool) -> bool {
-        self.tree.evaluate(&mut fact)
+        match &self.plan {
+            Plan::Tree(tree) => tree.evaluate(&mut fact),
+            Plan::Flat { all, order } => {
+                for &index in &order[..self.inputs] {
+                    if fact(usize::from(index)) != *all {
+                        return !all;
+                    }
+                }
+                *all
+            }
+        }
     }
 
     pub fn rust_function(&self, name: &str) -> Result<String, Error> {
@@ -142,7 +160,17 @@ impl Gate {
             write!(source, "p{index}: impl FnOnce() -> bool, ").unwrap();
         }
         source.push_str(") -> bool {\n    ");
-        self.tree.emit(&mut source, 0);
+        match &self.plan {
+            Plan::Tree(tree) => tree.emit(&mut source, 0),
+            Plan::Flat { all, order } => {
+                for (position, index) in order[..self.inputs].iter().enumerate() {
+                    if position != 0 {
+                        source.push_str(if *all { " && " } else { " || " });
+                    }
+                    write!(source, "p{index}()").unwrap();
+                }
+            }
+        }
         source.push_str("\n}\n");
         Ok(source)
     }

@@ -5,9 +5,11 @@ use std::sync::Arc;
 pub mod collaboration;
 mod gate;
 pub use gate::Gate;
+pub mod hir;
 mod rules;
 pub mod structured;
 pub mod telemetry;
+mod timeline_compact;
 pub use rules::{PreparedRule, RuleProgram};
 use telemetry::{Feature, Work, measured};
 
@@ -63,6 +65,55 @@ impl Track {
     fn sample(&self, t: u32) -> i32 {
         sample_keys(&self.keys, self.curve, t)
     }
+
+    fn translation_from(&self, base: &Self) -> Option<i64> {
+        if self.curve != base.curve || self.keys.len() != base.keys.len() {
+            return None;
+        }
+        let shift = i64::from(self.keys[0].1) - i64::from(base.keys[0].1);
+        self.keys
+            .iter()
+            .zip(base.keys.iter())
+            .all(|(&(t, value), &(base_t, base_value))| {
+                t == base_t && i64::from(value) - i64::from(base_value) == shift
+            })
+            .then_some(shift)
+    }
+}
+
+enum Samples<A, B> {
+    Shared(A),
+    Separate(B),
+}
+
+impl<A: Iterator<Item = i32>, B: Iterator<Item = i32>> Iterator for Samples<A, B> {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<i32> {
+        match self {
+            Self::Shared(iter) => iter.next(),
+            Self::Separate(iter) => iter.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::Shared(iter) => iter.size_hint(),
+            Self::Separate(iter) => iter.size_hint(),
+        }
+    }
+
+    fn fold<T, F: FnMut(T, i32) -> T>(self, init: T, fold: F) -> T {
+        match self {
+            Self::Shared(iter) => iter.fold(init, fold),
+            Self::Separate(iter) => iter.fold(init, fold),
+        }
+    }
+}
+
+impl<A: ExactSizeIterator<Item = i32>, B: ExactSizeIterator<Item = i32>> ExactSizeIterator
+    for Samples<A, B>
+{
 }
 
 /// A reusable sampler for one immutable program track.
@@ -85,6 +136,15 @@ impl BoundTrack {
 fn sample_keys(keys: &[Key], curve: Curve, t: u32) -> i32 {
     let ((start, from), (end, to)) = match keys {
         [only] => return only.1,
+        [first, second, third] => {
+            if t < second.0 {
+                (*first, *second)
+            } else if t < third.0 {
+                (*second, *third)
+            } else {
+                return third.1;
+            }
+        }
         [first, second, third, fourth] => {
             if t < second.0 {
                 (*first, *second)
@@ -131,6 +191,9 @@ fn interpolate(curve: Curve, from: i32, to: i32, step: u32, span: u32) -> i32 {
 pub struct Program {
     duration: u32,
     tracks: Vec<Track>,
+    // When all tracks differ only by a value translation, sample the first
+    // once and keep the starting values contiguous for batch consumers.
+    batch_starts: Option<Arc<[i32]>>,
 }
 
 impl Program {
@@ -162,6 +225,9 @@ impl Program {
         let duration = number(header.next(), "duration")?;
         if header.next().is_some() {
             return Err(Error("unexpected header field".into()));
+        }
+        if version == 2 {
+            return timeline_compact::parse(duration, lines);
         }
         let mut tracks = Vec::new();
         for (index, line) in lines {
@@ -231,7 +297,20 @@ impl Program {
         {
             return Err(Error("duplicate track address".into()));
         }
-        Ok(Self { duration, tracks })
+        let batch_starts = if tracks.len() >= 2
+            && tracks[1..]
+                .iter()
+                .all(|track| track.translation_from(&tracks[0]).is_some())
+        {
+            Some(tracks.iter().map(|track| track.keys[0].1).collect())
+        } else {
+            None
+        };
+        Ok(Self {
+            duration,
+            tracks,
+            batch_starts,
+        })
     }
 
     pub fn text(&self) -> String {
@@ -298,7 +377,17 @@ impl Program {
     pub fn sample_all(&self, time_ms: u32) -> impl ExactSizeIterator<Item = i32> + '_ {
         telemetry::sampled(Feature::SampleBatch, self.tracks.len(), true);
         let time = time_ms % self.duration;
-        self.tracks.iter().map(move |track| track.sample(time))
+        match &self.batch_starts {
+            Some(starts) => {
+                let delta = i64::from(self.tracks[0].sample(time)) - i64::from(starts[0]);
+                Samples::Shared(
+                    starts
+                        .iter()
+                        .map(move |&start| (i64::from(start) + delta) as i32),
+                )
+            }
+            None => Samples::Separate(self.tracks.iter().map(move |track| track.sample(time))),
+        }
     }
 
     pub fn replay(&self, assertions: &str) -> Result<u32, Error> {
@@ -433,12 +522,16 @@ fn text_track(line: &str) -> Result<TrackSource, Error> {
     let curve = number(parts.next(), "curve")?;
     let mut keys = Vec::new();
     for pair in parts {
-        let (time, value) = pair
-            .split_once(':')
-            .ok_or_else(|| Error("expected time:value".into()))?;
-        keys.push((number(Some(time), "time")?, number(Some(value), "value")?));
+        keys.push(text_key(pair)?);
     }
     Ok((object, field, curve, keys))
+}
+
+fn text_key(pair: &str) -> Result<Key, Error> {
+    let (time, value) = pair
+        .split_once(':')
+        .ok_or_else(|| Error("expected time:value".into()))?;
+    Ok((number(Some(time), "time")?, number(Some(value), "value")?))
 }
 
 fn number<T: std::str::FromStr>(value: Option<&str>, name: &str) -> Result<T, Error> {

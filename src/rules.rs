@@ -7,17 +7,17 @@ use std::fmt::Write;
 mod codegen;
 #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
 #[path = "native_jit.rs"]
-mod native_jit;
+pub(crate) mod native_jit;
 
 const MAGIC: &[u8; 4] = b"FXD\0";
 const MAX_VERSION: u8 = 4;
 const CANONICAL_F32_NAN: u32 = 0x7fc0_0000;
-const MAX_INPUTS: u8 = 16;
+pub(crate) const MAX_INPUTS: u8 = 16;
 const MAX_OPS: usize = 256;
 const MAX_STACK: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Op {
+pub(crate) enum Op {
     Input(u8),
     Const(i64),
     Binary(Binary),
@@ -27,7 +27,7 @@ enum Op {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
-enum Binary {
+pub(crate) enum Binary {
     Add = 2,
     Sub,
     Mul,
@@ -217,6 +217,10 @@ impl PreparedRule {
 }
 
 impl RuleProgram {
+    pub(crate) fn hir_parts(&self) -> (u8, &[Op]) {
+        (self.inputs, &self.ops)
+    }
+
     pub fn prepare(self) -> PreparedRule {
         PreparedRule {
             #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
@@ -292,7 +296,7 @@ impl RuleProgram {
         Self::compile(version, inputs, ops)
     }
 
-    fn compile(version: u8, inputs: u8, ops: Vec<Op>) -> Result<Self, Error> {
+    pub(crate) fn compile(version: u8, inputs: u8, ops: Vec<Op>) -> Result<Self, Error> {
         if !(1..=MAX_VERSION).contains(&version) {
             return Err(Error(format!("unsupported rule version {version}")));
         }

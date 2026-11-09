@@ -18,7 +18,7 @@ fn both_frontends_and_compiled_roundtrip_preserve_replay() {
 #[test]
 fn malformed_and_incompatible_programs_fail_closed() {
     for source in [
-        "v2 9\n1 2 0 0:2",
+        "v3 9\n1 2 0 0:2",
         "v1 9\n1 2 9 0:2",
         "v1 9\n1 2 0 1:2",
         "v1 9\n1 2 0 0:2 0:3",
@@ -32,6 +32,52 @@ fn malformed_and_incompatible_programs_fail_closed() {
     }
     bytes.push(0);
     assert!(Program::decode(&bytes).is_err());
+}
+
+#[test]
+fn migrated_runs_preserve_legacy_bytes_and_sample_order() {
+    let source = "v1 15\n2 8 2 0:7 4:-1 12:5\n1 8 2 0:10 4:2 12:8\n3 8 2 0:4 4:-4 12:2";
+    let original = Program::compile_text(source).unwrap();
+    let encoded = original.encode();
+    for version in [
+        original,
+        Program::decode(&encoded).unwrap(),
+        Program::compile_structured(&Program::decode(&encoded).unwrap().structured()).unwrap(),
+    ] {
+        let migrated = version.compact_text();
+        assert_eq!(migrated, "v2 15\n+ 1 3 8 2 -3 0:10 4:2 12:8");
+        let restored = Program::compile_text(&migrated).unwrap();
+        assert_eq!(restored.encode(), encoded);
+        for tick in (0..30).chain([u32::MAX]) {
+            assert!(
+                restored
+                    .sample_all(tick)
+                    .eq(restored.addresses().map(|address| {
+                        reference(Curve::Smooth, restored.keys(address).unwrap(), 15, tick)
+                    }))
+            );
+        }
+    }
+    let mixed =
+        Program::compile_text("v2 7\n+ 1 2 8 1 4294967295 0:-2147483648\n7 8 0 0:9").unwrap();
+    assert_eq!(
+        mixed.sample_all(0).collect::<Vec<_>>(),
+        [i32::MIN, i32::MAX, 9]
+    );
+    for invalid in [
+        "v2 9\n+ 0 0 1 0 0 0:0",
+        "v2 9\n+ 0 129 1 0 0 0:0",
+        "v2 9\n+ 65535 2 1 0 0 0:0",
+        "v2 9\n+ 0 2 1 0 1 0:2147483647",
+        "v2 9\n+ 0 2 1 0 -1 0:-2147483648",
+        "v2 9\n+ 0 3 1 0 9223372036854775807 0:0",
+        "v2 9\n+ 0 2 1 0 0 0:0\n1 1 0 0:0",
+        "v1 9\n+ 0 2 1 0 0 0:0",
+    ] {
+        assert!(Program::compile_text(invalid).is_err(), "{invalid}");
+    }
+    let over_budget = (0..33).map(|i| format!(" {i}:0")).collect::<String>();
+    assert!(Program::compile_text(&format!("v2 100\n+ 0 128 1 0 0{over_budget}")).is_err());
 }
 
 #[test]

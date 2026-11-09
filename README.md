@@ -1,8 +1,23 @@
 # FluxR
 
-FluxR is a compact, embeddable programming language with a Rust compiler and runtime. It supports typed modules for host applications, small decision rules, and periodic timelines. Compact source and typed input compile to the same versioned program representation within each format.
+FluxR is a compact programming language for AI-authored programs in Rust
+applications. A host supplies inputs and capabilities, checks programs against
+a budget, and can probe a replacement before activating it.
 
-A FluxR module receives explicit inputs and runs under a host-provided budget. Hosts can validate replacements before activating them and replay programs against recorded inputs. FluxR aims to make source economical for both human and AI authors.
+One timeline row can describe hundreds of related tracks. Decision gates
+evaluate facts lazily in a predictable order. Typed modules provide checked
+arithmetic, records, and collections. On Windows x64, prepared native execution
+uses small scratch buffers for compact signatures and can return an unchanged
+host record without allocating. The portable evaluator and browser scene lab
+support replay, and the migration tools verify released artifact bytes.
+
+FluxR aims to approach optimized Rust in speed and safety while using at most
+one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
+gates can reach that token target. The latest held-out set measured 48–51% of
+Rust's total source tokens across six tokenizers. Rust-host parity, injection
+tail latency, broader safety coverage, and native validation across supported
+platforms remain open. The [modernization plan](docs/modernization.md) records
+the acceptance criteria and measured results.
 
 ## Quick start
 
@@ -251,7 +266,7 @@ stderr.
 
 ```powershell
 $env:FLUXR_TELEMETRY = 'all'
-cargo run --locked -- --stats test web/well.flux web/well.replay.json
+cargo run --locked -- --stats test web/well.fluxr web/well.replay.json
 ```
 
 The Rust API exposes `fluxr::telemetry::configure` and

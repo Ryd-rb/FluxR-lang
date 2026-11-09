@@ -4,3 +4,188 @@ rust = "examples/fixtures/bench_volume_reference.rs"
 host = "examples/fixtures/bench_volume_host.rs"
 generated = "examples/fixtures/bench_volume_native.rs"
 performance = "cargo run --locked --release --example bench_volume"
+
+[case.modern_scalar]
+fluxr = "examples/fixtures/modern_leaf.flux"
+rust = "examples/fixtures/modern_reference.rs"
+rust_item = "fn leaf"
+performance = "cargo run --locked --release --features native-jit --example bench_modern"
+
+[case.modern_counter]
+fluxr = "examples/fixtures/modern_counter.flux"
+legacy = "tests/fixtures/structured_counter.fluxm"
+rust = "examples/fixtures/modern_reference.rs"
+rust_item = "fn counter"
+performance = "cargo run --locked --release --features native-jit --example bench_modern"
+
+[case.modern_rule]
+fluxr = "examples/fixtures/modern_rule.flux"
+rust = "examples/fixtures/modern_reference.rs"
+rust_item = "fn leaf"
+performance = "cargo run --locked --release --features native-jit --example bench_modern"
+
+[case.modern_gate]
+fluxr = "examples/fixtures/modern_gate.flux"
+rust = "examples/fixtures/modern_reference.rs"
+rust_item = "pub fn gate"
+performance = "cargo run --locked --release --features native-jit --example bench_modern"
+
+[case.modern_timeline]
+fluxr = "examples/fixtures/modern_timeline.flux"
+rust = "examples/fixtures/modern_reference.rs"
+rust_item = "fn timeline"
+performance = "cargo run --locked --release --features native-jit --example bench_modern"
+
+[case.host_scan]
+fluxr = "examples/fixtures/host_scan.flux"
+rust = "examples/fixtures/host_corpus_reference.rs"
+rust_item = "pub fn pick"
+performance = "cargo run --locked --release --features typed-jit --example bench_typed"
+
+[case.host_decision]
+fluxr = "examples/fixtures/host_decision.flux"
+rust = "examples/fixtures/host_corpus_reference.rs"
+rust_item = "pub fn decide"
+performance = "cargo run --locked --release --features typed-jit --example bench_typed"
+
+# FXM-04.A. Each edit replaces one uniquely anchored span in the authored
+# program. The anchor and original program are supplied as context.
+[heldout.checked_quotient]
+kind = "structured"
+task = "Subtract y from x with checked i64 arithmetic, then divide the difference by d with checked signed division. Any arithmetic error fails. Export calc."
+edit = "Use checked signed remainder in place of checked division."
+fluxr = '''
+v2
+(pub calc (x:i64 y:i64 d:i64) i64 () (ret (/ (- x y) d)))
+'''
+rust = '''
+pub fn calc(x: i64, y: i64, d: i64) -> Option<i64> {
+    x.checked_sub(y)?.checked_div(d)
+}
+'''
+fluxr_span = ["(/", "(%"]
+rust_span = ["checked_div", "checked_rem"]
+
+[heldout.ordered_rule]
+kind = "rule"
+task = "Take three i64 inputs x, y, flag. In order compute x times y and x plus y using checked i64 arithmetic, then choose the product if flag is nonzero, otherwise the sum. Fail on arithmetic error in either calculation even if that result would not be selected."
+edit = "Compute x minus y as the second checked result."
+fluxr = '''
+r1 3 i2 i0 i1 * i0 i1 + ?
+'''
+rust = '''
+pub fn calc(x: i64, y: i64, flag: i64) -> Option<i64> {
+    let yes = x.checked_mul(y)?;
+    let no = x.checked_add(y)?;
+    Some(if flag != 0 { yes } else { no })
+}
+'''
+fluxr_span = ["+", "-"]
+rust_span = ["checked_add", "checked_sub"]
+
+[heldout.route_gate]
+kind = "gate"
+task = "Require all eight facts a through h in order. Evaluate each at most once and stop at the first false fact."
+edit = "Accept any of the eight facts and stop at the first true fact, preserving fact order."
+fluxr = '''
+&abcdefgh
+'''
+rust = '''
+pub fn calc(mut fact: impl FnMut(usize) -> bool) -> bool {
+    (0..8).all(|i| fact(i))
+}
+'''
+fluxr_span = ["&", "|"]
+rust_span = ["all", "any"]
+
+[heldout.translated_pulse]
+kind = "timeline"
+task = "Repeat every 32 milliseconds. For object IDs 42 through 55 inclusive on field 7, linearly interpolate keys 0:0, 16:48, 32:0, with each next object shifted down 7 from the previous one. Also set object 91, field 4, to a constant 9. Missing addresses return no value."
+edit = "Shift each successive translated track down 9 instead of 7."
+fluxr = '''
+v2 32
++ 42 14 7 1 -7 0:0 16:48 32:0
+91 4 0 0:9
+'''
+rust = '''
+pub fn calc(object: u16, field: u16, time: u32) -> Option<i32> {
+    match (object, field) {
+        (42..=55, 7) => {
+            let t = (time % 32) as i32;
+            Some(3 * t.min(32 - t) - 7 * i32::from(object - 42))
+        }
+        (91, 4) => Some(9),
+        _ => None,
+    }
+}
+'''
+fluxr_span = ["-7", "-9"]
+rust_span = ["- 7 *", "- 9 *"]
+
+[heldout.minimum_bits]
+kind = "structured"
+task = "Export calc. Given a binary32 list x, return the first strictly least element as its original bits. If the first value is NaN, it stays selected. Later NaNs and ties never replace the selected element. Empty input traps on indexing."
+edit = "Return the first value regardless of the remaining values. Preserve the empty input trap."
+fluxr = '''
+v2
+(pub calc (x:[f32]) f32 () (ret (at x (minidx x))))
+'''
+rust = '''
+pub fn calc(x: &[f32]) -> Option<f32> {
+    let mut i = 0;
+    for j in 1..x.len() {
+        if x[j] < x[i] {
+            i = j;
+        }
+    }
+    x.get(i).copied()
+}
+'''
+fluxr_span = ["(minidx x)", "0u"]
+rust_span = ["get(i)", "first()"]
+
+[heldout.first_alert]
+kind = "structured"
+task = "Export calc. Given an i64 list x, a u64 limit n and an i64 threshold t, find the first index below n whose value is greater than t. Return n when no index qualifies. Reading beyond x before finding a match traps."
+edit = "Include values equal to the threshold."
+fluxr = '''
+v2
+(pub calc (x:[i64] n:u64 t:i64) u64 (i:u64 row:i64) (find i n row x (< t row)))
+'''
+rust = '''
+pub fn calc(x: &[i64], n: u64, t: i64) -> Option<u64> {
+    for i in 0..n {
+        if *x.get(usize::try_from(i).ok()?)? > t {
+            return Some(i);
+        }
+    }
+    Some(n)
+}
+'''
+fluxr_span = ["(<", "(<="]
+rust_span = ["> t", ">= t"]
+
+[heldout.ledger]
+kind = "structured"
+task = "Export calc. Take a Ledger record with balance and watermark i64 fields and a signed delta. Add delta to balance with checked arithmetic. Return the record with the new balance and the greater of the old watermark and new balance. Arithmetic failure fails the call."
+edit = "Subtract the delta using checked arithmetic. Leave the watermark rule in place."
+fluxr = '''
+v2
+(rec Ledger balance:i64 watermark:i64)
+(pub calc (r:Ledger d:i64) Ledger ()
+  (= r.balance (+ r.balance d))
+  (when (< r.watermark r.balance) (= r.watermark r.balance))
+  (ret r))
+'''
+rust = '''
+pub struct Ledger {
+    pub balance: i64,
+    pub watermark: i64,
+}
+pub fn calc(r: Ledger, d: i64) -> Option<Ledger> {
+    let balance = r.balance.checked_add(d)?;
+    Some(Ledger { balance, watermark: r.watermark.max(balance) })
+}
+'''
+fluxr_span = ["+", "-"]
+rust_span = ["checked_add", "checked_sub"]

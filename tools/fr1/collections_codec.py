@@ -15,21 +15,21 @@ BUILTINS = (
 OPS = (
     "ref", "uint", "f32", "call", "tuple", "list", "if", "neg", "not", "index",
     "and", "or", "band", "bor", "-", "+", "*", "%", "<", "<=", "=", "!=",
-    ">", ">=", "bits",
+    ">", ">=", "bits", "/",
 )
 UNARY = {"neg", "not"}
 SYMBOLS = {
     "and": "and", "or": "or", "band": "&", "bor": "|", "=": "==",
-    "-": "-", "+": "+", "*": "*", "%": "%", "<": "<", "<=": "<=",
+    "-": "-", "+": "+", "*": "*", "/": "/", "%": "%", "<": "<", "<=": "<=",
     "!=": "!=", ">": ">", ">=": ">=",
 }
 PYTHON = {
     ast.And: "and", ast.Or: "or", ast.BitOr: "bor", ast.BitAnd: "band",
-    ast.Sub: "-", ast.Add: "+", ast.Mult: "*", ast.Mod: "%", ast.Lt: "<",
+    ast.Sub: "-", ast.Add: "+", ast.Mult: "*", ast.Div: "/", ast.Mod: "%", ast.Lt: "<",
     ast.LtE: "<=", ast.Eq: "=", ast.NotEq: "!=", ast.Gt: ">", ast.GtE: ">=",
     ast.USub: "neg", ast.Not: "not",
 }
-SHAPES = "buf[("
+SHAPES = "buf[(i"
 
 
 @dataclass

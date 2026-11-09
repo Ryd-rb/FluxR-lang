@@ -5,6 +5,32 @@ use std::hint::black_box;
 use std::time::Instant;
 
 #[test]
+fn adjacent_arithmetic_and_store_keep_trap_precedence() {
+    let module =
+        Module::compile_compact("v2 (pub calc (x:i64) i64 (y:i64) (= y (+ x 1)) (ret y))").unwrap();
+    let run = |x, instructions| {
+        module.run(Invocation {
+            export: "calc",
+            inputs: &[],
+            arguments: &[Value::I64(x)],
+            limits: Limits {
+                instructions,
+                ..Limits::default()
+            },
+        })
+    };
+    assert_eq!(
+        run(i64::MAX, 3).unwrap_err().to_string(),
+        "invalid or overflowing integer arithmetic"
+    );
+    assert_eq!(
+        run(0, 3).unwrap_err().to_string(),
+        "module instruction budget exhausted"
+    );
+    assert_eq!(run(0, 6).unwrap(), Value::I64(1));
+}
+
+#[test]
 fn version_two_arg_min_preserves_first_ties_and_charges_each_value() {
     let body = "(pub run () u64 () (ret (minidx (list f32 2f 1f 1f))))";
     assert!(Module::compile_compact(&format!("v1 {body}")).is_err());
@@ -28,6 +54,26 @@ fn version_two_arg_min_preserves_first_ties_and_charges_each_value() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn arg_min_of_uninitialized_local_traps_after_the_load_charge() {
+    let module =
+        Module::compile_compact("v2 (pub run () u64 (values:[f32]) (ret (minidx values)))")
+            .unwrap();
+    for (instructions, expected) in [
+        (0, "module instruction budget exhausted"),
+        (1, "read of uninitialized local"),
+    ] {
+        let limits = Limits {
+            instructions,
+            ..Limits::default()
+        };
+        assert_eq!(
+            run(&module, "run", &[], limits).unwrap_err().to_string(),
+            expected
+        );
+    }
 }
 
 #[test]

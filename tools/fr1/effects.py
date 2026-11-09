@@ -4,7 +4,7 @@ import struct
 
 
 BINARY = {"&": "&&", "|": "||", "=": "==", "!=": "==", "<": "<", "<=": "<=",
-          "+": "+", "-": "-", "*": "*", "%": "%"}
+          "+": "+", "-": "-", "*": "*", "/": "/", "%": "%"}
 MAX_EXPRESSION_TEXT = 32 * 1024
 MAX_LOWER_STEPS = 32_768
 
@@ -29,6 +29,12 @@ def unsigned(value):
     if not 0 <= value < 1 << 64:
         raise ValueError("unsigned literal is outside u64")
     return Expr(f"{value}u", "u64")
+
+
+def signed(value):
+    if not -(1 << 63) <= value < 1 << 63:
+        raise ValueError("signed literal is outside i64")
+    return Expr(str(value), "i64")
 
 
 def truth(value):
@@ -67,7 +73,15 @@ class Lower:
         test = truth(test)
         uses = sorted(test.uses | yes.uses | no.uses)
         params = " ".join(f"{name}:{self.types[name]}" for name in uses)
-        name = f"ordered_select_{len(self.helpers)}"
+        if not hasattr(self, "helper_names"):
+            self.helper_names = set()
+        used = self.helper_names
+        number = len(self.helpers)
+        name = f"ordered_select_{getattr(self, 'name', 'plan')}_{number}"
+        while name in used:
+            number += 1
+            name = f"ordered_select_{getattr(self, 'name', 'plan')}_{number}"
+        used.add(name)
         self.helpers.append(
             f"(fn {name} ({params}) {yes.kind} () "
             f"(when {test.text} (ret {yes.text})) (ret {no.text}))"
@@ -79,7 +93,7 @@ class Lower:
         if self.steps > MAX_LOWER_STEPS:
             raise ValueError("expanded function exceeds the expression budget")
 
-    def expression(self, tree):
+    def expression(self, tree, expected=None):
         self.charge()
         op, *args = tree
         if op == "var":
@@ -91,11 +105,13 @@ class Lower:
             if type(value) is bool:
                 return Expr(str(value).lower(), "bool")
             if isinstance(value, int):
-                return unsigned(value)
+                return signed(value) if expected == "i64" else unsigned(value)
             bits, = struct.unpack("<I", struct.pack("<f", value))
             return Expr(f"0x{bits:08x}f", "f32")
+        if op == "neg" and args[0][0] == "const" and type(args[0][1]) is int:
+            return signed(-args[0][1])
         if op == "if":
-            return self.choose(*(self.expression(node) for node in args))
+            return self.choose(self.expression(args[0]), self.expression(args[1], expected), self.expression(args[2], expected))
         if op == "not":
             return expr("!", "bool", truth(self.expression(args[0])))
         if op == "call":
@@ -116,9 +132,21 @@ class Lower:
             for part in rest:
                 result = expr("&&", "bool", result, part)
             return result
-        left, right = (self.expression(node) for node in args)
-        if op == "index" and left.kind in {"[bool]", "[u64]"} and right.kind == "u64":
-            return expr("at", left.kind[1:-1], left, right)
+        if op == "index":
+            left = self.expression(args[0])
+            right = self.expression(args[1], "u64")
+            if left.kind in {"[bool]", "[u64]", "[i64]"} and right.kind == "u64":
+                return expr("at", left.kind[1:-1], left, right)
+            raise ValueError("index needs a supported list and u64 index")
+        if op in {"<", "<=", ">", ">=", "=", "!="}:
+            expected = None
+        literal = lambda node: node[0] == "const" and type(node[1]) is int
+        if literal(args[0]) and not literal(args[1]):
+            right = self.expression(args[1], expected)
+            left = self.expression(args[0], "i64" if right.kind == "i64" else expected)
+        else:
+            left = self.expression(args[0], expected)
+            right = self.expression(args[1], "i64" if left.kind == "i64" else expected)
         if op in {"&", "|"}:
             return expr(BINARY[op], "bool", truth(left), truth(right))
         if (left.kind, right.kind) == ("u64", "f32"):
@@ -131,7 +159,7 @@ class Lower:
             return expr("<" if op == ">" else "<=", "bool", right, left)
         if op == "!=":
             return expr("!", "bool", expr("==", "bool", left, right))
-        return expr(BINARY[op], left.kind if op in {"+", "-", "*", "%"} else "bool", left, right)
+        return expr(BINARY[op], left.kind if op in {"+", "-", "*", "/", "%"} else "bool", left, right)
 
     def function(self, export, program, abi, order):
         tags = {}

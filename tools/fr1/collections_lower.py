@@ -60,22 +60,40 @@ class Function(Lower):
         self.locals, self.helpers, self.body = [], [], []
         self.steps = 0
 
-    def expression(self, tree):
+    def expression(self, tree, expected=None):
         op, *args = tree
         if op == "call" and args[0][1] in self.private:
             self.charge()
             aliases, body = self.private[args[0][1]]
-            actuals = [self.expression(value) for value in args[1]]
+            def unsigned_literal(node):
+                if not isinstance(node, (tuple, list)):
+                    return False
+                if len(node) == 2 and node[0] == "const" and type(node[1]) is int:
+                    return True
+                if len(node) == 2 and node[0] == "neg" and isinstance(node[1], tuple) and node[1][0] == "const":
+                    return False
+                return any(unsigned_literal(child) for child in (node[1:] if node and isinstance(node[0], str) else node))
+
+            actuals = [self.expression(value, expected if body == ("var", alias) else None)
+                       for alias, value in zip(aliases, args[1], strict=True)]
+            if expected == "i64" and any(
+                unsigned_literal(value) and actual.kind != "i64" and body != ("var", alias)
+                for alias, value, actual in zip(aliases, args[1], actuals, strict=True)
+            ):
+                raise ValueError("ambiguous signed literal in private helper argument")
             saved = self.env
             self.env = dict(zip(aliases, actuals, strict=True))
             try:
-                return self.expression(body)
+                result = self.expression(body, expected)
+                if expected == "i64" and result.kind != "i64":
+                    raise ValueError("private helper result type mismatch for i64 context")
+                return result
             finally:
                 self.env = saved
-        return super().expression(tree)
+        return super().expression(tree, expected)
 
-    def scalar(self, node):
-        return self.expression(scalar(python(node)))
+    def scalar(self, node, expected=None):
+        return self.expression(scalar(python(node)), expected)
 
     def fields(self, record):
         return [Expr(f"{record.text}.{name}", kind, record.uses)
@@ -88,6 +106,8 @@ class Function(Lower):
         return node.args
 
     def scan(self, values, count, statements):
+        if not (values.kind.startswith("[") and values.kind.endswith("]") and count.kind == "u64"):
+            raise ValueError("scan needs a list and u64 count")
         index = self.local("u64")
         return [
             f"(= {index.text} 0u)",
@@ -100,6 +120,8 @@ class Function(Lower):
     def first_eq(self, node):
         rows, count, pattern = self.call_signature(node, "first_eq", 3)
         rows, count = self.scalar(rows), self.scalar(count)
+        if not (rows.kind.startswith("[") and rows.kind[1:-1] in self.records and count.kind == "u64"):
+            raise ValueError("first_eq needs a record list and u64 count")
         row, index = self.local(rows.kind[1:-1]), self.local("u64")
         fields = self.fields(row)
         bits = ast.literal_eval(pattern)
@@ -108,7 +130,7 @@ class Function(Lower):
             if type(bit) is not int or bit not in {0, 1} or field.kind != "bool":
                 raise ValueError("first_eq needs a Boolean row and bit pattern")
             tests.append(field.text if bit else f"(! {field.text})")
-        guard = tests[0] if len(tests) == 1 else f"(& {' '.join(tests)})"
+        guard = "true" if not tests else tests[0] if len(tests) == 1 else f"(& {' '.join(tests)})"
         return [f"(find {index.text} {count.text} {row.text} {rows.text} {guard})"]
 
     def count_if(self, node):
@@ -116,6 +138,10 @@ class Function(Lower):
         limit, = self.call_signature(predicate, "lt", 1)
         values, count, initial = self.scalar(values), self.scalar(count), self.scalar(initial)
         limit = self.scalar(limit)
+        if not (values.kind in {"[u64]", "[i64]", "[f32]"} and count.kind == "u64" and initial.kind == "u64"):
+            raise ValueError("count_if needs numeric list, u64 count and u64 initial")
+        if not (limit.kind == values.kind[1:-1] or (values.kind == "[f32]" and limit.kind == "u64")):
+            raise ValueError("count_if bound type mismatch")
         total = self.local("u64")
 
         def visit(_index, value):
@@ -131,6 +157,8 @@ class Function(Lower):
         if not isinstance(function, ast.Name) or function.id not in self.private:
             raise ValueError("indices needs a local typed predicate")
         values, count = self.scalar(values), self.scalar(count)
+        if not (values.kind.startswith("[") and values.kind.endswith("]") and count.kind == "u64"):
+            raise ValueError("indices needs a list and u64 count")
         index = self.local("u64")
         out = self.local("[u64]")
         saved = self.env
@@ -144,6 +172,8 @@ class Function(Lower):
         if not isinstance(mapper, ast.Name) or mapper.id != "last_true":
             raise ValueError("map_n kernel requires last_true")
         rows, count = self.scalar(rows), self.scalar(count)
+        if not (rows.kind.startswith("[") and rows.kind[1:-1] in self.records and count.kind == "u64"):
+            raise ValueError("map_n needs a record list and u64 count")
         out, row, rank = self.local("[u64]"), self.local(rows.kind[1:-1]), self.local("u64")
 
         def visit(_index, value):
@@ -170,6 +200,8 @@ class Function(Lower):
             raise ValueError("expected a positional vector reflection predicate")
         if ast.dump(condition.left.value) != ast.dump(center_node):
             raise ValueError("reflection predicate needs a coordinate of the lattice center")
+        if center.kind not in self.records or self.result != f"[{center.kind}]":
+            raise ValueError("lattice result must be a list of the center record")
         coordinates = self.fields(center)
         if len(coordinates) != 2 or any(value.kind != "f32" for value in coordinates):
             raise ValueError("octants need two binary32 coordinates")
@@ -200,6 +232,8 @@ class Function(Lower):
     def ranked(self, body):
         scan, row_names, predicate, key, reducers = body[5:-1].split(";")
         rows, count = [self.expression(parse(term)) for term in scan.split(",")]
+        if not (rows.kind.startswith("[") and rows.kind[1:-1] in self.records and count.kind == "u64"):
+            raise ValueError("rank needs a record list and u64 count")
         row = self.local(rows.kind[1:-1])
         self.env = self.env | dict(zip(row_names.split(), self.fields(row), strict=True))
         test = truth(self.expression(parse(predicate, compact=True)))
@@ -235,6 +269,8 @@ class Function(Lower):
 
     def lower(self, body):
         if body.startswith("rank(") and ";" in body:
+            if self.result != "u64":
+                raise ValueError("rank result must be u64")
             statements = self.ranked(body)
         else:
             node = ast.parse(body, mode="eval").body
@@ -243,23 +279,31 @@ class Function(Lower):
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {
                 "first_eq", "count_if", "indices", "map_n",
             }:
+                required = "u64" if node.func.id in {"first_eq", "count_if"} else "[u64]"
+                if self.result != required:
+                    raise ValueError(f"{node.func.id} result must be {required}")
                 statements = getattr(self, node.func.id)(node)
             elif isinstance(node, ast.Name) and node.id == "argmin":
-                (name, _), = self.params
+                (name, kind), = self.params
+                if self.result != "u64" or kind != "[f32]":
+                    raise ValueError("argmin needs [f32] and returns u64")
                 statements = [f"(ret (minidx {name}))"]
             else:
-                statements = [f"(ret {self.scalar(node).text})"]
+                result = self.scalar(node, self.result)
+                if result.kind != self.result:
+                    raise ValueError(f"result type mismatch: expected {self.result}, got {result.kind}")
+                statements = [f"(ret {result.text})"]
         params = " ".join(f"{name}:{kind}" for name, kind in self.params)
         return "\n".join([*self.helpers,
                           f"(pub {self.name} ({params}) {self.result} ({' '.join(self.locals)})",
                           *["  " + line for line in statements], ")"]) + "\n"
 
 
-def lower_collections(planner, decoded, abi, schema):
+def lower_collections(planner, decoded, abi, schema, helper_names=None):
     public = read_abi(abi)
     exports = {f["name"]: f for f in schema["functions"] if f["export"]}
     records = {r["name"]: [(f["name"], ty(f["ty"])) for f in r["fields"]] for r in schema["records"]}
-    scalar_shapes = {"bool": "b", "u64": "u", "f32": "f"}
+    scalar_shapes = {"bool": "b", "u64": "u", "f32": "f", "i64": "i"}
 
     def shape(kind):
         if kind in scalar_shapes:
@@ -268,6 +312,8 @@ def lower_collections(planner, decoded, abi, schema):
             return f"[{shape(kind[1:-1])}]"
         return "(" + "".join(shape(field_kind) for _, field_kind in records[kind]) + ")"
 
+    if helper_names is None:
+        helper_names = {f["name"] for f in schema["functions"]}
     private = {}
     output = []
     for line in decoded.splitlines():
@@ -283,6 +329,7 @@ def lower_collections(planner, decoded, abi, schema):
         if body == "argmin" and not params:
             params = [binding["name"] for binding in interface["params"]]
         function = Function(name, params, interface, records, private)
+        function.helper_names = helper_names
         output.append(function.lower(body))
     if set(public) != set(exports) - {planner}:
         raise ValueError("collection packet does not cover the released collection exports")

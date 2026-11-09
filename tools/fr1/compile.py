@@ -1,14 +1,16 @@
 """Compile FR1 or compact structured source, with optional native output."""
 import argparse
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 from edits import apply
 from native import emit
-from packet import IDENTIFIER, MAX_PACKET_BYTES, alphabet, lower_source
+from packet import ALPHABET_SHA256, IDENTIFIER, MAX_PACKET_BYTES, alphabet, lower_source
 
 
 MAX_INTERFACE_BYTES = 64 * 1024
@@ -85,12 +87,57 @@ def publish(path, data):
             temporary.unlink(missing_ok=True)
 
 
+def bind_packet(args):
+    envelope = read(args.source, MAX_PACKET_BYTES)
+    interface = read(args.interface, MAX_INTERFACE_BYTES)
+    schema = json.loads(interface)
+    check_interface(schema)
+    words = alphabet()
+    if args.edits:
+        envelope = apply(envelope, words, read(args.edits, MAX_EDIT_BYTES))
+    lowered = lower_source(envelope, words, schema).encode("utf-8")
+    if len(lowered) > MAX_LOWERED_BYTES:
+        raise ValueError("lowered source exceeds the typed compiler byte limit")
+    return envelope, interface, lowered
+
+
+def migrate_packet(args):
+    envelope, interface, lowered = bind_packet(args)
+    with tempfile.TemporaryDirectory() as temporary:
+        source = Path(temporary) / "decoded.flux"
+        source.write_bytes(lowered)
+        command = [args.compiler.resolve(), "--receipt"]
+        if args.replay:
+            command.extend(("--replay", args.replay))
+        migrate = "migrate-structured-hir" if args.migrate_hir else "migrate-structured"
+        command.extend((migrate, source, args.output))
+        result = subprocess.run(command, stdout=subprocess.PIPE, check=True, timeout=30)
+    receipt = {
+        "version": 1,
+        "format": "fr1",
+        "input_sha256": sha256(envelope.encode("utf-8")).hexdigest(),
+        "interface_sha256": sha256(interface.encode("utf-8")).hexdigest(),
+        "alphabet_sha256": ALPHABET_SHA256,
+        "structured": json.loads(result.stdout),
+    }
+    sys.stdout.buffer.write(json.dumps(receipt, separators=(",", ":")).encode("utf-8") + b"\n")
+
+
 def compile_packet(args):
     outputs = [path.resolve() for path in
                (args.output, args.emit_source, args.emit_packet, args.emit_native) if path]
     inputs = {path.resolve() for path in (args.source, args.interface, args.edits, args.compiler) if path}
     if len(outputs) != len(set(outputs)) or inputs.intersection(outputs):
         raise ValueError("compiler outputs must be distinct from one another and from the inputs")
+    if args.migrate or args.migrate_hir:
+        if args.compact or any((args.edits, args.emit_source, args.emit_packet,
+                               args.emit_native, args.native_export, args.native_loops)):
+            flag = "--migrate-hir" if args.migrate_hir else "--migrate"
+            raise ValueError(f"{flag} requires FR1 input and cannot be combined with compile or edit outputs")
+        migrate_packet(args)
+        return
+    if args.replay:
+        raise ValueError("--replay requires --migrate or --migrate-hir")
     if bool(args.emit_native) != bool(args.native_export):
         raise ValueError("native output requires at least one --native-export")
     if args.native_loops and not args.emit_native:
@@ -101,15 +148,7 @@ def compile_packet(args):
             raise ValueError("FR1 edits and packet output require FR1 source")
         lowered = read(args.source, MAX_LOWERED_BYTES).encode("utf-8")
     else:
-        envelope = read(args.source, MAX_PACKET_BYTES)
-        schema = json.loads(read(args.interface, MAX_INTERFACE_BYTES))
-        check_interface(schema)
-        words = alphabet()
-        if args.edits:
-            envelope = apply(envelope, words, read(args.edits, MAX_EDIT_BYTES))
-        lowered = lower_source(envelope, words, schema).encode("utf-8")
-    if len(lowered) > MAX_LOWERED_BYTES:
-        raise ValueError("lowered source exceeds the typed compiler byte limit")
+        envelope, _, lowered = bind_packet(args)
     with tempfile.TemporaryDirectory() as temporary:
         source = Path(temporary) / "decoded.flux"
         program = Path(temporary) / "decoded.fsm"
@@ -144,6 +183,10 @@ def main():
     parser.add_argument("--emit-native", type=Path)
     parser.add_argument("--native-export", action="append")
     parser.add_argument("--native-loops", action="store_true")
+    migration = parser.add_mutually_exclusive_group()
+    migration.add_argument("--migrate", action="store_true", help="write compact source and print its migration receipt")
+    migration.add_argument("--migrate-hir", action="store_true", help="write checked FXH and print its migration receipt")
+    parser.add_argument("--replay", type=Path, help="bounded structured replay for migration")
     args = parser.parse_args()
     try:
         compile_packet(args)

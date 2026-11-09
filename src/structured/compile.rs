@@ -40,6 +40,8 @@ pub(crate) enum Op {
     Empty,
     Last,
     Index,
+    /// Consumes a checked list<f32> and produces u64. After the instruction's
+    /// base fuel, debit one unit per element before evaluating the minimum.
     ArgMinF32,
     Push(usize),
     Pop(usize),
@@ -67,12 +69,15 @@ impl From<Op> for Instruction {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Code {
     pub(super) params: Vec<Type>,
     pub(super) result: Type,
     pub(super) slots: usize,
+    pub(super) slot_types: Vec<Type>,
     pub(super) ops: Vec<Instruction>,
+    #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
+    pub(super) native: std::sync::OnceLock<Option<super::native_scalar::Scalar>>,
 }
 
 #[derive(Clone, Debug)]
@@ -84,6 +89,8 @@ pub struct Module {
     pub(super) enums: BTreeMap<String, Enum>,
     pub(super) exports: BTreeMap<String, usize>,
     pub(super) code: Vec<Arc<Code>>,
+    #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+    pub(super) native: Arc<[super::typed_jit::Cache]>,
 }
 
 // Preserve the released FSM payload without exposing a source format.
@@ -100,7 +107,7 @@ struct FsmSource {
     functions: Vec<Function>,
 }
 
-fn encode_source(source: &Source) -> Result<Vec<u8>, Error> {
+pub(super) fn encode_source(source: &Source) -> Result<Vec<u8>, Error> {
     let mut bytes = Vec::new();
     FsmSource::serialize(source, &mut serde_json::Serializer::new(&mut bytes))
         .map_err(|e| error(e.to_string()))?;
@@ -108,7 +115,21 @@ fn encode_source(source: &Source) -> Result<Vec<u8>, Error> {
     Ok(bytes)
 }
 
+fn decode_source(source: &[u8]) -> Result<Source, Error> {
+    bound(source.len())?;
+    let text = std::str::from_utf8(source).map_err(|e| error(e.to_string()))?;
+    let mut parser = serde_json::Deserializer::from_str(text);
+    let source = FsmSource::deserialize(&mut parser).map_err(|e| error(e.to_string()))?;
+    parser.end().map_err(|e| error(e.to_string()))?;
+    Ok(source)
+}
+
 impl Module {
+    /// Read a released JSON module for migration to compact source or FXH.
+    pub fn compile_legacy_json(source: &str) -> Result<Self, Error> {
+        Self::compile(decode_source(source.as_bytes())?)
+    }
+
     pub fn compile_compact(text: &str) -> Result<Self, Error> {
         Self::compile(Source::parse_compact(text)?)
     }
@@ -142,6 +163,8 @@ impl Module {
         }
         let interface = env.interface(&source.inputs, signatures);
         let canonical = encode_source(&source)?;
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        let native = (0..code.len()).map(|_| Default::default()).collect();
         Ok(Self {
             version: source.version,
             canonical: canonical.into(),
@@ -150,6 +173,8 @@ impl Module {
             enums: env.enums,
             exports,
             code,
+            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            native,
         })
     }
 
@@ -162,6 +187,12 @@ impl Module {
         changed: &BTreeSet<usize>,
     ) -> Result<Self, Error> {
         let mut module = self.clone();
+        // Code bodies can be reused across generations. Inlined native calls
+        // depend on the complete generation, including unchanged callers.
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        if !changed.is_empty() {
+            module.native = (0..self.code.len()).map(|_| Default::default()).collect();
+        }
         for &index in changed {
             let function = &source.functions[index];
             module.code[index] = Arc::new(compile_body(&checker.env, function, &function.body)?);
@@ -175,6 +206,10 @@ impl Module {
 
     pub(crate) fn canonical_source(&self) -> &[u8] {
         &self.canonical
+    }
+
+    pub(crate) fn checked_source(&self) -> Result<Source, Error> {
+        decode_source(self.canonical_source())
     }
 
     /// Portable envelope of the validated canonical source. Decoding rechecks
@@ -192,12 +227,7 @@ impl Module {
             .strip_prefix(MAGIC)
             .and_then(|bytes| bytes.split_first_chunk::<2>())
             .ok_or_else(|| error("unknown structured module envelope"))?;
-        bound(source.len())?;
-        let text = std::str::from_utf8(source).map_err(|e| error(e.to_string()))?;
-        let mut parser = serde_json::Deserializer::from_str(text);
-        let source = FsmSource::deserialize(&mut parser).map_err(|e| error(e.to_string()))?;
-        parser.end().map_err(|e| error(e.to_string()))?;
-        let module = Self::compile(source)?;
+        let module = Self::compile(decode_source(source)?)?;
         if module.version != u16::from_le_bytes(*version) {
             return Err(error(
                 "structured module envelope version differs from source",
@@ -234,11 +264,18 @@ fn compile_body(env: &Environment<'_>, function: &Function, body: &[Stmt]) -> Re
     if compiler.ops.len() > MAX_CODE {
         return Err(error("replacement instruction count exceeds limit"));
     }
+    let mut slot_types = vec![Type::Unit; compiler.slots.len()];
+    for (index, ty) in compiler.slots.into_values() {
+        slot_types[index] = ty;
+    }
     Ok(Code {
         params: function.params.iter().map(|p| p.ty.clone()).collect(),
         result: function.result.clone(),
-        slots: compiler.slots.len(),
+        slots: slot_types.len(),
+        slot_types,
         ops: compiler.ops.into_iter().map(Instruction::from).collect(),
+        #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
+        native: std::sync::OnceLock::new(),
     })
 }
 

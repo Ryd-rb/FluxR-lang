@@ -1,0 +1,6 @@
+v1
+(inputs bonus:i64)
+(rec Counter total:i64)
+(fn adjust (i:i64) i64 () (ret(* i 2)))
+(fn Counter.advance (self:Counter count:i64) Counter (i:i64 change:i64) (= i 0) (while(< i count)( (if(==(% i 2) 0)( (= change $bonus))( (= change(call adjust i)))) (= self.total(+ self.total change)) (= i(+ i 1)))) (ret self))
+(pub tick (state:Counter count:i64) Counter () (ret(m state advance count)))

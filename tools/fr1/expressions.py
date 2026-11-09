@@ -9,9 +9,9 @@ def f32(value):
 
 NUMBER = re.compile(r"(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
 NAME = re.compile(r"[a-zA-Z_]\w*")
-LEX = re.compile(rf"{NUMBER.pattern}|{NAME.pattern}|>=|<=|!=|[?():\[\],!&|<>=+*%\-]")
+LEX = re.compile(rf"{NUMBER.pattern}|{NAME.pattern}|>=|<=|!=|[?():\[\],!&|<>=+*/%\-]")
 BP = {"|": 2, "&": 3, "=": 4, "!=": 4, "<": 4, ">": 4, "<=": 4, ">=": 4,
-      "+": 5, "-": 5, "*": 6, "%": 6}
+      "+": 5, "-": 5, "*": 6, "/": 6, "%": 6}
 
 
 def guard_tokens(text):

@@ -1,7 +1,14 @@
 //! Versioned, deterministic modules with typed state and bounded execution.
 mod compact;
+mod compact_print;
 mod compile;
+mod native_aot;
 mod native_budget;
+mod native_ir;
+#[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
+mod native_scalar;
+#[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+mod typed_jit;
 mod vm;
 
 use crate::{Error, bound};
@@ -12,6 +19,7 @@ use std::sync::Arc;
 pub(crate) use compact::parse_expression;
 pub(crate) use compile::BodyChecker;
 pub use compile::Module;
+pub use native_aot::PreparedAot;
 pub use vm::Workspace;
 
 const VERSION: u16 = 2;

@@ -19,7 +19,70 @@ unsafe extern "system" {
     fn FlushInstructionCache(process: *mut c_void, addr: *const c_void, size: usize) -> i32;
 }
 
-struct Page(NonNull<c_void>);
+#[derive(Debug)]
+pub(crate) struct Page(NonNull<c_void>);
+
+#[cfg(feature = "typed-jit")]
+#[repr(C)]
+#[derive(Debug)]
+struct RuntimeFunction {
+    start: u32,
+    end: u32,
+    unwind: u32,
+}
+
+#[cfg(feature = "typed-jit")]
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn RtlAddFunctionTable(table: *const RuntimeFunction, count: u32, base: u64) -> u8;
+    fn RtlDeleteFunctionTable(table: *const RuntimeFunction) -> u8;
+}
+
+#[cfg(feature = "typed-jit")]
+#[derive(Debug)]
+pub(crate) struct RegisteredPage {
+    table: Box<RuntimeFunction>,
+    page: Page,
+}
+
+#[cfg(feature = "typed-jit")]
+impl RegisteredPage {
+    pub(crate) fn publish(code: &[u8], unwind: &[u8]) -> Result<Self, Error> {
+        let offset = code.len().next_multiple_of(4);
+        if code.is_empty() || offset + unwind.len() > CODE_LIMIT {
+            return Err(Error("invalid native code or unwind size".into()));
+        }
+        let mut bytes = Vec::with_capacity(offset + unwind.len());
+        bytes.extend_from_slice(code);
+        bytes.resize(offset, 0);
+        bytes.extend_from_slice(unwind);
+        let page = Page::publish(&bytes)?;
+        let table = Box::new(RuntimeFunction {
+            start: 0,
+            end: code.len() as u32,
+            unwind: offset as u32,
+        });
+        // SAFETY: The table and its RX base stay at stable addresses until
+        // unregistration in Drop, including during concurrent calls.
+        if unsafe { RtlAddFunctionTable(&*table, 1, page.0.as_ptr() as u64) } == 0 {
+            return Err(platform_error("RtlAddFunctionTable"));
+        }
+        Ok(Self { table, page })
+    }
+
+    pub(crate) fn entry(&self) -> *const c_void {
+        self.page.0.as_ptr()
+    }
+}
+
+#[cfg(feature = "typed-jit")]
+impl Drop for RegisteredPage {
+    fn drop(&mut self) {
+        // SAFETY: No invocation borrows the page now. Unregister the live
+        // table before Rust drops the table allocation and executable page.
+        unsafe { RtlDeleteFunctionTable(&*self.table) };
+    }
+}
 
 // SAFETY: Published pages are immutable RX mappings. The sole owner releases
 // the mapping on drop; shared evaluation borrows that owner and uses local scratch.
@@ -35,8 +98,10 @@ impl Drop for Page {
 }
 
 impl Page {
-    fn publish(code: &[u8]) -> Result<Self, Error> {
-        debug_assert!(!code.is_empty() && code.len() <= CODE_LIMIT);
+    pub(crate) fn publish(code: &[u8]) -> Result<Self, Error> {
+        if code.is_empty() || code.len() > CODE_LIMIT {
+            return Err(Error("invalid native code size".into()));
+        }
         // SAFETY: Allocate a private, initially writable mapping for these bytes.
         let ptr = unsafe {
             VirtualAlloc(
@@ -70,12 +135,13 @@ fn platform_error(operation: &str) -> Error {
     ))
 }
 
-pub(super) struct NativeRule {
+#[derive(Debug)]
+pub(crate) struct NativeRule {
     page: Page,
     inputs: usize,
 }
 
-pub(super) fn compile(program: &RuleProgram) -> Result<NativeRule, Error> {
+pub(crate) fn compile(program: &RuleProgram) -> Result<NativeRule, Error> {
     let code = Emitter::lower(program)?;
     Ok(NativeRule {
         page: Page::publish(&code)?,
@@ -85,7 +151,7 @@ pub(super) fn compile(program: &RuleProgram) -> Result<NativeRule, Error> {
 
 impl NativeRule {
     #[inline]
-    pub(super) fn evaluate(&self, inputs: &[i64]) -> Result<i64, Error> {
+    pub(crate) fn evaluate(&self, inputs: &[i64]) -> Result<i64, Error> {
         if inputs.len() != self.inputs {
             return Err(Error("wrong number of rule inputs".into()));
         }
