@@ -66,7 +66,7 @@ mod method_call_order_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use method_call_order_checks::{
     check_method_artifact_safety, check_method_call_order, check_method_edit_isolation,
-    check_method_hir_replay,
+    check_method_hir_replay, check_recursive_method_safety,
 };
 #[cfg(any(test, target_arch = "wasm32"))]
 #[path = "nested_loop_calls_checks.rs"]

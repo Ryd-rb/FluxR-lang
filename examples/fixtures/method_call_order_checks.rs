@@ -16,6 +16,9 @@ pub(crate) use method_artifact_safety::check_method_artifact_safety;
 #[path = "method_hir_replay_checks.rs"]
 mod method_hir_replay;
 pub(crate) use method_hir_replay::check_method_hir_replay;
+#[path = "recursive_method_safety_checks.rs"]
+mod recursive_method_safety;
+pub(crate) use recursive_method_safety::check_recursive_method_safety;
 
 #[derive(Clone, Copy, Debug)]
 struct Case {

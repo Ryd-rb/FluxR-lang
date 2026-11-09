@@ -10,8 +10,10 @@ source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
 frame limits. Tag tests guard access to variant payloads. A method evaluates
 its receiver first, then its arguments from left to right, before entering
-the callee frame. The first trap stops the call. A field write on the
+the callee frame. Recursive methods can call another nominal receiver with
+the same field types. The first trap stops the call. A field write on the
 method's local record detaches it from the host snapshot and its aliases.
+A recursive result that makes no writes can retain the original allocation.
 Signed integers convert to binary32 with ties rounded to even. Converting back
 truncates toward zero, saturates at the signed limits, and returns zero for NaN.
 Square root preserves signed zero and returns a canonical NaN for invalid inputs.

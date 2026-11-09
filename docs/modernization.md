@@ -62,6 +62,7 @@ FXM-05.M verifies method body edits and isolation across revisions.
 FXM-05.N checks portable method artifacts and rejects malformed replacements
 before publication.
 FXM-03.B.8 replays method-bearing checked HIR through canonical FXH and FSM.
+FXM-05.O verifies bounded recursive nominal methods and snapshot ownership.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2288,3 +2289,44 @@ Local `method-hir-replay/manifest.json` SHA-256
 `F1856D8019BE7ADA35820B1FCAB60F087463896997F11A40536F1EC063530807`
 binds the frozen bytes, oracle, reader builds, and validation. FXM-05.O next
 checks recursive nominal methods under bounded frames, fuel, and cells.
+
+## FXM-05.O bounded recursive nominal methods
+
+`Point.fold` recurses on its receiver and adds the retained count on
+unwind. At the base it can call `Twin.fold` on a same-shaped nominal record.
+Both pools and the snapshot share one host record. The Twin write copies
+its receiver before a possible signed subtraction trap. A Point write
+detaches independently, while a base call without writes returns the
+original allocation. Every result preserves the original snapshot alias.
+
+The independent ledger builds on FXM-05.D and FXM-05.L. It checks 3,276
+rows per route through compact, forced portable, decoded FSM, injected FSM,
+checked FXH source, and restored FXH. The three-step self call returns 13
+with 83 instructions, 63 cells, and five frames. The nested call returns 9
+with 104 instructions, 69 cells, and six frames. The indexed receiver can
+trap before the division argument, which can trap before variant payload
+access. Dispatch consumes fuel before checking frame depth and frame cells.
+The ledger checks each one-short limit, overlapping traps, and a
+1,026-frame call with exact and one-short budgets.
+
+Dotted self-call syntax produces identical FSM v2 and FXH v1 bytes.
+Five current and retained CLIs agree on 15 byte-identical round trips
+with 180 differential probes, 15 legacy restorations, and ten refusals
+that preserve existing output and create no new output. The migration
+CLI replay cap is 64 frames. All five CLIs refuse the deep probe before
+creating output. Passing a Twin in place of a Point is refused even with
+the same field types. Native JIT preparation declines the export, and
+native Rust generation reports `unsupported native AOT export fold`.
+The conformance tests exercise existing runtime paths and wire formats.
+
+Each default passed 94 Win64 release tests, one focused portable test,
+20 Node Wasm suites, five retained Node FXH cases, and Linux x64 compilation.
+Run `cargo test --locked --release --all-features --example bench_typed
+recursive_methods_match_bounded_safety_ledger` or call
+`recursive_method_safety_check()` in the Node Wasm example.
+
+Local `recursive-method-safety/manifest.json` SHA-256
+`8CB2063E08B18BAA0E1F482E7278F823903C64E69A4F9BC62431472B351ADB30`
+binds the freeze, artifacts, reader checks, and validation. FXM-03.B.9
+next checks composed eager selects and guard exits in historical rule
+replay and checked FXH projection.

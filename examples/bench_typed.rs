@@ -1163,6 +1163,17 @@ fn method_hir_matches_bounded_replay_ledger() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn recursive_method_safety_check() -> u32 {
+    corpus_checks::check_recursive_method_safety() as u32
+}
+
+#[test]
+fn recursive_methods_match_bounded_safety_ledger() {
+    assert_eq!(corpus_checks::check_recursive_method_safety(), 3_276);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;

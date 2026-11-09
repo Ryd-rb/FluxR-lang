@@ -1,0 +1,21 @@
+v2
+(rec Point value:i64 audit:u64)
+(rec Twin value:i64 audit:u64)
+(rec Outcome changed:Point original:Point)
+(enum Scale Skip Use:u64)
+(inputs points:[Point] snapshot:Point twins:[Twin])
+(fn Twin.fold (self:Twin delta:i64 scale:u64) i64 ()
+  (= self.audit (/ self.audit scale))
+  (ret (- self.value delta)))
+(fn Point.fold (self:Point n:i64 nested:bool index:u64 divisor:i64 scale:#Scale) Point ()
+  (if (<= n 0)
+    ((if nested
+       ((= self.value (m (at (input twins) index) fold (/ 12 divisor) (payload scale Use)))))
+     (ret self))
+    ((= self (m self fold (- n 1) nested index divisor scale))
+     (= self.value (+ self.value n))
+     (ret self))))
+(pub fold (n:i64 nested:bool index:u64 divisor:i64 scale:#Scale) Outcome ()
+  (ret (new Outcome
+    (m (at (input points) 0u) fold n nested index divisor scale)
+    (input snapshot))))
