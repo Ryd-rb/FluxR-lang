@@ -88,6 +88,11 @@ pub(super) use typed_effect_checks::check_typed_effects;
 mod universal_tape_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use universal_tape_checks::check_universal_tape;
+#[cfg(any(test, target_arch = "wasm32"))]
+#[path = "variant_payload_checks.rs"]
+mod variant_payload_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use variant_payload_checks::check_variant_payload;
 
 struct Replay<'a> {
     export: &'a str,

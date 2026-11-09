@@ -8,7 +8,9 @@ One timeline row can describe hundreds of related tracks. Decision gates
 evaluate facts lazily in a predictable order. Typed modules combine compact
 source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
-frame limits. A call reports the first exhausted limit or arithmetic trap.
+frame limits. Tag tests guard access to variant payloads. Calls report the
+first trap in evaluation order, including malformed inputs, exhausted
+limits, and payload access through the wrong variant.
 Signed integers convert to binary32 with ties rounded to even. Converting back
 truncates toward zero, saturates at the signed limits, and returns zero for NaN.
 Square root preserves signed zero and returns a canonical NaN for invalid inputs.
@@ -19,10 +21,11 @@ Rust and the Windows JIT use the same checked operations. When a native
 invocation declines, the portable evaluator applies the path's exact
 resource limits. It also handles short-circuit boolean expressions whose
 values cross a block boundary.
-The portable evaluator checks nested host values before execution, meters
-indexed access, and copies shared lists or records when a call writes to them.
-A replacement probe can fail after a write while leaving the active revision
-and the host's snapshot intact. The browser scene lab supports replay.
+The portable evaluator checks nested host values before execution and copies
+shared lists or records on write, including values held inside variants.
+The host can reject a replacement when its probe traps after a write and
+keep the active revision and the original inputs intact. The browser scene
+lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.

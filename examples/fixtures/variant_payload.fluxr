@@ -1,0 +1,12 @@
+v2
+(enum Choice Empty Edit:[i64] Other:[i64])
+(inputs base:#Choice)
+(fn patch (selected:#Choice) [i64] (row:[i64])
+  (= row (payload selected Edit))
+  (push row 7)
+  (push row (at (payload (input base) Edit) 0u))
+  (ret row))
+(pub edit (selected:#Choice force:bool) [i64] ()
+  (if (is selected Edit) ((ret (call patch selected))))
+  (if force ((ret (call patch selected))))
+  (ret (list i64)))

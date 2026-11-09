@@ -30,7 +30,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-02 | Shared optimized runtime. Match injected and bundled p50 within 5% and p95 within 10% in each supported hot workload. Target FluxR/Rust geometric mean ≤1.10 and p95 ≤1.25 over the frozen corpus. Keep individual failures visible. The optional signed-leaf JIT and three runtime optimizations are the first implementation. | FXM-01 and FXM-05 semantic contract. Profile stateful loops, validate typed SSA and test register-based portable, Cranelift, and Wasm tiers before choosing production defaults. |
 | FXM-03 | Preserve released inputs and artifact bytes. Migrate automatically with a deterministic proof receipt, old/new differential replay, and an explicit refusal if any semantic feature cannot be translated. The first pass has timeline v2, structured compact, and canonical rule migration. | FXM-05 for new core semantics. Add rule and FR1 ingress to shared HIR, historical fixture checks, migration reports, and versioned IR round trips. |
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
-| FXM-05 | Safety and language coverage. The bounded ledgers cover typed lists, nested values, procedure calls, recursion, control flow and binary32 boundaries. FXM-05.B also demonstrates a universal tape simulator. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
+| FXM-05 | Safety and language coverage. The bounded ledgers cover typed lists, variant payloads, nested values, procedure calls, recursion, control flow and binary32 boundaries. FXM-05.B also demonstrates a universal tape simulator. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 | FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. Reconcile again at each accepted checkpoint. |
 | FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Comparison accepted on both defaults. FXM-07.A screens typed-list traversal separately. |
@@ -1738,3 +1738,40 @@ Local `runtime-parity-d11/manifest.json` SHA-256
 `E69FC1A98F767E22DBB2E5BDD769C5F6F0F14C802E707D037F55F32B37956FC0` binds the sealed candidate, profiles, timing
 guards, raw results and compatibility replay. FXM-05.J next examines
 variant payload extraction under competing traps and replacement.
+
+## FXM-05.J guarded variant payload extraction
+
+The source ledger follows two variants that carry the same signed-list type
+and a third variant with no payload. A tag test bypasses extraction for
+either alternate variant. Forcing extraction traps for both an absent
+payload and a populated payload with the wrong tag. The helper copies the
+selected list on its first write and reads the original snapshot through
+a separate payload extraction. With two elements shared by the input and
+argument, success needs 18 instructions, 24 cells, and two frames.
+
+The ledger matches 30,619 calls per route across bundled, forced portable,
+decoded portable, source-injected, and artifact-injected execution. The grid
+crosses nearby fuel, cell, and frame limits with malformed root types, tags,
+payloads, and arguments. Both Windows native tiers use the portable path
+for this export. The result owns a detached list and the host retains both
+original variants.
+
+The replacement switches the snapshot extraction to the other populated
+variant. Probe failures cover frame entry, fuel before extraction, cell
+exhaustion at the first write, and a wrong tag after that write. Each leaves
+the active bytes, revision, and host values intact. Probing with the expected
+snapshot tag then activates the replacement.
+
+Both repositories passed 84 Windows release tests, 14 Node Wasm suites,
+three historical FXH fixtures under Node, and a Linux x64 compile check.
+The new fixture and the eleven retained FSM artifacts matched both current
+builds and both retained readers. The D.11 runtime is byte-identical.
+Local `variant-payload-safety/manifest.json` SHA-256
+`4EFD1831754204F5C976A2B998BCD03F3A9708F3DFE9BEA76969B0DACD0ACD68`
+binds the frozen ledger and compatibility results.
+
+Run `cargo test --locked --release --all-features --example bench_typed
+variant_payload_matches_effect_ledger` or call `variant_payload_check()`
+in the Node Wasm example. Wider safety coverage and both warm parity gates
+remain open. FXM-03.B.4 next examines the remaining rule projection gap
+for integer bitwise and while retaining canonical FXH v1.

@@ -1094,6 +1094,18 @@ fn list_boundary_matches_effect_ledger() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn variant_payload_check() -> u32 {
+    corpus_checks::check_variant_payload() as u32
+}
+
+#[cfg(test)]
+#[test]
+fn variant_payload_matches_effect_ledger() {
+    assert_eq!(corpus_checks::check_variant_payload(), 30_619);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;
