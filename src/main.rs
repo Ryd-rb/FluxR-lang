@@ -30,11 +30,7 @@ fn run(args: &[String]) -> Result<(), Box<dyn Error>> {
     }
     if command == "encode-structured" {
         let text = std::str::from_utf8(&bytes)?;
-        let module = if text.trim_start().starts_with('v') {
-            fluxr::structured::Module::compile_compact(text)?
-        } else {
-            fluxr::structured::Module::compile_text(text)?
-        };
+        let module = fluxr::structured::Module::compile_compact(text)?;
         fs::write(input, module.encode())?;
         return Ok(());
     }

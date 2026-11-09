@@ -17,7 +17,7 @@ Run the structured example with the command in [Structured modules](#structured-
 
 The [MIT-licensed TextMate grammar](syntaxes/fluxr.tmLanguage.json) provides
 the scope `source.fluxr` for editors that support TextMate grammars. It covers
-timelines, postfix rules, compact and JSON structured modules, and lazy gates.
+timelines, postfix rules, compact structured modules, and lazy gates.
 Try the [fan controller](examples/fan-speed.fluxr), the
 [compact counter module](examples/structured-counter.fluxr), and the
 [route admission gate](examples/route-gate.fluxr) from the repository root.
@@ -28,7 +28,6 @@ cargo run --locked --bin fluxr-cli -- encode-structured examples/structured-coun
 cargo run --locked --bin fluxr-cli -- emit-gate examples/route-gate.fluxr target/route-gate.rs
 ```
 
-The counter is the compact form of the [live host module](tests/fixtures/structured_counter.fluxr).
 The gate requires authorization (`a`) and a healthy service (`b`). It accepts a
 ready primary route (`c`) or an available fallback (`d`) outside maintenance (`e`).
 
@@ -63,13 +62,11 @@ For bundled rules, `RuleProgram::rust_function` generates a typed function for t
 
 ## Structured modules
 
-Structured modules are a separate versioned language for Rust embedding. The
-source is a JSON syntax tree, and Rust producers can construct the same typed
-`fluxr::structured::Source` directly. The compiler validates names, nominal
+Structured modules are a versioned language for Rust embedding. Author them
+in compact FluxR or construct the typed `fluxr::structured::Source` directly. The compiler validates names, nominal
 types, calls and control flow, then lowers the module to an in-memory instruction
-sequence. The portable `FSM\0` envelope stores canonical source and decoders
-revalidate it. Existing timeline and scalar rule formats have separate entry
-points and semantics.
+sequence. The portable `FSM\0` artifact keeps its existing encoding and is
+revalidated on decode. Timelines and scalar rules have separate entry points.
 
 Version 1 has typed local slots, conditional branches, while loops, break and
 continue, function calls and recursion, record construction and field updates,
@@ -105,13 +102,14 @@ serialize replacement at their own transaction boundary.
 
 The live example accepts JSON lines on standard input and reports its PID,
 active revision, state and error on standard output. Run it with
-`cargo run --example structured_live -- tests/fixtures/structured_counter.fluxr`.
+`cargo run --example structured_live -- examples/structured-counter.fluxr`.
 Send `{"op":"tick","count":6}` to run one transaction. An injection request
-supplies `op: "inject"`, the `expected_revision`, and a `source` string.
+supplies `op: "inject"`, the `expected_revision`, and compact FluxR in the
+`source` string.
 
 ## Compact structured source
 
-Use compact typed source when it uses fewer tokens than JSON. This function checks route expiry.
+This compact function checks route expiry.
 
 ```text
 v2
@@ -128,9 +126,9 @@ preserves every bit. Group branches and loop bodies in parentheses.
 
 Source::parse_compact and Module::compile_compact use the existing checker and
 VM. Stmt::parse_compact_body checks the edit syntax before typed composition.
-The encode-structured CLI command emits the same portable envelope for either
-released JSON or compact input. The project targets at most 10% of equivalent
-Rust source tokens using reproducible, behavior-matched counts.
+The `encode-structured` CLI command takes compact source and writes an FSM
+artifact. The project targets at most 10% of equivalent Rust source tokens
+using reproducible, behavior-matched counts.
 
 Compact collection forms lower to existing checked statements. A find returns
 the first index that passes a predicate, or its stated bound. An indices form

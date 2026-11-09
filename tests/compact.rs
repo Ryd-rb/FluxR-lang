@@ -1,7 +1,7 @@
 use fluxr::structured::{Invocation, Limits, Module, Stmt, Value};
 
 #[test]
-fn compact_and_released_json_encode_and_run_identically() {
+fn compact_roundtrips_and_runs_with_binary32_fields() {
     let compact = r#"v2
 (rec Point x:f32 z:f32)
 (enum Result none found:Point)
@@ -12,12 +12,7 @@ fn compact_and_released_json_encode_and_run_identically() {
   (= index (minidx values))
   (ret (tag Result.found (m (new Point 0f -0f) shift (at values index)))))
 "#;
-    let json = r#"{"version":2,"records":[{"name":"Point","fields":[{"name":"x","ty":"f32"},{"name":"z","ty":"f32"}]}],"enums":[{"name":"Result","variants":[{"name":"none","payload":null},{"name":"found","payload":{"record":"Point"}}]}],"functions":[{"name":"shift","receiver":"Point","params":[{"name":"self","ty":{"record":"Point"}},{"name":"amount","ty":"f32"}],"result":{"record":"Point"},"body":[{"op":"return","value":{"op":"record","name":"Point","fields":[{"op":"binary","kind":"add","left":{"op":"field","record":{"op":"local","name":"self"},"name":"x"},"right":{"op":"local","name":"amount"}},{"op":"field","record":{"op":"local","name":"self"},"name":"z"}]}}]},{"name":"pick","export":true,"params":[{"name":"values","ty":{"list":"f32"}}],"locals":[{"name":"index","ty":"u64"}],"result":{"enum":"Result"},"body":[{"op":"if","test":{"op":"empty","list":{"op":"local","name":"values"}},"then":[{"op":"return","value":{"op":"variant","name":"Result","variant":"none","payload":null}}]},{"op":"set","local":"index","value":{"op":"arg_min_f32","list":{"op":"local","name":"values"}}},{"op":"return","value":{"op":"variant","name":"Result","variant":"found","payload":{"op":"method","receiver":{"op":"record","name":"Point","fields":[{"op":"f32","bits":0},{"op":"f32","bits":2147483648}]},"name":"shift","args":[{"op":"index","list":{"op":"local","name":"values"},"index":{"op":"local","name":"index"}}]}}}]}]}"#;
     let module = Module::compile_compact(compact).unwrap();
-    assert_eq!(
-        module.encode(),
-        Module::compile_text(json).unwrap().encode()
-    );
     assert_eq!(
         Module::decode(&module.encode()).unwrap().encode(),
         module.encode()

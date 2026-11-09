@@ -17,15 +17,11 @@ const VERSION: u16 = 2;
 const MAGIC: &[u8; 4] = b"FSM\0";
 const MAX_DEPTH: usize = 32;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Source {
     pub version: u16,
-    #[serde(default)]
     pub inputs: Vec<Binding>,
-    #[serde(default)]
     pub records: Vec<Record>,
-    #[serde(default)]
     pub enums: Vec<Enum>,
     pub functions: Vec<Function>,
 }

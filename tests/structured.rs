@@ -1,26 +1,14 @@
 use fluxr::structured::{
     Binding, Invocation, Limits, Module, ModuleSlot, Source, Type, Value, Workspace,
 };
-use serde_json::{Value as Json, json};
 use std::hint::black_box;
 use std::time::Instant;
 
 #[test]
 fn version_two_arg_min_preserves_first_ties_and_charges_each_value() {
-    let mut source = body(
-        json!([]),
-        json!([ret(json!({
-            "op":"arg_min_f32", "list":{"op":"list","element":"f32","items":[
-                {"op":"f32","bits":2_f32.to_bits()},
-                {"op":"f32","bits":1_f32.to_bits()},
-                {"op":"f32","bits":1_f32.to_bits()}
-            ]}
-        }))]),
-        json!("u64"),
-    );
-    assert!(Module::compile_text(&source.to_string()).is_err());
-    source["version"] = json!(2);
-    let module = compile(source);
+    let body = "(pub run () u64 () (ret (minidx (list f32 2f 1f 1f))))";
+    assert!(Module::compile_compact(&format!("v1 {body}")).is_err());
+    let module = compile(&format!("v2 {body}"));
     let encoded = module.encode();
     let decoded = Module::decode(&encoded).unwrap();
     assert_eq!(decoded.encode(), encoded);
@@ -42,15 +30,10 @@ fn version_two_arg_min_preserves_first_ties_and_charges_each_value() {
     );
 }
 
-const COUNTER: &str = include_str!("fixtures/structured_counter.fluxr");
+const COUNTER: &str = include_str!("../examples/structured-counter.fluxr");
 
-fn compile(module: Json) -> Module {
-    Module::compile_text(&module.to_string()).unwrap()
-}
-
-fn body(locals: Json, code: Json, result: Json) -> Json {
-    json!({"version":1,"functions":[{"name":"run","export":true,
-        "locals":locals,"result":result,"body":code}]})
+fn compile(source: &str) -> Module {
+    Module::compile_compact(source).unwrap()
 }
 
 fn run(
@@ -65,19 +48,6 @@ fn run(
         arguments: args,
         limits,
     })
-}
-
-fn int(value: i64) -> Json {
-    json!({"op":"i64","value":value})
-}
-fn local(name: &str) -> Json {
-    json!({"op":"local","name":name})
-}
-fn binary(kind: &str, left: Json, right: Json) -> Json {
-    json!({"op":"binary","kind":kind,"left":left,"right":right})
-}
-fn ret(value: Json) -> Json {
-    json!({"op":"return","value":value})
 }
 
 fn state(total: i64) -> Value {
@@ -95,11 +65,16 @@ fn tick_args(args: &[Value]) -> Invocation<'_> {
 }
 
 #[test]
-fn typed_text_and_portable_encoding_agree_and_execute_methods() {
-    let from_text = Module::compile_text(COUNTER).unwrap();
-    let typed = serde_json::from_str::<Source>(COUNTER).unwrap();
+fn typed_and_compact_source_preserve_released_fsm_bytes() {
+    let from_text = Module::compile_compact(COUNTER).unwrap();
+    let typed = Source::parse_compact(COUNTER).unwrap();
     let encoded = Module::compile(typed).unwrap().encode();
     assert_eq!(from_text.encode(), encoded);
+    use sha2::{Digest, Sha256};
+    assert_eq!(
+        format!("{:x}", Sha256::digest(&encoded)),
+        "194e0cc56e112c79a45b7d1d4650a0bedc0cf6da1cd8b88c56dfa80f965d49e5"
+    );
     let decoded = Module::decode(&encoded).unwrap();
     assert_eq!(decoded.encode(), encoded);
     let initial = state(10);
@@ -113,7 +88,7 @@ fn typed_text_and_portable_encoding_agree_and_execute_methods() {
 
 #[test]
 fn slot_keeps_revision_and_state_on_bad_interface_stale_or_exhausted_candidate() {
-    let initial = Module::compile_text(COUNTER).unwrap();
+    let initial = Module::compile_compact(COUNTER).unwrap();
     assert!(ModuleSlot::new(initial.clone(), &[]).is_err());
     let grants = [Binding {
         name: "bonus".into(),
@@ -125,12 +100,12 @@ fn slot_keeps_revision_and_state_on_bad_interface_stale_or_exhausted_candidate()
     let continued = [result, Value::I64(6)];
     assert_eq!(slot.run(tick_args(&continued)).unwrap(), state(64));
 
-    let next = COUNTER.replace("\"value\":2}}}", "\"value\":4}}}");
+    let next = COUNTER.replace("(ret (* i 2))", "(ret (* i 4))");
     assert_ne!(next, COUNTER);
     assert_eq!(
         slot.inject(
             0,
-            Module::compile_text(&next).unwrap(),
+            Module::compile_compact(&next).unwrap(),
             Some(tick_args(&continued))
         )
         .unwrap(),
@@ -138,27 +113,19 @@ fn slot_keeps_revision_and_state_on_bad_interface_stale_or_exhausted_candidate()
     );
     assert_eq!(slot.run(tick_args(&continued)).unwrap(), state(82));
     assert!(
-        slot.inject(0, Module::compile_text(COUNTER).unwrap(), None)
+        slot.inject(0, Module::compile_compact(COUNTER).unwrap(), None)
             .is_err()
     );
 
-    let mut foreign: Json = serde_json::from_str(COUNTER).unwrap();
-    foreign["inputs"]
-        .as_array_mut()
-        .unwrap()
-        .push(json!({"name":"hidden","ty":"i64"}));
-    assert!(slot.inject(1, compile(foreign), None).is_err());
+    let foreign = COUNTER.replace("(inputs bonus:i64)", "(inputs bonus:i64 hidden:i64)");
+    assert!(slot.inject(1, compile(&foreign), None).is_err());
 
-    let mut looped: Json = serde_json::from_str(COUNTER).unwrap();
-    looped["functions"][2]["body"]
-        .as_array_mut()
-        .unwrap()
-        .insert(
-            0,
-            json!({"op":"while","test":{"op":"bool","value":true},"body":[]}),
-        );
+    let looped = COUNTER.replace(
+        "(ret (state.advance count))",
+        "(while true ()) (ret (state.advance count))",
+    );
     let error = slot
-        .inject(1, compile(looped), Some(tick_args(&continued)))
+        .inject(1, compile(&looped), Some(tick_args(&continued)))
         .unwrap_err();
     assert_eq!(error.to_string(), "module instruction budget exhausted");
     assert_eq!(slot.revision(), 1);
@@ -168,25 +135,17 @@ fn slot_keeps_revision_and_state_on_bad_interface_stale_or_exhausted_candidate()
 
 #[test]
 fn loops_can_move_values_between_stacks_and_return_enum_payloads() {
-    let mut source = body(
-        json!([{"name":"left","ty":{"list":"i64"}},{"name":"right","ty":{"list":"i64"}},
-               {"name":"top","ty":"i64"}]),
-        json!([
-            {"op":"set","local":"left","value":{"op":"list","element":"i64","items":[int(1),int(2),int(3)]}},
-            {"op":"set","local":"right","value":{"op":"list","element":"i64"}},
-            {"op":"while","test":{"op":"unary","kind":"not","value":{"op":"empty","list":local("left")}},"body":[
-                {"op":"set","local":"top","value":{"op":"last","list":local("left")}},
-                {"op":"pop","local":"left"},
-                {"op":"if","test":binary("eq",local("top"),int(2)),"then":[{"op":"continue"}]},
-                {"op":"push","local":"right","value":local("top")}
-            ]},
-            ret(json!({"op":"variant","name":"Outcome","variant":"Ok","payload":local("right")}))
-        ]),
-        json!({"enum":"Outcome"}),
-    );
-    source["enums"] = json!([{"name":"Outcome","variants":[
-        {"name":"None"},{"name":"Ok","payload":{"list":"i64"}}
-    ]}]);
+    let source = "v1
+        (enum Outcome None Ok:[i64])
+        (pub run () #Outcome (left:[i64] right:[i64] top:i64)
+          (= left (list i64 1 2 3))
+          (= right (list i64))
+          (while (! (empty left)) (
+            (= top (last left))
+            (pop left)
+            (if (== top 2) ((continue)))
+            (push right top)))
+          (ret (tag Outcome.Ok right)))";
     assert_eq!(
         run(&compile(source), "run", &[], Limits::default()).unwrap(),
         Value::Variant(
@@ -198,14 +157,11 @@ fn loops_can_move_values_between_stacks_and_return_enum_payloads() {
 
 #[test]
 fn calls_recurse_and_keep_the_callers_operands() {
-    let module = compile(json!({"version":1,"functions":[{
-        "name":"sum","export":true,"params":[{"name":"n","ty":"i64"}],"result":"i64",
-        "body":[{"op":"if","test":binary("eq",local("n"),int(0)),
-            "then":[ret(int(0))],
-            "otherwise":[ret(binary("add",local("n"),json!({
-                "op":"call","name":"sum","args":[binary("sub",local("n"),int(1))]
-            })))]}]
-    }]}));
+    let module = compile(
+        "v1
+        (pub sum (n:i64) i64 ()
+          (if (== n 0) ((ret 0)) ((ret (+ n (call sum (- n 1)))))))",
+    );
     let args = [Value::I64(10)];
     assert_eq!(
         run(&module, "sum", &args, Limits::default()).unwrap(),
@@ -229,33 +185,16 @@ fn calls_recurse_and_keep_the_callers_operands() {
 
 #[test]
 fn operators_short_circuit_and_arithmetic_is_deterministic() {
-    let trap = binary("eq", binary("div", int(1), int(0)), int(0));
-    let module = compile(body(
-        json!([]),
-        json!([ret(binary("and", json!({"op":"bool","value":false}), trap))]),
-        json!("bool"),
-    ));
+    let module = compile("v1 (pub run () bool () (ret (&& false (== (/ 1 0) 0))))");
     assert_eq!(
         run(&module, "run", &[], Limits::default()).unwrap(),
         Value::Bool(false)
     );
 
-    let module = compile(body(
-        json!([]),
-        json!([ret(binary("add", int(i64::MAX), int(1)))]),
-        json!("i64"),
-    ));
+    let module = compile("v1 (pub run () i64 () (ret (+ 9223372036854775807 1)))");
     assert!(run(&module, "run", &[], Limits::default()).is_err());
 
-    let module = compile(body(
-        json!([]),
-        json!([ret(binary(
-            "add",
-            json!({"op":"f32","bits":0x7f80_0001_u32}),
-            json!({"op":"f32","bits":0})
-        ))]),
-        json!("f32"),
-    ));
+    let module = compile("v1 (pub run () f32 () (ret (+ 0x7f800001f 0f)))");
     assert_eq!(
         run(&module, "run", &[], Limits::default()).unwrap(),
         Value::F32(0x7fc0_0000)
@@ -264,15 +203,13 @@ fn operators_short_circuit_and_arithmetic_is_deterministic() {
 
 #[test]
 fn input_validation_and_allocation_are_metered() {
-    let module = compile(body(
-        json!([{"name":"stack","ty":{"list":"i64"}}]),
-        json!([
-            {"op":"set","local":"stack","value":{"op":"list","element":"i64"}},
-            {"op":"while","test":{"op":"bool","value":true},"body":[{"op":"push","local":"stack","value":int(1)}]},
-            ret(int(0))
-        ]),
-        json!("i64"),
-    ));
+    let module = compile(
+        "v1
+        (pub run () i64 (stack:[i64])
+          (= stack (list i64))
+          (while true ((push stack 1)))
+          (ret 0))",
+    );
     assert_eq!(
         run(
             &module,
@@ -287,7 +224,7 @@ fn input_validation_and_allocation_are_metered() {
         .to_string(),
         "module cell budget exhausted"
     );
-    let counter = Module::compile_text(COUNTER).unwrap();
+    let counter = Module::compile_compact(COUNTER).unwrap();
     assert!(
         counter
             .run(tick_args(&[
@@ -305,21 +242,18 @@ fn input_validation_and_allocation_are_metered() {
 
 #[test]
 fn compiler_rejects_malformed_control_flow_types_and_interfaces() {
-    for source in [
-        body(json!([]), json!([{"op":"break"}]), json!("unit")),
-        body(json!([]), json!([]), json!("unit")),
-        body(json!([]), json!([ret(int(1))]), json!("bool")),
-        body(json!([]), json!([ret(local("hidden"))]), json!("i64")),
-        body(json!([]), json!([ret(int(1)), ret(int(2))]), json!("i64")),
+    for body in [
+        "(pub run () unit () (break))",
+        "(pub run () unit ())",
+        "(pub run () bool () (ret 1))",
+        "(pub run () i64 () (ret hidden))",
+        "(pub run () i64 () (ret 1) (ret 2))",
     ] {
-        assert!(Module::compile_text(&source.to_string()).is_err());
+        assert!(Module::compile_compact(&format!("v1 {body}")).is_err());
     }
-    let mut recursive = body(json!([]), json!([ret(int(1))]), json!("i64"));
-    recursive["records"] = json!([{"name":"Cycle","fields":[
-        {"name":"nested","ty":{"list":{"record":"Cycle"}}}
-    ]}]);
+    let recursive = "v1 (rec Cycle nested:[Cycle]) (pub run () i64 () (ret 1))";
     assert!(
-        Module::compile_text(&recursive.to_string())
+        Module::compile_compact(recursive)
             .unwrap_err()
             .to_string()
             .contains("recursive value type")
@@ -356,7 +290,7 @@ fn benchmark_interpreted_and_equivalent_rust() {
         start.elapsed().as_secs_f64() * 1e9 / (2_000 * cases.len()) as f64
     }
 
-    let module = Module::compile_text(COUNTER).unwrap();
+    let module = Module::compile_compact(COUNTER).unwrap();
     let mut workspace = Workspace::default();
     let mut interpret = |args: &[Value]| module.run_with(tick_args(args), &mut workspace).unwrap();
     for (name, counts) in [("small", [1, 4, 6, 8]), ("loop", [16, 32, 64, 128])] {
@@ -376,7 +310,7 @@ fn benchmark_interpreted_and_equivalent_rust() {
     }
     let start = Instant::now();
     for _ in 0..1_000 {
-        black_box(Module::compile_text(black_box(COUNTER)).unwrap());
+        black_box(Module::compile_compact(black_box(COUNTER)).unwrap());
     }
     println!("prepare_us {:.2}", start.elapsed().as_secs_f64() * 1e3);
 }

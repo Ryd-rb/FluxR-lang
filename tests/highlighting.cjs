@@ -78,12 +78,6 @@ async function main() {
     ["==", "keyword.operator.fluxr"],
     [".", "punctuation.accessor.fluxr"],
   ]);
-  sample("tests/fixtures/structured_counter.fluxr", "meta.module.json.fluxr", [
-    ['"version"', "support.type.property-name.json.fluxr"],
-    ["i64", "string.quoted.double.json.fluxr"],
-    ["true", "constant.language.json.fluxr"],
-    ["{", "punctuation.section.json.fluxr"],
-  ]);
   sample("examples/route-gate.fluxr", "meta.gate.fluxr", [
     ["&", "keyword.operator.fluxr"],
     ["!", "keyword.operator.fluxr"],
@@ -105,7 +99,6 @@ async function main() {
   scoped(tokens("r4 1 i0#comment"), "#comment", "comment.line.number-sign.fluxr");
   scoped(tokens("|abc"), "abc", "variable.parameter.fluxr");
   scoped(tokens("a"), "a", "variable.parameter.fluxr");
-  scoped(tokens('{"name":"a\\u0062"}'), "\\u0062", "constant.character.escape.json.fluxr");
   console.log("FluxR TextMate scope checks passed");
 }
 

@@ -55,12 +55,6 @@
       "patterns": [{ "include": "#compact" }]
     },
     {
-      "name": "meta.module.json.fluxr",
-      "begin": "^\\s*(?=\\{)",
-      "end": "(?!)",
-      "patterns": [{ "include": "#json" }]
-    },
-    {
       "name": "meta.gate.fluxr",
       "match": "^\\s*([&|])([a-p]{2,16})\\s*$",
       "captures": {
@@ -146,29 +140,6 @@
         { "match": "\\)", "name": "punctuation.section.group.end.fluxr" },
         { "match": "[\\[\\]]", "name": "punctuation.section.brackets.fluxr" },
         { "match": "\\.", "name": "punctuation.accessor.fluxr" }
-      ]
-    },
-    "json": {
-      "patterns": [
-        {
-          "match": "(\"(?:[^\"\\\\]|\\\\.)*\")\\s*(:)",
-          "captures": {
-            "1": { "name": "support.type.property-name.json.fluxr" },
-            "2": { "name": "punctuation.separator.key-value.json.fluxr" }
-          }
-        },
-        {
-          "name": "string.quoted.double.json.fluxr",
-          "begin": "\"",
-          "end": "\"",
-          "patterns": [
-            { "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4})", "name": "constant.character.escape.json.fluxr" }
-          ]
-        },
-        { "match": "-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", "name": "constant.numeric.json.fluxr" },
-        { "match": "\\b(?:true|false|null)\\b", "name": "constant.language.json.fluxr" },
-        { "match": "[{}\\[\\]]", "name": "punctuation.section.json.fluxr" },
-        { "match": ",", "name": "punctuation.separator.sequence.json.fluxr" }
       ]
     }
   }

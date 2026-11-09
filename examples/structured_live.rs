@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         name: "bonus".into(),
         ty: Type::I64,
     }];
-    let mut slot = ModuleSlot::new(Module::compile_text(&source)?, &grants)?;
+    let mut slot = ModuleSlot::new(Module::compile_compact(&source)?, &grants)?;
     let mut workspace = Workspace::default();
     let mut state = Value::Record([Value::I64(10)].into());
     let inputs = [Value::I64(3)];
@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     expected_revision,
                     source,
                 } => {
-                    let candidate = Module::compile_text(&source)?;
+                    let candidate = Module::compile_compact(&source)?;
                     let arguments = [state.clone(), Value::I64(6)];
                     slot.inject(
                         expected_revision,

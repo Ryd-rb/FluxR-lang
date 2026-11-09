@@ -86,14 +86,29 @@ pub struct Module {
     pub(super) code: Vec<Arc<Code>>,
 }
 
-impl Module {
-    /// Compile the versioned JSON source through the same checker as the typed API.
-    pub fn compile_text(source: &str) -> Result<Self, Error> {
-        bound(source.len())?;
-        let source = serde_json::from_str(source).map_err(|e| error(e.to_string()))?;
-        Self::compile(source)
-    }
+// Preserve the released FSM payload without exposing a source format.
+#[derive(Deserialize, Serialize)]
+#[serde(remote = "Source", deny_unknown_fields)]
+struct FsmSource {
+    version: u16,
+    #[serde(default)]
+    inputs: Vec<Binding>,
+    #[serde(default)]
+    records: Vec<Record>,
+    #[serde(default)]
+    enums: Vec<Enum>,
+    functions: Vec<Function>,
+}
 
+fn encode_source(source: &Source) -> Result<Vec<u8>, Error> {
+    let mut bytes = Vec::new();
+    FsmSource::serialize(source, &mut serde_json::Serializer::new(&mut bytes))
+        .map_err(|e| error(e.to_string()))?;
+    bound(bytes.len())?;
+    Ok(bytes)
+}
+
+impl Module {
     pub fn compile_compact(text: &str) -> Result<Self, Error> {
         Self::compile(Source::parse_compact(text)?)
     }
@@ -126,8 +141,7 @@ impl Module {
             code.push(Arc::new(body));
         }
         let interface = env.interface(&source.inputs, signatures);
-        let canonical = serde_json::to_vec(&source).map_err(|e| error(e.to_string()))?;
-        bound(canonical.len())?;
+        let canonical = encode_source(&source)?;
         Ok(Self {
             version: source.version,
             canonical: canonical.into(),
@@ -155,10 +169,7 @@ impl Module {
         if module.code.iter().map(|body| body.ops.len()).sum::<usize>() > MAX_CODE {
             return Err(error("module instruction count exceeds limit"));
         }
-        module.canonical = serde_json::to_vec(source)
-            .map_err(|e| error(e.to_string()))?
-            .into();
-        bound(module.canonical.len())?;
+        module.canonical = encode_source(source)?.into();
         Ok(module)
     }
 
@@ -181,8 +192,12 @@ impl Module {
             .strip_prefix(MAGIC)
             .and_then(|bytes| bytes.split_first_chunk::<2>())
             .ok_or_else(|| error("unknown structured module envelope"))?;
+        bound(source.len())?;
         let text = std::str::from_utf8(source).map_err(|e| error(e.to_string()))?;
-        let module = Self::compile_text(text)?;
+        let mut parser = serde_json::Deserializer::from_str(text);
+        let source = FsmSource::deserialize(&mut parser).map_err(|e| error(e.to_string()))?;
+        parser.end().map_err(|e| error(e.to_string()))?;
+        let module = Self::compile(source)?;
         if module.version != u16::from_le_bytes(*version) {
             return Err(error(
                 "structured module envelope version differs from source",

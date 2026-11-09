@@ -4,13 +4,13 @@ use fluxr::collaboration::{
 use fluxr::structured::{Expr, Limits, Source, Stmt, Value};
 
 fn snapshot() -> Snapshot {
-    let source: Source = serde_json::from_str(
-        r#"{"version":1,"functions":[
-            {"name":"choice","export":true,"result":"u64","body":[{"op":"return","value":{"op":"u64","value":0}}]},
-            {"name":"aux","export":true,"result":"u64","body":[{"op":"return","value":{"op":"u64","value":0}}]},
-            {"name":"slope","export":true,"result":"f32","body":[{"op":"return","value":{"op":"f32","bits":1065353216}}]}
-        ]}"#,
-    ).unwrap();
+    let source = Source::parse_compact(
+        "v1
+        (pub choice () u64 () (ret 0u))
+        (pub aux () u64 () (ret 0u))
+        (pub slope () f32 () (ret 1f))",
+    )
+    .unwrap();
     let target = |id: &str, function: &str, mode| Target {
         id: id.into(),
         function: function.into(),
@@ -210,12 +210,12 @@ fn unit_and_stateful_test_forks_do_not_share_their_active_program_or_mutable_sta
 
 #[test]
 fn relinked_caller_dispatches_to_the_new_body_and_matches_full_decode() {
-    let mut source: Source = serde_json::from_str(
-        r#"{"version":1,"functions":[
-            {"name":"choice","export":true,"result":"u64","body":[{"op":"return","value":{"op":"u64","value":0}}]},
-            {"name":"caller","export":true,"result":"u64","body":[{"op":"return","value":{"op":"call","name":"choice"}}]}
-        ]}"#,
-    ).unwrap();
+    let mut source = Source::parse_compact(
+        "v1
+        (pub choice () u64 () (ret 0u))
+        (pub caller () u64 () (ret (call choice)))",
+    )
+    .unwrap();
     let target = Target {
         id: "choice".into(),
         function: "choice".into(),
