@@ -39,9 +39,9 @@ An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.
 The migration tools check released packets against the host's nominal interface.
-Checked FXH restores method-bearing FSM modules byte for byte, including edited
-method bodies. Replay checks compare exact values, trap order, and resource
-limits. FR1 can replace an effect literal or a collection body in a checked
+Checked FXH restores FSM modules byte for byte, including edited methods,
+nested lists, and guarded variant payloads. Recompiling the checked source
+preserves exact resource limits, bounds traps, and copy-on-write behavior. FR1 can replace an effect literal or a collection body in a checked
 batch. A failed edit leaves all outputs intact. Receipts bind the edited packet,
 nominal interface, alphabet, and artifact.
 Hosts can opt into structured resource limits for signed integer and

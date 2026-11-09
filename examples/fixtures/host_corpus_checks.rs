@@ -77,7 +77,9 @@ pub(super) use nested_loop_calls_checks::check_nested_loop_calls;
 #[path = "nested_payload_artifact_checks.rs"]
 mod nested_payload_artifact_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
-pub(super) use nested_payload_artifact_checks::check_nested_payload_artifact_safety;
+pub(super) use nested_payload_artifact_checks::{
+    check_nested_payload_artifact_safety, check_nested_payload_hir_replay,
+};
 #[cfg(any(test, target_arch = "wasm32"))]
 #[path = "recursive_effect_checks.rs"]
 mod recursive_effect_checks;

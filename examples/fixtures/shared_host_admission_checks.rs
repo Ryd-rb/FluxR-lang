@@ -32,7 +32,7 @@ pub(super) fn tree(leaf: &Value, width: usize, last: Option<Value>) -> Value {
     layer(child, width, last)
 }
 
-fn expand(value: &Value) -> Value {
+pub(super) fn expand(value: &Value) -> Value {
     match value {
         Value::Record(fields) => Value::Record(fields.iter().map(expand).collect()),
         Value::List(values) => list(values.iter().map(expand)),
@@ -41,7 +41,7 @@ fn expand(value: &Value) -> Value {
     }
 }
 
-fn physical_allocations(roots: &[Value]) -> usize {
+pub(super) fn physical_allocations(roots: &[Value]) -> usize {
     fn visit(value: &Value, seen: &mut HashSet<usize>) {
         match value {
             Value::Record(fields) => {
@@ -70,7 +70,7 @@ fn physical_allocations(roots: &[Value]) -> usize {
 
 // One layer adds a record, list, empty tag, trailing flag, and one tag
 // per child. The oracle uses ranks and counts without walking host values.
-fn visits(levels: usize, width: usize) -> usize {
+pub(super) fn visits(levels: usize, width: usize) -> usize {
     (0..levels).fold(LEAF_CELLS, |n, _| 4 + width * (1 + n))
 }
 
@@ -78,7 +78,7 @@ fn last_tag_rank(width: usize) -> usize {
     4 + (width - 1) * (1 + visits(LEVELS - 1, width))
 }
 
-fn outcome(roots: [Admission; 4], limits: Limits) -> Outcome {
+pub(super) fn outcome(roots: [Admission; 4], limits: Limits) -> Outcome {
     let mut prior = 0;
     for root in roots {
         match root {

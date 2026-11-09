@@ -56,7 +56,12 @@ fn at<T>(list: &[T], index: u64) -> Expected<&T> {
         .ok_or(BOUNDS)
 }
 
-fn ledger(inputs: &[Value], args: &[Value], limits: Limits, edited: bool) -> Expected<Value> {
+pub(super) fn ledger(
+    inputs: &[Value],
+    args: &[Value],
+    limits: Limits,
+    edited: bool,
+) -> Expected<Value> {
     let ([base], [source, row, col]) = (inputs, args) else {
         return Err("host argument or input count differs from interface");
     };

@@ -42,7 +42,12 @@ fn admit<'a>(budget: &mut Budget, value: &'a Value) -> Expected<(usize, &'a [Val
     }
 }
 
-fn ledger(inputs: &[Value], args: &[Value], limits: Limits, base_tag: usize) -> Expected<Value> {
+pub(super) fn ledger(
+    inputs: &[Value],
+    args: &[Value],
+    limits: Limits,
+    base_tag: usize,
+) -> Expected<Value> {
     let ([base], [selected, force]) = (inputs, args) else {
         return Err("host argument or input count differs from interface");
     };

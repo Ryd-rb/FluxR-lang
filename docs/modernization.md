@@ -65,6 +65,7 @@ FXM-03.B.8 replays method-bearing checked HIR through canonical FXH and FSM.
 FXM-05.O verifies bounded recursive nominal methods and snapshot ownership.
 FXM-03.B.9 verifies composed eager rules against archived FXD and checked FXH.
 FXM-05.P checks malformed nested lists and variant payloads in portable artifacts.
+FXM-03.B.10 checks valid nested payloads and shared host values through FXH.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2407,3 +2408,35 @@ Local `nested-payload-artifact-safety/manifest.json` SHA-256
 binds the freeze, diagnostics, compatibility, and platform checks. FXM-03.B.10
 next checks successful nested and variant FXH replay under ranked traps and
 exact resource limits.
+
+## FXM-03.B.10 checked FXH replay for nested payloads
+
+The three valid FXM-05.P controls retain their canonical FSM v2 and FXH v1
+bytes. The replay uses the independent FXM-05.I, J, and K effect ledgers.
+It compares 32 frozen rows across decoded FSM, recompiled checked source,
+and restored FXH for 96 calls per platform.
+
+Successful list and variant writes detach from the host allocation. The list
+uses 18 instructions, 32 cells, and two frames. The guarded variant uses
+18 instructions, 24 cells, and two frames. The shared host tree uses two
+instructions, 13,318 cells, and one frame. One-short limits trap on each
+resource. The ledger also checks high-bit row and column indices, bounds
+and variant extraction after a write, and a missing payload before frame
+entry. Equal shared and expanded host values have the same logical cell
+cost. The first malformed deep scalar reports its type error at 42 cells
+and cell exhaustion at 41.
+
+Two current and two retained CLIs pass 36 canonical round trips with 156
+differential probes and 96 byte comparisons. The CLI covers values and
+traps. The Win64 and Node ledgers also check allocation identity. Each
+default passes 97 Win64 release tests, one focused portable test, 24 Node
+Wasm suites, five retained FXH cases, and Linux x64 compilation. Run
+`cargo test --locked --release --no-default-features --example bench_typed
+nested_payload_hir_matches_bounded_replay_ledger` or call
+`nested_payload_hir_replay_check()` from the Node Wasm example.
+
+Local `nested-payload-hir-replay/manifest.json` SHA-256
+`0EE0C14BC89169770D9FD1DE741AD07CAC6A19F55ED5710E68F47A1163288CF5`
+binds the fixture and oracle hashes, reader receipts, and platform checks.
+FXM-05.Q next checks malformed FXD origins and inconsistent rule projections
+inside FXH.

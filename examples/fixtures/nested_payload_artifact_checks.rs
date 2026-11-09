@@ -31,6 +31,10 @@ macro_rules! fixture {
     };
 }
 
+#[path = "nested_payload_hir_replay_checks.rs"]
+mod nested_payload_hir_replay_checks;
+pub(crate) use nested_payload_hir_replay_checks::check_nested_payload_hir_replay;
+
 fn restored(hir: Hir) -> Module {
     let Artifact::Structured(module) = hir.into_artifact() else {
         panic!("expected a structured origin");
