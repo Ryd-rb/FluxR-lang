@@ -1037,6 +1037,12 @@ pub fn structured_boundary_check() -> u32 {
     corpus_checks::check_structured_boundary() as u32
 }
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn compound_effect_check() -> u32 {
+    corpus_checks::check_compound_effects() as u32
+}
+
 #[cfg(test)]
 #[test]
 fn host_corpus_matches_reference() {
@@ -1053,6 +1059,12 @@ fn list_effects_match_oracle() {
 #[test]
 fn typed_effects_match_specification() {
     assert_eq!(corpus_checks::check_typed_effects(), 19_770);
+}
+
+#[cfg(test)]
+#[test]
+fn compound_effects_match_specification() {
+    assert_eq!(corpus_checks::check_compound_effects(), 24_253);
 }
 
 #[cfg(test)]

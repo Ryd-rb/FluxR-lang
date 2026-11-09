@@ -6,11 +6,13 @@ a budget, and can probe a replacement before activating it.
 
 One timeline row can describe hundreds of related tracks. Decision gates
 evaluate facts lazily in a predictable order. Typed modules combine compact
-source with checked arithmetic, records, and collections. The host can
-prepare supported bundled programs and live replacements for native
+source with checked arithmetic, records, variants, and collections. Procedures
+can pass nested values under explicit instruction, cell, and frame limits.
+The host can prepare supported bundled programs and live replacements for native
 execution on Windows x64. Those calls still enforce resource budgets and can
 return an unchanged host record without allocating. The portable evaluator
-and browser scene lab support replay. The migration tools verify released
+and browser scene lab support replay. A failed replacement probe leaves the
+active revision and the host's values intact. The migration tools verify released
 artifact bytes, can replay results and traps against the original program,
 and can issue a receipt tying the result to the exact input.
 

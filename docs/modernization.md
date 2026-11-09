@@ -30,7 +30,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-02 | Shared optimized runtime. Match injected and bundled p50 within 5% and p95 within 10% in each supported hot workload. Target FluxR/Rust geometric mean ≤1.10 and p95 ≤1.25 over the frozen corpus. Keep individual failures visible. The optional signed-leaf JIT and three runtime optimizations are the first implementation. | FXM-01 and FXM-05 semantic contract. Profile stateful loops, validate typed SSA and test register-based portable, Cranelift, and Wasm tiers before choosing production defaults. |
 | FXM-03 | Preserve released inputs and artifact bytes. Migrate automatically with a deterministic proof receipt, old/new differential replay, and an explicit refusal if any semantic feature cannot be translated. The first pass has timeline v2, structured compact, and canonical rule migration. | FXM-05 for new core semantics. Add rule and FR1 ingress to shared HIR, historical fixture checks, migration reports, and versioned IR round trips. |
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
-| FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. | Extend the specification and proof checker beyond the bounded fragment. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
+| FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
@@ -41,7 +41,7 @@ FXM-02.D.4 retains a smaller packing path. FXM-04.C measures reusable
 declarations and scoped edits against equal Rust controls. FXM-02.D.5 bounds
 export resolution and admission costs and measures long-scan tail variation.
 FXM-03.B.3 expands migration replay and cuts FXH guard preparation time.
-FXM-05.C next broadens the independent effect specification beyond lists.
+FXM-05.C extends the independent effect specification to compound calls.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -929,3 +929,41 @@ fixtures, browser replay and highlighting. The timeline and counter match
 prior bytes. Linux x64 was compile-checked. Local
 `migration-roundtrip/manifest.json` SHA-256 `AD27EA89C9B28E589945319B998EA2A6E05788D2666E41BC5B3677307A7AF70C`
 binds the frozen inputs, source patch, binaries, timings and verification.
+
+## FXM-05.C compound values and procedure effects
+
+The independent checker passes a record containing a variant and another
+record through a three-frame call chain. The inner procedure updates two
+fields and the result wraps the updated record with a host-supplied variant.
+The ledger follows source evaluation order. It charges each visited boundary
+cell before checking its tag and each call's dispatch before the callee can
+enter. It checks frame depth before charging for the frame and its slots.
+The first field write charges two cells to copy the shared record. The second
+writes the private copy. With populated variants in the state and snapshot,
+a successful call needs 24 instruction units, 36 cells and three frames.
+An empty snapshot variant saves six cells across input and result visits.
+
+The checker compares 24,253 invocations per route across direct, forced
+portable, decoded artifact and injected execution. Its grids cover malformed
+counts, tags, field shapes and payloads, both directions of signed addition
+overflow, zero division and signed division overflow. A reused workspace
+also runs successfully after failures. Four failed replacement probes
+preserve the revision, encoded active module and host-owned values. A
+successful probe then publishes the edited procedure. Both Windows native
+tiers decline this shape and use portable execution. The checkpoint adds
+conformance evidence and leaves runtime and artifact encoding code unchanged.
+
+In both repositories, Windows x64 release passed 61 portable, 61 native-JIT
+and 63 typed-JIT tests. Node Wasm passed all six suites and three released
+FXH fixtures. The pinned host checks, browser replay and rollback,
+highlighting, all three token seals, and historical FXH replays also passed.
+The context-reuse seal used the archived training files and the current
+runtime. The prior timeline and counter artifacts match byte for byte.
+Linux x64 was compile-checked.
+
+Run `cargo test --locked --release --all-features --example bench_typed
+compound_effects_match_specification`, or call `compound_effect_check()` in
+the Node Wasm build of that example. Local `compound-effects/manifest.json`
+SHA-256 `11415DA9BEFE89131B9EC43FF82C1F98B53FBCEF75CA286B58C28A8A0F0E22CB`
+binds the frozen checker, exact routes, replays, builds and seal recovery.
+FXM-02.D.6 resumes the matched host and injection parity work.

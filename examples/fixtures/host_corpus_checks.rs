@@ -8,6 +8,11 @@ const FRAMES: &str = "module frame limit exceeded";
 const MATH: &str = "invalid or overflowing integer arithmetic";
 
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "compound_effect_checks.rs"]
+mod compound_effect_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use compound_effect_checks::check_compound_effects;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "list_effect_checks.rs"]
 mod list_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
