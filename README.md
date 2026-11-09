@@ -37,15 +37,15 @@ authored source by 4.9–7.1% on the tested typed programs and preserve compiled
 bytes. An explicit-bound `scan` can shorten indexed list traversals while
 preserving compiled bytes, trap order, and fuel. It reduced authored source
 21.4–24.1% on four matched list workloads. Whole programs and edit bodies
-still exceed the target. In the frozen
-Windows host benchmark, bundled calls take 2.21–2.25 times as long as the matched
-Rust host at median latency by geometric mean across six workloads.
-Warm source and artifact injection still miss some latency targets.
-In a separate seven-group Windows host comparison, FluxR took 16.98 times
-the optimized Rust call time by median-latency geometric mean. Default
-Rhai AST took 11.59 times the FluxR call time, while Rhai's checked Grain
-backend led FluxR on the 256-element list fold. The comparison separates warm
-calls from compilation, native preparation, and replacement.
+still exceed the target. On the six-workload Windows host corpus, bundled
+calls take about 2.3 times the matched Rust host time by median-latency
+geometric mean. The portable evaluator handles checked list traversal, where
+long folds still have a larger gap to Rust. Source and artifact injection
+also miss some warm parity thresholds. In a separate matched Windows
+comparison, default Rhai AST took 11.59 times the FluxR call time across
+seven groups. Rhai's checked Grain backend led on the 256-element fold.
+The measurements distinguish warm calls from compilation, preparation, and
+replacement.
 Broader language and backend safety coverage, native Linux and ARM64 replay,
 hardware counters, and an isolated release launch remain open. Live model
 generation and editing still need matched trials. The

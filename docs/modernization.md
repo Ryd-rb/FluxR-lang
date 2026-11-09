@@ -1578,3 +1578,57 @@ scope checks and 12 Node Wasm suites. The local
 `typed-list-traversal/manifest.json` SHA-256
 `BBA9C2FFD5A07532A9CD898EAEFA37D63C147745E40E6B1D0D51429734E5DBF2`
 binds the freeze, token counts, artifact hashes and validation logs.
+
+## FXM-02.D.10 borrowed indexed reads
+
+Both independent Win64 defaults reproduced the six D.9 host workloads
+with their frozen checksums and exact behavior checks. The next residual
+was the portable FXM-07 fold. The Rust control checks ordered integer
+addition, bounds, and the matching logical instruction, cell, and frame
+limits. Both hosts use the same prepacked inputs. Rust's signed element
+shape is enforced by its type system.
+
+The candidate marked direct list and index operands for borrowing in the
+portable evaluator. It kept the original bytecode positions and separate
+fuel debits. General indexed expressions continued to use the stack.
+Rust 1.99.1 release builds ran with telemetry off on logical CPU 12, in
+ABBA and BAAB order on each checkout. Each warm percentile describes 21
+batch means of 512 fold calls. The table gives the range of the grouped
+p50 across both defaults, process orders, and the bundled, source-injected
+and artifact-injected routes.
+
+| Workload | Metered Rust | FluxR baseline | FluxR candidate |
+| --- | ---: | ---: | ---: |
+| Fold 16 | 0.0109–0.0113 µs | 1.232–1.251 µs | 0.999–1.018 µs |
+| Fold 256 | 0.138–0.156 µs | 18.29–18.45 µs | 14.62–14.94 µs |
+
+The three FluxR routes improved by 17.6–20.6% in grouped p50 geometric
+mean across the two fold sizes. Three of four groups met every frozen
+guard. In standalone ABBA, source-injected record reuse rose from
+26.01 to 35.40 ns at p50 and from 28.19 to 36.73 ns at p95. One candidate
+process supplied the outlying timings. The group exceeded the 5% p50 and
+10% p95 control limits. The candidate was rejected and the original
+runtime was restored in both checkouts.
+
+For the retained 256-element fold, source compile p50 was 5.00–5.35 µs
+and artifact decode was 9.70–9.80 µs. The native preparation attempt
+declined in 0.10 µs. Activation without a probe took 0.15–0.20 µs, and
+the first call on a reused workspace took 18.20–20.95 µs. The seal
+retains both builds' full lifecycle measurements.
+
+Each of the 16 measured processes passed 39,864 exact comparisons across
+limits, traps, and admission, with list ownership checked after each
+validly typed call. The fold and eight scan artifacts retained identical
+bytes across both builds and both released readers. The restored defaults
+each passed 82 all-target all-feature release tests and 12 Node Wasm suites.
+
+Across the six D.9 workloads, the retained bundled runtime took
+2.25–2.30× the Rust host at p50 and 2.07–2.11× at p95 by geometric mean.
+Four grouped injection comparisons missed the warm parity thresholds.
+Both warm gates remain open. Local `runtime-parity-d10/manifest.json`
+SHA-256 `6F8065C2506EC872C560A4C8D3900F3946E9A69539D6C06136E545C88B272244`
+binds the freeze, patch, binaries, compatibility logs and timing data.
+
+FXM-05.I next checks nested collection boundaries and ownership against
+an independent effect ledger. Preserve the D.9 and D.10 rejections
+for the next runtime pass.
