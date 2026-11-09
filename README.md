@@ -19,9 +19,10 @@ Rust and the Windows JIT use the same checked operations. When a native
 invocation declines, the portable evaluator applies the path's exact
 resource limits. It also handles short-circuit boolean expressions whose
 values cross a block boundary.
-An unchanged record can share the host's allocation, and a write returns
-a separately owned record. A failed replacement probe preserves the active
-revision and the host's values. The browser scene lab supports replay.
+The portable evaluator checks nested host values before execution, meters
+indexed access, and copies shared lists or records when a call writes to them.
+A replacement probe can fail after a write while leaving the active revision
+and the host's snapshot intact. The browser scene lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.

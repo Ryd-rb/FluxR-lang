@@ -30,9 +30,9 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-02 | Shared optimized runtime. Match injected and bundled p50 within 5% and p95 within 10% in each supported hot workload. Target FluxR/Rust geometric mean ≤1.10 and p95 ≤1.25 over the frozen corpus. Keep individual failures visible. The optional signed-leaf JIT and three runtime optimizations are the first implementation. | FXM-01 and FXM-05 semantic contract. Profile stateful loops, validate typed SSA and test register-based portable, Cranelift, and Wasm tiers before choosing production defaults. |
 | FXM-03 | Preserve released inputs and artifact bytes. Migrate automatically with a deterministic proof receipt, old/new differential replay, and an explicit refusal if any semantic feature cannot be translated. The first pass has timeline v2, structured compact, and canonical rule migration. | FXM-05 for new core semantics. Add rule and FR1 ingress to shared HIR, historical fixture checks, migration reports, and versioned IR round trips. |
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
-| FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. FXM-05.D checks bounded recursion and replacement probes. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
+| FXM-05 | Safety and language coverage. The bounded ledgers cover typed lists, nested values, procedure calls, recursion, control flow and binary32 boundaries. FXM-05.B also demonstrates a universal tape simulator. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
-| FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. FXM-02.D.9 resumes on the combined baseline. |
+| FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. Reconcile again at each accepted checkpoint. |
 | FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Comparison accepted on both defaults. FXM-07.A screens typed-list traversal separately. |
 | FXM-07.A | Screen compact typed-list traversal against equivalent expanded code on independent list workloads. Require identical artifacts, exact traps and fuel, and released reader replay. | Explicit-bound `scan` passed all six encoders and the compatibility checks. Length inference and runtime changes remain separate experiments. |
 
@@ -1629,6 +1629,42 @@ Both warm gates remain open. Local `runtime-parity-d10/manifest.json`
 SHA-256 `6F8065C2506EC872C560A4C8D3900F3946E9A69539D6C06136E545C88B272244`
 binds the freeze, patch, binaries, compatibility logs and timing data.
 
-FXM-05.I next checks nested collection boundaries and ownership against
-an independent effect ledger. Preserve the D.9 and D.10 rejections
-for the next runtime pass.
+## FXM-05.I nested list admission, access, and mutation
+
+A two-frame procedure selects a row from a nested list, pushes and pops
+on its local copy, then appends a value read through two indices from the
+original host snapshot. The source ledger charges the snapshot before
+the arguments, even when they share the same list, and visits each row
+and element before entering either frame. The first push charges the
+row length plus one. The pop uses the private row, and the final push
+charges one cell. A successful call with two aliases of a two-element
+row in both roots needs 18 instructions, 32 cells, and two frames.
+
+The 33,601 cases per route cross every nearby fuel, cell, and frame
+threshold with malformed roots, rows, elements, indices, and arity,
+as well as empty rows and row and column bounds. Indices with bit 32
+set check against truncation on Wasm. Bundled, forced portable, decoded
+portable, source-injected, and artifact-injected calls match the ledger.
+Both Windows native tiers decline the export. The separate structured
+boundary suite covers the maximum admitted type depth.
+
+The successful result owns a detached row. Failed replacement probes
+cover frame entry, fuel after the first push, bounds after the push and
+pop, and cell exhaustion during result admission. Each preserves the
+active bytes, revision, and host values. A successful probe publishes
+the edited row calculation.
+
+Each independent default passed 83 all-target, all-feature Windows
+release tests and 13 Node Wasm suites, plus three released FXH fixtures
+under Node. Linux x64 was compile-checked. The new fixture, binary32
+fixture, fold, and eight scan artifacts matched byte for byte across
+both builds and both retained readers. Local
+`list-boundary-safety/manifest.json` SHA-256
+`A54C606B5246D7C16FB11B9B02BB98494980652C6A0DCF32518C8EAAFA921828`
+binds the freeze, results, and compatibility artifacts.
+
+Reproduce the focused check with `cargo test --locked --release --features
+typed-jit --example bench_typed list_boundary_matches_effect_ledger`.
+The Node Wasm example exports `list_boundary_check()`. Wider safety
+coverage stays open. FXM-02.D.11 resumes warm measurements with a
+separately frozen residual and retains the D.9 and D.10 rejections.

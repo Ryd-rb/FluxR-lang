@@ -46,6 +46,11 @@ mod control_flow_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use control_flow_checks::check_control_flow;
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "list_boundary_checks.rs"]
+mod list_boundary_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use list_boundary_checks::check_list_boundary;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "list_effect_checks.rs"]
 mod list_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]

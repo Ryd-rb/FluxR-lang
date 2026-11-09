@@ -1,0 +1,9 @@
+v2
+(inputs base:[[i64]])
+(fn patch (xs:[i64] row:u64 col:u64) [i64] ()
+  (push xs 7)
+  (pop xs)
+  (push xs (at (at (input base) row) col))
+  (ret xs))
+(pub edit (rows:[[i64]] row:u64 col:u64) [i64] ()
+  (ret (call patch (at rows row) row col)))

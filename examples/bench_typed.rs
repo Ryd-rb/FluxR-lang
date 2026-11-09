@@ -1082,6 +1082,18 @@ fn binary32_boundary_matches_frozen_bits_and_limits() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn list_boundary_check() -> u32 {
+    corpus_checks::check_list_boundary() as u32
+}
+
+#[cfg(test)]
+#[test]
+fn list_boundary_matches_effect_ledger() {
+    assert_eq!(corpus_checks::check_list_boundary(), 33_601);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;
