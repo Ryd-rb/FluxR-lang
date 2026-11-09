@@ -15,7 +15,7 @@ const COUNT: &str = "host argument or input count differs from interface";
 type Admission = Result<usize, (usize, &'static str)>;
 type Outcome = Result<Value, &'static str>;
 
-fn leaf(second: Value, flag: Value) -> Value {
+pub(super) fn leaf(second: Value, flag: Value) -> Value {
     Value::Record([list([list([list([Value::I64(5), second])])]), flag].into())
 }
 
@@ -27,7 +27,7 @@ fn layer(child: Value, width: usize, last: Option<Value>) -> Value {
     Value::Record([list(children), Value::Bool(true)].into())
 }
 
-fn tree(leaf: &Value, width: usize, last: Option<Value>) -> Value {
+pub(super) fn tree(leaf: &Value, width: usize, last: Option<Value>) -> Value {
     let child = (1..LEVELS).fold(leaf.clone(), |child, _| layer(child, width, None));
     layer(child, width, last)
 }

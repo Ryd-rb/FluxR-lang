@@ -1,0 +1,38 @@
+# id	fixture	format	mutation	target	replacement	expected diagnostic
+push-scalar-type	list_boundary	fsm	set	/functions/0/body/0/value	{"op":"bool","value":true}	expected I64, got Bool
+push-scalar-type	list_boundary	fxh	replace	(push xs 7)	(push xs true)	expected I64, got Bool
+nested-index-type	list_boundary	fsm	set	/functions/0/body/2/value/list/index	{"op":"i64","value":0}	expected U64, got I64
+nested-index-type	list_boundary	fxh	replace	(at $base row)	(at $base 0)	expected U64, got I64
+row-is-scalar	list_boundary	fsm	set	/functions/0/body/2/value/list	{"op":"i64","value":0}	list operation needs a list
+row-is-scalar	list_boundary	fxh	replace	(at $base row)	 0	list operation needs a list
+literal-row-type	list_boundary	fsm	set	/functions/1/body/0/value/args/0	{"op":"index","list":{"op":"list","element":{"list":"i64"},"items":[{"op":"list","element":"bool","items":[]}]},"index":{"op":"u64","value":0}}	expected List(I64), got List(Bool)
+literal-row-type	list_boundary	fxh	replace	(at rows row)	(at(list [i64](list bool)) 0u)	expected List(I64), got List(Bool)
+fsm-short-header	list_boundary	fsm	truncate	5		unknown structured module envelope
+fsm-envelope-version	list_boundary	fsm	byte	4	1	structured module envelope version differs from source
+fxh-short-header	list_boundary	fxh	truncate	9		invalid FXH envelope
+fxh-envelope-version	list_boundary	fxh	byte	4	2	unsupported FXH version 2
+declared-payload-scalar	variant_payload	fsm	set	/enums/0/variants/1/payload	"i64"	expected List(I64), got I64
+declared-payload-scalar	variant_payload	fxh	replace	Edit:[i64]	Edit:i64	expected List(I64), got I64
+extract-empty	variant_payload	fsm	set	/functions/0/body/0/value/variant	"Empty"	Choice.Empty has no payload
+extract-empty	variant_payload	fxh	replace	(payload selected Edit)	(payload selected Empty)	Choice.Empty has no payload
+extract-unknown	variant_payload	fsm	set	/functions/0/body/0/value/variant	"Missing"	unknown variant Choice.Missing
+extract-unknown	variant_payload	fxh	replace	(payload selected Edit)	(payload selected Missing)	unknown variant Choice.Missing
+constructor-wrong-type	variant_payload	fsm	set	/functions/0/body/0/value/value	{"op":"variant","name":"Choice","variant":"Edit","payload":{"op":"list","element":"bool","items":[]}}	expected List(I64), got List(Bool)
+constructor-wrong-type	variant_payload	fxh	replace	(payload selected Edit)	(payload(tag Choice.Edit(list bool)) Edit)	expected List(I64), got List(Bool)
+constructor-missing	variant_payload	fsm	set	/functions/0/body/0/value/value	{"op":"variant","name":"Choice","variant":"Edit","payload":null}	wrong payload for Choice.Edit
+constructor-missing	variant_payload	fxh	replace	(payload selected Edit)	(payload(tag Choice.Edit) Edit)	wrong payload for Choice.Edit
+constructor-extra	variant_payload	fsm	set	/functions/0/body/0/value/value	{"op":"variant","name":"Choice","variant":"Empty","payload":{"op":"list","element":"i64","items":[]}}	wrong payload for Choice.Empty
+constructor-extra	variant_payload	fxh	replace	(payload selected Edit)	(payload(tag Choice.Empty(list i64)) Edit)	wrong payload for Choice.Empty
+constructor-element-type	variant_payload	fsm	set	/functions/0/body/0/value/value	{"op":"variant","name":"Choice","variant":"Edit","payload":{"op":"list","element":"i64","items":[{"op":"bool","value":true}]}}	expected I64, got Bool
+constructor-element-type	variant_payload	fxh	replace	(payload selected Edit)	(payload(tag Choice.Edit(list i64 true)) Edit)	expected I64, got Bool
+fsm-empty-body	variant_payload	fsm	truncate	6		EOF while parsing a value at line 1 column 0
+fsm-over-byte-cap	variant_payload	fsm	pad	1048577		structured program exceeds canonical byte budget
+fxh-truncated-body	variant_payload	fxh	truncate	-1		FXH payload size differs from envelope
+fxh-envelope-kind	variant_payload	fxh	byte	5	2	unsupported FXH kind 2
+fxh-invalid-utf8	variant_payload	fxh	byte	10	255	invalid utf-8 sequence of 1 bytes from index 0
+type-depth-33	shared_host_admission	fsm	set	/records/0/fields/0/ty	{"list":{"list":{"list":{"list":"i64"}}}}	type nesting limit exceeded
+type-depth-33	shared_host_admission	fxh	replace	leaf:[[[i64]]]	leaf:[[[[i64]]]]	type nesting limit exceeded
+recursive-payload	shared_host_admission	fsm	set	/enums/0/variants/1/payload	{"record":"R1"}	recursive value type R1
+recursive-payload	shared_host_admission	fxh	replace	(enum E1 Empty More:R0)	(enum E1 Empty More:R1)	recursive value type R1
+fxh-noncanonical	shared_host_admission	fxh	append	1		noncanonical FXH payload
+fxh-over-byte-cap	shared_host_admission	fxh	pad	262145		program exceeds byte budget

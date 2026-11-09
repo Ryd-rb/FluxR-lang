@@ -30,10 +30,10 @@ It copies shared lists or records on write, including values held inside
 variants. Hosts can publish a checked method body edit without editing its
 callers. A retained revision keeps its original behavior and can run alongside
 the new revision with a separate workspace and the same read-only inputs.
-A failed replacement probe leaves the active revision available.
-Portable FSM modules recheck method declarations, nominal call types, and
-body limits on decode. A rejected artifact leaves the active revision and
-its results available.
+Portable FSM modules and checked FXH artifacts are validated before they can
+run. The readers check nominal types and decode limits, including nested
+lists and variant payloads. A refused artifact or replacement probe leaves
+the active revision and its host snapshot available.
 The browser scene lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also

@@ -64,6 +64,7 @@ before publication.
 FXM-03.B.8 replays method-bearing checked HIR through canonical FXH and FSM.
 FXM-05.O verifies bounded recursive nominal methods and snapshot ownership.
 FXM-03.B.9 verifies composed eager rules against archived FXD and checked FXH.
+FXM-05.P checks malformed nested lists and variant payloads in portable artifacts.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2372,3 +2373,37 @@ Local `composed-rule-hir/manifest.json` SHA-256
 binds the fixtures, expected rows, reader runs and platform checks.
 FXM-05.P next checks malformed list and variant payloads in portable
 artifacts and verifies that decoding refuses them before publication.
+
+## FXM-05.P nested list and variant artifact safety
+
+The corpus reuses the nested list, guarded variant, and shared host fixtures
+from FXM-05.I, J, and K. It freezes 17 malformed FSM v2 and 20 malformed FXH
+v1 inputs. Cases cover scalar and row type errors, list index types, missing
+and extra variant payloads, incorrect payload elements, recursive types, and
+the first type depth beyond the limit. Other cases check envelopes,
+truncation, invalid UTF-8, canonical FXH text, and both byte limits.
+
+Each platform checks 74 refusals across revisions zero and one. The readers
+reject before admission to the slot. Every refusal preserves the revision,
+active bytes, result, and shared host allocations. Successful list edits
+detach their results. A checked edit publishes at revision one, while the
+retained original still returns its original result.
+
+Two current and two retained CLIs check all 37 artifacts with both an absent
+and an existing output, for 296 refusal checks. The retained CLIs report
+`program exceeds byte budget` for the oversized FSM, matching their earlier
+shared bound. Current CLIs report `structured program exceeds canonical byte
+budget`. All four complete 48 byte comparisons across the canonical source,
+FSM, and FXH routes. The runtime, readers, and wire formats are unchanged.
+
+Each default passes 96 Win64 release tests, one focused portable test,
+23 Node Wasm suites, five retained FXH cases under Node, and Linux x64
+compilation. Run `cargo test --locked --release --no-default-features
+--example bench_typed nested_payload_artifacts_match_portable_safety_ledger`
+or call `nested_payload_artifact_safety_check()` from the Node Wasm example.
+
+Local `nested-payload-artifact-safety/manifest.json` SHA-256
+`8AE276753C832FF09E0FCAA4161A362DFC97BB7B9C29E59D2D599981D21FBBAC`
+binds the freeze, diagnostics, compatibility, and platform checks. FXM-03.B.10
+next checks successful nested and variant FXH replay under ranked traps and
+exact resource limits.

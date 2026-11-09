@@ -1152,6 +1152,17 @@ fn method_artifacts_match_portable_safety_ledger() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn nested_payload_artifact_safety_check() -> u32 {
+    corpus_checks::check_nested_payload_artifact_safety() as u32
+}
+
+#[test]
+fn nested_payload_artifacts_match_portable_safety_ledger() {
+    assert_eq!(corpus_checks::check_nested_payload_artifact_safety(), 37);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn method_hir_replay_check() -> u32 {
     corpus_checks::check_method_hir_replay() as u32
 }
