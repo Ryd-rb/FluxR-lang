@@ -1,0 +1,5 @@
+v2
+(pub from_int (x:i64) f32 = (i64tof x))
+(pub to_int (x:f32) i64 = (ftoi64 x))
+(pub root (x:f32) f32 = (sqrt x))
+(pub project (x:i64) i64 = (ftoi64 (sqrt (i64tof x))))

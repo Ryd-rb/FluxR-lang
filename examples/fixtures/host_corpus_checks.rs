@@ -31,6 +31,11 @@ impl Budget {
 }
 
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "binary32_boundary_checks.rs"]
+mod binary32_boundary_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use binary32_boundary_checks::check_binary32_boundary;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "compound_effect_checks.rs"]
 mod compound_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]

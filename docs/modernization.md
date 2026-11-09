@@ -1436,6 +1436,42 @@ Local `token-density-d/manifest.json` SHA-256
 Run `token-density-d/replay-frozen.py` with the archived Python
 dependencies on `PYTHONPATH` to recompute the counts.
 
-FXM-05.H extends the executable safety inventory for signed binary32
-conversions and square root. Both warm runtime gates, native platform
-replay, hardware counters, and final release validation remain open.
+## FXM-05.H binary32 conversion and square-root boundary
+
+The fixture exercises the released `i64tof`, `ftoi64`, and `sqrt` operators
+individually and in a composed projection. Sixty fixed numerical cases
+specify result bits or exact signed integers and use optimized Rust controls
+with dynamic inputs. The inputs include integer ties, a value just above a
+large midpoint that exposes double rounding, and both signed saturation
+edges. Square root cases cover signed zero, subnormals, infinities, and
+quiet and signaling NaNs. A negative nonzero input or any NaN yields
+`0x7fc00000` for square root. Conversion to `i64` truncates toward zero,
+saturates at the signed bounds, and yields zero for NaN.
+
+Each unary export needs three instructions. The composed export needs five.
+All four exports need four cells and one frame. The checker cuts each limit
+by one, tests competing instruction, cell and admission errors, and checks a
+successful call in the same workspace after the traps. It runs 372 cases per
+route through prepared direct fallback, forced portable execution, decoded
+artifacts, and a decoded candidate injected through `ModuleSlot`. The Windows
+JITs and generated Rust AOT decline all four exports. The Node Wasm route
+exercises the portable engine.
+
+Both defaults passed 74 portable, 74 native-JIT, 76 typed-JIT, and 81
+all-feature Windows release tests. The host corpus, 12 Node Wasm suites,
+three released FXH fixtures, historical replay, browser rollback,
+highlighting, and three token seals passed. Linux x64 was compile-checked.
+Both defaults produced identical binary32 artifact bytes.
+
+Local `binary32-safety/manifest.json` SHA-256
+`C94C83531FC8C89E973BC01CB87EF8EAF34BBAA69F30561B03B74910C89F5F8C` binds the
+frozen inputs, bit expectations, compiled artifact, and compatibility logs.
+Reproduce the focused check with
+`cargo test --locked --release --features typed-jit --example bench_typed binary32_boundary_matches_frozen_bits_and_limits`.
+
+The fixture covers this numerical and resource boundary. Other float
+arithmetic, NaN payload and comparison behavior, broader malformed input
+replay, machine-level backend isolation, native Linux and ARM64 execution,
+and the broader language and capability inventory remain open. FXM-07
+continues with review of the separately sealed Rust, FluxR and Rhai
+comparison.

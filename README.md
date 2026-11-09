@@ -9,6 +9,9 @@ evaluate facts lazily in a predictable order. Typed modules combine compact
 source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
 frame limits. A call reports the first exhausted limit or arithmetic trap.
+Signed integers convert to binary32 with ties rounded to even. Converting back
+truncates toward zero, saturates at the signed limits, and returns zero for NaN.
+Square root preserves signed zero and returns a canonical NaN for invalid inputs.
 On Windows x64, the host can prepare supported bundled programs and live
 replacements for native execution. The native tier admits signed arithmetic,
 flat signed records, and nested loops with conditional calls. Generated
@@ -37,9 +40,11 @@ Rust host at median latency by geometric mean across six workloads.
 Warm source and artifact injection still miss some latency targets.
 The benchmarks separate warm calls from compilation, native preparation,
 and replacement.
-Broader language and safety coverage, native Linux and ARM64 validation,
-and an isolated release launch remain open. The [modernization plan](docs/modernization.md)
-records the acceptance criteria and measurements.
+Broader language and backend safety coverage, native Linux and ARM64 replay,
+hardware counters, and an isolated release launch remain open. Live model
+generation and editing still need matched trials. The
+[modernization plan](docs/modernization.md) records the acceptance criteria and
+measurements.
 
 ## Quick start
 
