@@ -17,11 +17,13 @@ FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
 gates can reach that target. Reusing typed declarations and supplying only the
 edited function body reduces repeated prompt context in both FluxR and Rust.
-Typed source and edit bodies still exceed the target. The frozen host corpus
-shows a gap to Rust, and injection tail latency still varies. Broader safety
-coverage and native validation on Linux and ARM64 remain open. The
-[modernization plan](docs/modernization.md) records the acceptance criteria
-and measured results.
+Typed source and edit bodies still exceed the target. In the frozen Windows
+host benchmark, bundled execution takes just over twice as long as the
+matched Rust host on the geometric mean. Source and artifact injection can
+still miss the latency targets, especially in scan tails. Wider migration
+replay, safety coverage, native Linux and ARM64 validation, and an isolated
+release launch remain open. The [modernization plan](docs/modernization.md)
+records the acceptance criteria and measurements.
 
 ## Quick start
 

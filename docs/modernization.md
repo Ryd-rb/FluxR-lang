@@ -38,11 +38,11 @@ FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered t
 Evidence and semantic work can run in parallel once case IDs and the oracle interface are frozen. Source encoding work can use the same semantic version while the runtime explores backend choices. Native tier and ABI changes share a writer until they stabilize. Benchmarks use one local measurement lane.
 
 FXM-02.D.4 retains a smaller packing path. FXM-04.C measures reusable
-declarations and scoped edits against equal Rust controls. FXM-02.D.5 next
-separates export resolution and admission from scan-tail variation on the
-frozen corpus. Keep the two injection modes, block controls and exact budget
-checks. Rust-host and injection parity, migration coverage, wider safety,
-platform execution, and the isolated release launch remain open.
+declarations and scoped edits against equal Rust controls. FXM-02.D.5 bounds
+export resolution and admission costs and measures long-scan tail variation.
+FXM-03.B.3 next expands migration replay and measures FXH preparation.
+Rust-host and injection parity, the whole-program token gate, wider safety,
+native platform execution, and the isolated release launch remain open.
 
 ### Corpus and measurement contract
 
@@ -831,3 +831,54 @@ Linux x64 compiled. Local `context-reuse/manifest.json` SHA-256
 `17B865C2FA8EB15931678F20D02AD56E15304BC6D6591C493735A37B30D126DC`
 binds the training freeze, seal, scores, repair traces and compatibility
 evidence.
+
+## FXM-02.D.5 paired admission and scan diagnostics
+
+The Windows x64 release benchmark reused the frozen D.4 cases and checksums
+on logical CPU 12 with Rust 1.99.1, typed JIT and telemetry off. Each
+comparison ran in ABBA and BAAB order. The diagnostic rotates all eight
+routes over the same input blocks and retains each sample. The original
+five-route scan comparison still runs with 64-call blocks.
+
+Binding the export before the timed diagnostic call reduced p50 by
+7.8–8.0 ns for signed typed calls, 5.7–6.3 ns for record reads, and
+2.5–3.5 ns for record reuse across bundled, source and artifact routes.
+The isolated lookup cost 4.3–6.3 ns above a known-index control. The
+prepacked signed and record-read JIT entries took 3.3–3.5 ns at p50,
+against 11.1–11.5 ns and 15.2–15.4 ns for their packing controls.
+The controls overlap in result handling. The diagnostic itself added
+roughly 6 ns to named signed calls compared with the production binary,
+so the paired differences do not establish production gains.
+
+For 256-element scans, the median source-minus-bundled and
+artifact-minus-bundled block differences were zero in all four
+diagnostic processes. Their paired p05 ranged from −57.8 to −39.1 ns
+and p95 from +42.2 to +59.4 ns. Removing each input block's median gave
+Pearson correlations of −0.09 to +0.20 between the bundled residuals
+and the Rust-host, portable and injection residuals. The 16-element
+differences had p05 and p95 magnitudes of at most 4.7 ns. This confirms
+substantial long-scan variation and gives no consistent source or artifact
+penalty. It does not attribute individual outliers to scheduling or the
+scan implementation. Kernel counters require elevation.
+
+Moving arity checks into the selected tier passed the targeted tests.
+It improved bundled signed typed p50 by 1.6–2.5% but slowed bundled
+record reuse by 3.4–4.2% in both orders. A one-field packing shortcut
+improved bundled record-read p50 by 1.2–2.0%, with mixed results in
+the source route. Bundled signed typed p50 regressed by 6.5% in one
+order and bundled record write slowed by 1.1–3.6%. Both changes were
+reverted. The unmodified baseline's six-workload bundled/Rust-host
+geometric mean was 2.23–2.31× at p50 and 2.09–2.11× at p95 in these
+trials. Rust-host and injection parity remain open.
+
+Both independent repositories passed 59 portable, 59 native-JIT and
+61 typed-JIT Windows release tests, all three token seals, pinned host
+and budget checks, five Node Wasm suites, browser edit and rollback,
+and highlighting. Timeline and counter artifacts match prior bytes.
+Linux x64 compiled. Native Linux and ARM64 execution remain open.
+
+Local `runtime-admission/manifest.json` SHA-256
+`98C35A93BEC37FC7391B90764DED2CE2CB2F8F851065484EBF60CD4361C06B69` binds the diagnostic, reverted patches, binaries,
+symbols, per-order misses, raw scan blocks, and compatibility evidence.
+FXM-03.B.3 can advance on the restored runtime. Measure FXH preparation
+separately from execution and expand historical round-trip coverage.
