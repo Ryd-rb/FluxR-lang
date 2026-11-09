@@ -66,7 +66,7 @@ impl Binary {
         Self::F32Div,
     ];
 
-    fn token(self) -> &'static str {
+    pub(crate) fn token(self) -> &'static str {
         match self {
             Self::Add => "+",
             Self::Sub => "-",
@@ -87,7 +87,14 @@ impl Binary {
         }
     }
 
-    fn evaluate(self, left: i64, right: i64) -> Option<i64> {
+    pub(crate) fn raw_f32_token(token: &str) -> Option<Self> {
+        if !token.starts_with('f') {
+            return None;
+        }
+        Self::ALL.into_iter().find(|op| op.token() == token)
+    }
+
+    pub(crate) fn evaluate(self, left: i64, right: i64) -> Option<i64> {
         match self {
             Self::Add => left.checked_add(right),
             Self::Sub => left.checked_sub(right),

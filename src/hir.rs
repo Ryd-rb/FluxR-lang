@@ -96,8 +96,8 @@ impl Hir {
         module.checked_source()
     }
 
-    /// Prepare an integer rule, including signed bitwise and, for checked
-    /// structured execution. This projection is separate from FXH v1.
+    /// Prepare a rule for checked structured execution, including signed
+    /// bitwise and and raw binary32. This projection is separate from FXH v1.
     pub fn prepare_rule_projection(&self) -> Result<CheckedRuleProjection, Error> {
         let Body::Rule { origin, projection } = &self.0 else {
             return Err(Error(
@@ -185,7 +185,7 @@ impl Hir {
     }
 }
 
-fn project_rule(rule: &RuleProgram, allow_bitand: bool) -> Result<Source, &'static str> {
+fn project_rule(rule: &RuleProgram, rule_only_ops: bool) -> Result<Source, &'static str> {
     let (inputs, ops) = rule.hir_parts();
     let mut depth = 0;
     let mut slots = 0;
@@ -202,7 +202,7 @@ fn project_rule(rule: &RuleProgram, allow_bitand: bool) -> Result<Source, &'stat
             }
             Op::Binary(kind) => {
                 depth -= 1;
-                body.push(project_binary(kind, depth - 1, depth, allow_bitand)?);
+                body.push(project_binary(kind, depth - 1, depth, rule_only_ops)?);
             }
             Op::Select => {
                 depth -= 2;
@@ -256,7 +256,7 @@ fn project_binary(
     kind: RuleBinary,
     left: usize,
     right: usize,
-    allow_bitand: bool,
+    rule_only_ops: bool,
 ) -> Result<Stmt, &'static str> {
     let operation = match kind {
         RuleBinary::Add => Binary::Add,
@@ -266,7 +266,7 @@ fn project_binary(
         RuleBinary::Rem => Binary::Rem,
         RuleBinary::Eq => Binary::Eq,
         RuleBinary::Lt | RuleBinary::Min | RuleBinary::Max => Binary::Lt,
-        RuleBinary::BitAnd if allow_bitand => Binary::And,
+        RuleBinary::BitAnd if rule_only_ops => Binary::And,
         RuleBinary::BitAnd => return Err("structured projection lacks rule integer bitwise and"),
         RuleBinary::F32Lt
         | RuleBinary::F32Le
@@ -274,7 +274,16 @@ fn project_binary(
         | RuleBinary::F32Sub
         | RuleBinary::F32Mul
         | RuleBinary::F32Div => {
-            return Err("structured projection lacks rule raw binary32 transport");
+            if !rule_only_ops {
+                return Err("structured projection lacks rule raw binary32 transport");
+            }
+            return Ok(store(
+                left,
+                Expr::Call {
+                    name: kind.token().into(),
+                    args: vec![slot(left), slot(right)],
+                },
+            ));
         }
     };
     let expression = binary(operation, slot(left), slot(right));

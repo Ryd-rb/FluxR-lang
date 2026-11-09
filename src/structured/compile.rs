@@ -1,4 +1,5 @@
 use super::*;
+use crate::rules::Binary as RuleBinary;
 use std::collections::BTreeSet;
 
 const MAX_DECLARATIONS: usize = 512;
@@ -40,6 +41,7 @@ pub(crate) enum Op {
     StoreField(usize, usize),
     Binary(Binary),
     BinaryOperands(Binary, Operand, Operand),
+    RawRuleBinary(RuleBinary, Operand, Operand),
     Unary(Unary),
     Record(usize),
     Field(usize),
@@ -72,7 +74,9 @@ impl From<Op> for Instruction {
     fn from(op: Op) -> Self {
         let fuel = match &op {
             Op::Operand(operand) => operand.cost(),
-            Op::BinaryOperands(_, left, right) => left.cost() + right.cost() + 1,
+            Op::BinaryOperands(_, left, right) | Op::RawRuleBinary(_, left, right) => {
+                left.cost() + right.cost() + 1
+            }
             _ => 1,
         };
         Self { op, fuel }
@@ -153,7 +157,7 @@ impl Module {
     }
 
     /// Only the opaque checked rule projection can hold this module. Its
-    /// compiler input permits signed and and has no released encoding.
+    /// compiler input permits rule-only operations and has no released encoding.
     pub(crate) fn compile_rule_projection(source: &Source) -> Result<Self, Error> {
         Self::compile_source(source, true)
     }
@@ -864,6 +868,24 @@ impl<'a, 'src> Compiler<'a, 'src> {
                 }
                 require(&list_element(self.expr(list, next)?)?, &Type::F32)?;
                 (Op::ArgMinF32, Type::U64)
+            }
+            Expr::Call { name, args } if self.env.rule_projection => {
+                // Rule lowering represents raw operators as private calls on
+                // the two signed locals that hold the rule stack operands.
+                let operation = RuleBinary::raw_f32_token(name)
+                    .ok_or_else(|| error("unknown raw rule operator"))?;
+                let [Expr::Local { name: left }, Expr::Local { name: right }] = args.as_slice()
+                else {
+                    return Err(error("raw rule operator needs two locals"));
+                };
+                let (left, left_ty) = self.local(left)?;
+                let (right, right_ty) = self.local(right)?;
+                require(&left_ty, &Type::I64)?;
+                require(&right_ty, &Type::I64)?;
+                (
+                    Op::RawRuleBinary(operation, Operand::Local(left), Operand::Local(right)),
+                    Type::I64,
+                )
             }
             Expr::Call { name, args } => self.call(None, name, args, next)?,
             Expr::Method {

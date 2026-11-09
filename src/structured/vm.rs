@@ -472,6 +472,17 @@ impl Machine<'_> {
                     }
                     value
                 }
+                Op::RawRuleBinary(kind, left, right) => {
+                    let (Value::I64(left), Value::I64(right)) =
+                        (self.operand(left, slots)?, self.operand(right, slots)?)
+                    else {
+                        unreachable!("checked raw rule operands");
+                    };
+                    Value::I64(
+                        kind.evaluate(*left, *right)
+                            .expect("checked raw rule operator"),
+                    )
+                }
                 Op::Unary(kind) => unary(*kind, self.pop()),
                 Op::Record(fields) => {
                     self.charge_cells(fields + 1)?;

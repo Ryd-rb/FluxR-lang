@@ -21,6 +21,7 @@ fn selection_counts_exact_operations_without_changing_results() {
     let typed = original.structured();
     let rule = RuleProgram::compile_text("r1 1 i0 2 *").unwrap();
     let bitand = RuleProgram::compile_text("r2 2 i0 i1 &").unwrap();
+    let raw = RuleProgram::compile_text("r4 2 i0 i1 f*").unwrap();
     assert_eq!(
         feature(&telemetry::snapshot(), "compile-text")["accepted"],
         0
@@ -55,6 +56,20 @@ fn selection_counts_exact_operations_without_changing_results() {
         ),
         Ok(HostValue::I64(i64::MIN))
     );
+    let args = [0x8000_0000, 0x3f80_0000];
+    assert_eq!(raw.evaluate(&args).unwrap(), 0x8000_0000);
+    let raw = Hir::from_rule(raw)
+        .unwrap()
+        .prepare_rule_projection()
+        .unwrap();
+    assert_eq!(
+        raw.run_with(
+            &args.map(HostValue::I64),
+            Limits::default(),
+            &mut Workspace::default(),
+        ),
+        Ok(HostValue::I64(0x8000_0000))
+    );
     telemetry::record_rule_evaluations(3, 2);
 
     let snapshot = telemetry::snapshot();
@@ -67,7 +82,7 @@ fn selection_counts_exact_operations_without_changing_results() {
         ("sample", 1, 1),
         ("sample-batch", 1, 0),
         ("reload", 1, 1),
-        ("rule-evaluate", 4, 3),
+        ("rule-evaluate", 5, 3),
     ] {
         let stats = feature(&snapshot, name);
         assert_eq!(stats["accepted"], accepted, "{name}");

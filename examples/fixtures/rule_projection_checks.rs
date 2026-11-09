@@ -149,15 +149,18 @@ pub fn check() -> usize {
         );
     }
 
-    for text in ["r4 2 i0 i1 & 0 f+", "r4 2 i0 i1 f+ i1 &"] {
+    for (text, reason) in [
+        (
+            "r4 2 i0 i1 & 0 f+",
+            "structured projection lacks rule integer bitwise and",
+        ),
+        (
+            "r4 2 i0 i1 f+ i1 &",
+            "structured projection lacks rule raw binary32 transport",
+        ),
+    ] {
         let hir = Hir::from_rule(RuleProgram::compile_text(text).unwrap()).unwrap();
-        let Err(error) = hir.prepare_rule_projection() else {
-            panic!("raw binary32 projected");
-        };
-        assert_eq!(
-            error.to_string(),
-            "structured projection lacks rule raw binary32 transport"
-        );
+        assert_eq!(hir.source().unwrap_err().to_string(), reason);
     }
     let structured = "v2\n(pub rule (a:i64 b:i64) i64 () (ret (&& a b)))";
     assert_eq!(

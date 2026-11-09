@@ -52,6 +52,7 @@ FXM-05.F verifies typed short-circuit effects and signed loop exits.
 FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
 FXM-05.G verifies nested loop exits and conditional helper calls.
 FXM-03.B.4 adds opt-in checked execution for signed integer rule bitwise and.
+FXM-03.B.5 extends that route to raw binary32 and mixed rules.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -1819,3 +1820,41 @@ the Node Wasm check and portable host benchmark. Local
 `5B0BE0C2600424FC5E5A2FFA08ACC787C0C0CD87AA71FE78067D10D8721CCDE7`
 binds the freeze, source, controls, and replay. FXM-03.B.5 next scopes raw
 binary32 projection and its low-word transport contract.
+
+## FXM-03.B.5 opt-in raw binary32 rule projection
+
+`Hir::prepare_rule_projection()` now handles all six released raw binary32
+operators. Rule slots remain signed integers. Each float operation reads the
+low 32 bits of both operands. Arithmetic returns zero-extended result bits,
+including signed zero, infinities and canonical NaN `0x7fc00000`. Ordered
+comparisons return signed zero or one. The portable checker preserves eager
+select, guard order and checked signed traps in mixed rules. A two-input raw
+operator takes ten VM instructions, eight cells and one frame.
+
+The 68,712 probes per platform compared exact words and traps with the legacy
+evaluator, the restored prepared rule and independent Rust. The signed AND
+ledger retained its 16,195 checks. Both independent defaults passed 86 Windows
+release tests, 16 Node Wasm suites, three historical FXH fixtures under Node,
+and Linux x64 compilation. Six CLI builds agreed across 32 rule and limit
+cases and a malformed envelope. Canonical FXD, FXH v1, receipts, refusals and
+twelve retained FSM artifacts matched. The opt-in VM leaves legacy rule
+telemetry unchanged. D.9 through D.11 evidence remains retained.
+
+Windows x64 portable release used CPU 12 with telemetry off. Each percentile
+is the median of four process percentiles from 21 round averages. Projected
+add, divide and ordered comparison took 80.63–86.08 ns p50 and
+81.39–86.57 ns p95 across the two distributions and defaults. They were
+within 1.7% p50 and 1.5% p95 of typed controls with the same VM limits and
+workspace reuse. The legacy rule took 10.21–12.77 ns p50, and the Rust kernel
+took 3.02–4.52 ns. The mixed float and AND chain took 126.41–130.08 ns p50
+versus 14.74–17.86 ns legacy and 3.64–4.56 ns in Rust. Preparation from
+checked HIR took 1.78–1.80 µs for scalar rules and 2.75–2.77 µs for the
+mixed rule. Signed AND passed its matched typed and prior-build guards.
+
+Run `cargo test --locked --release --all-features --example
+bench_raw_rule_projection` for the differential ledger. The same example
+provides the Node Wasm check and portable benchmark. Local
+`raw-rule-projection/manifest.json` SHA-256
+`842A0B17F59A35E673AE3CAB34B80AB6B2AF2AC4E39134BDA6E14516E2E22C01`
+binds source, controls and replay. FXM-02.D.12 next isolates the remaining
+per-element cost in the portable signed-list fold after D.11.
