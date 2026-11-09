@@ -107,6 +107,7 @@ pub(super) struct Boundary {
     boundary_cells: usize,
     frames: usize,
     signed_io: bool,
+    single_signed_record: bool,
     // One-block call graphs can have all their metering performed at admission.
     pub(super) fixed: Option<(u64, usize)>,
 }
@@ -143,6 +144,7 @@ impl Plan {
         let cost = lower_function(module, entry, &mut functions, &mut work, 1)?;
         let signed_io =
             result == Shape::I64 && inputs.iter().chain(&args).all(|&shape| shape == Shape::I64);
+        let single_signed_record = inputs.is_empty() && args == [Shape::Record(1), Shape::I64];
         Some(Self {
             entry,
             functions,
@@ -153,6 +155,7 @@ impl Plan {
                 boundary_cells: input_lanes + result.lanes(),
                 frames: cost.frames,
                 signed_io,
+                single_signed_record,
                 fixed: cost.fixed,
             },
         })
@@ -197,15 +200,25 @@ impl Boundary {
             pack_signed(arguments, call.arguments)?;
             return (kernel(&raw, &mut out, fuel, cells as u64) == 0).then(|| Value::I64(out[0]));
         }
-        let mut offset = 0;
-        pack_values(&self.inputs, call.inputs, 1, &mut raw, &mut offset)?;
-        pack_values(
-            &self.args,
-            call.arguments,
-            call.inputs.len() + 1,
-            &mut raw,
-            &mut offset,
-        )?;
+        if self.single_signed_record {
+            let [Value::Record(fields), Value::I64(arg)] = call.arguments else {
+                return None;
+            };
+            let [Value::I64(field)] = fields.as_ref() else {
+                return None;
+            };
+            raw[..3].copy_from_slice(&[1, *field, *arg]);
+        } else {
+            let mut offset = 0;
+            pack_values(&self.inputs, call.inputs, 1, &mut raw, &mut offset)?;
+            pack_values(
+                &self.args,
+                call.arguments,
+                call.inputs.len() + 1,
+                &mut raw,
+                &mut offset,
+            )?;
+        }
         if kernel(&raw, &mut out, fuel, cells as u64) != 0 {
             return None;
         }
@@ -255,6 +268,87 @@ fn pack_signed(lanes: &mut [i64], values: &[Value]) -> Option<()> {
         *lane = *value;
     }
     Some(())
+}
+
+#[cfg(test)]
+#[test]
+fn single_signed_record_admission() {
+    let module =
+        Module::compile_compact("v2 (rec R x:i64) (pub keep (s:R d:i64) R () (ret s))").unwrap();
+    let plan = Plan::lower(&module, module.exports["keep"]).unwrap();
+    let state: Arc<[Value]> = [Value::I64(-23)].into();
+    let args = [Value::Record(state.clone()), Value::I64(i64::MIN)];
+    let call = Invocation {
+        export: "keep",
+        inputs: &[],
+        arguments: &args,
+        limits: Limits {
+            instructions: 2,
+            cells: 8,
+            frames: 1,
+        },
+    };
+    let result = plan
+        .boundary
+        .run::<MAX_LANES>(&call, |raw, out, fuel, cells| {
+            assert_eq!(&raw[..3], &[1, -23, i64::MIN]);
+            assert!(raw[3..].iter().all(|&lane| lane == 0));
+            assert_eq!((fuel, cells), (2, 3));
+            out[..2].copy_from_slice(&raw[..2]);
+            0
+        });
+    let Some(Value::Record(result)) = result else {
+        panic!("valid record must reach the kernel");
+    };
+    assert!(Arc::ptr_eq(&result, &state));
+
+    let reject = |call: Invocation<'_>| {
+        assert!(
+            plan.boundary
+                .run::<MAX_LANES>(&call, |_, _, _, _| panic!(
+                    "invalid call reached the kernel"
+                ))
+                .is_none()
+        );
+    };
+    for first in [
+        Value::I64(0),
+        Value::Record([].into()),
+        Value::Record([Value::Bool(false)].into()),
+        Value::Record([Value::I64(0), Value::I64(1)].into()),
+    ] {
+        reject(Invocation {
+            arguments: &[first, Value::I64(0)],
+            ..call
+        });
+    }
+    for arguments in [
+        &args[..1],
+        &[args[0].clone(), Value::Bool(true)],
+        &[args[0].clone(), args[1].clone(), Value::I64(0)],
+    ] {
+        reject(Invocation { arguments, ..call });
+    }
+    reject(Invocation {
+        inputs: &[Value::I64(0)],
+        ..call
+    });
+    for limits in [
+        Limits {
+            instructions: 1,
+            ..call.limits
+        },
+        Limits {
+            cells: 7,
+            ..call.limits
+        },
+        Limits {
+            frames: 0,
+            ..call.limits
+        },
+    ] {
+        reject(Invocation { limits, ..call });
+    }
 }
 
 fn lower_function(

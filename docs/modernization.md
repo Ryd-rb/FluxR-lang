@@ -46,6 +46,8 @@ FXM-02.D.6 pairs long-scan wall time with thread-cycle counts.
 FXM-02.D.7 reduces the cost of returning an unchanged host record.
 FXM-05.E verifies bounded signed branches, backedges, and record ownership.
 FXM-05.F verifies typed short-circuit effects and signed loop exits.
+FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
+FXM-05.G next checks nested loop exits and conditional helper calls.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1189,3 +1191,50 @@ Run `cargo test --locked --release --all-features loop_exits` or call
 generated fixture, and the compatibility logs. FXM-02.D.8 next isolates
 signed-record validation and packing against the matched production
 host controls. Both runtime parity gates remain open.
+
+## FXM-02.D.8 signed record packing
+
+The shared JIT and AOT boundary preselects direct packing for an export
+with no host inputs and two arguments, a one-field signed record and a
+signed integer. The fast path checks the record and scalar tags and the
+exact field count, then writes the origin, field and scalar into three
+lanes. Other shapes use the general packer. The focused admission test
+checks lane values, unused lanes, malformed arity and values, one-unit
+budget shortfalls and the identity of a returned host allocation.
+
+Both independent defaults ran the frozen 20,000-input cases with Rust
+1.99.1 release, typed JIT, telemetry off and logical CPU 12. Fresh D.7
+and candidate binaries ran in ABBA and BAAB process orders. Each process
+checked complete values and exact budget behavior against the portable
+and Rust hosts. The table shows the range of bundled per-call medians
+across the four repository/order groups.
+
+| Workload | D.7 bundled p50 | D.8 bundled p50 | Matched D.8 Rust host p50 |
+| --- | ---: | ---: | ---: |
+| Record read | 23.80–24.61 ns | 19.72–21.04 ns | 5.67–5.81 ns |
+| Record reuse | 30.52–31.87 ns | 25.70–26.67 ns | 7.29–7.42 ns |
+| Record write | 58.25–60.70 ns | 53.64–54.94 ns | 38.65–39.31 ns |
+
+Across record reads, reuse and writes on the bundled, source-injected
+and artifact-injected routes, the geometric mean of paired p50 ratios
+improved 13.0–16.7%. Each grouped record p95 improved 3.1–31.5%.
+The signed-scalar controls changed −2.3% to +3.6% at p50 and −4.9% to
++3.1% at p95, within the frozen guards. These timings cover warm calls.
+The logs report compilation, preparation and replacement separately.
+
+Across the six frozen hot workloads, bundled calls took 2.22–2.29×
+as long as the matched Rust host at p50 and 2.01–2.15× at p95 by
+geometric mean. Eight grouped and 23 individual injection comparisons
+missed the thresholds. Both runtime parity gates remain open.
+
+Both defaults passed Windows release with 67 portable, 67 native-JIT
+and 69 typed-JIT tests, the pinned host corpus, nine Node Wasm suites,
+three released FXH fixtures, browser rollback, highlighting, all three
+token seals, and historical replays at 18/843/15 and 19/82/10. Timeline,
+counter and both generated AOT fixtures matched byte for byte. Linux
+x64 compiled. Native Linux and ARM64 replay remain open.
+
+Local `runtime-parity-d8/manifest.json` SHA-256 `2F6823F3A86BA17DBE8ED2B7A9A46A95E91EC9CB27B0B911E4DBBDB3E50CA6B0` binds the
+freeze, candidate, binaries, individual and grouped timing data, and
+compatibility logs. FXM-05.G next checks nested loop exits and conditional
+helper calls with an independent source ledger.

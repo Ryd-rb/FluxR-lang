@@ -10,10 +10,11 @@ source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
 frame limits. A call reports the first exhausted limit or arithmetic trap.
 On Windows x64, the host can prepare supported bundled programs and live
-replacements for native execution. Supported signed branches and loops,
-including explicit break and continue, use the same resource limits in JIT,
-generated Rust, and portable execution. The portable evaluator short-circuits
-typed boolean expressions when the left operand determines the result.
+replacements for native execution. The native tier admits signed arithmetic,
+flat signed records, and supported branches and loops under the same
+instruction, cell, and frame limits as generated Rust and the portable
+evaluator. The portable evaluator also handles short-circuit boolean
+expressions whose values cross a block boundary.
 An unchanged record can share the host's allocation, and a write returns
 a separately owned record. A failed replacement probe preserves the active
 revision and the host's values. The browser scene lab supports replay.
@@ -27,7 +28,8 @@ edited function body reduces repeated prompt context in both FluxR and Rust.
 Typed source and edit bodies still exceed the target. In the frozen Windows
 host benchmark, bundled calls take about twice as long as the matched Rust
 host by geometric mean. Source and artifact injection can miss the warm
-latency targets, and long scans show tail variation on both FluxR and Rust.
+latency targets. The benchmarks report warm calls separately from
+compilation, native preparation, and replacement.
 Broader language and safety coverage, native Linux and ARM64 validation,
 and an isolated release launch remain open. The [modernization plan](docs/modernization.md)
 records the acceptance criteria and measurements.
