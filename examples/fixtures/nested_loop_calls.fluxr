@@ -1,0 +1,22 @@
+v2
+(rec State total:i64 marker:i64)
+(fn quotient (step:i64 divisor:i64) i64 ()
+  (ret (/ step divisor)))
+(pub walk (state:State n:i64 width:i64 trigger:i64 step:i64 divisor:i64)
+  State (total:i64 j:i64)
+  (= total state.total)
+  (while (< 0 n) (
+    (= n (- n 1))
+    (if (== n 0) ((break)) ())
+    (if (== n 2) ((continue)) ())
+    (= j width)
+    (while (< 0 j) (
+      (= j (- j 1))
+      (if (== j 1) ((break)) ())
+      (if (== j 3) ((continue)) ())
+      (if (== j trigger)
+        ((= total (+ total (call quotient step divisor)))) ())))
+    (= total (+ total n))))
+  (if (== total state.total) ((ret state)) ())
+  (= state.total total)
+  (ret state))

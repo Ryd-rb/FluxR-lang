@@ -89,6 +89,62 @@ mod loop_exits {
     }
 }
 
+#[cfg(test)]
+mod nested_loop_calls {
+    use super::*;
+    use crate as fluxr;
+
+    include!("../../examples/fixtures/nested_loop_calls_aot.rs");
+
+    #[test]
+    fn nested_loops_reserve_maximum_native_depth() {
+        let module = Module::compile_compact(include_str!(
+            "../../examples/fixtures/nested_loop_calls.fluxr"
+        ))
+        .unwrap();
+        let aot = prepare(&module).unwrap();
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        let jit =
+            super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
+        for (scalars, instructions, cells, total) in [
+            ([1, 4, 2, 6, 0], 23, 20, 7),
+            ([3, 0, 2, 6, 0], 69, 22, 8),
+            ([2, 4, 3, 6, 0], 99, 22, 8),
+            ([2, 4, 2, 6, 2], 110, 25, 11),
+            ([2, 4, 2, -1, 1], 108, 23, 7),
+            ([1024, 4, 2, 0, 1], 86_912, 3088, 523_781),
+        ] {
+            let host = [Value::I64(7), Value::I64(-11)].into();
+            let [n, width, trigger, step, divisor] = scalars.map(Value::I64);
+            let args = [Value::Record(host), n, width, trigger, step, divisor];
+            let call = Invocation {
+                export: "walk",
+                inputs: &[],
+                arguments: &args,
+                limits: Limits {
+                    instructions,
+                    cells,
+                    frames: 2,
+                },
+            };
+            let expected = Value::Record([Value::I64(total), Value::I64(-11)].into());
+            assert_eq!(aot.boundary.run(&call, aot.kernel), Some(expected.clone()));
+            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            assert_eq!(jit.run(&call), Some(expected));
+            let shallow = Invocation {
+                limits: Limits {
+                    frames: 1,
+                    ..call.limits
+                },
+                ..call
+            };
+            assert_eq!(aot.boundary.run(&shallow, aot.kernel), None);
+            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            assert_eq!(jit.run(&shallow), None);
+        }
+    }
+}
+
 pub struct PreparedAot<'module> {
     module: &'module Module,
     export: &'module str,

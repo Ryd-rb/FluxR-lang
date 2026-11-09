@@ -32,6 +32,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
 | FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. FXM-05.D checks bounded recursion and replacement probes. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
+| FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | After FXM-05.G, audit `codex/fluxr-modernization` and `codex/fr1-arithmetic`, and integrate the pinned `codex/native-window-audio` snapshot. Preserve the active consumer checkout. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
 
@@ -47,7 +48,10 @@ FXM-02.D.7 reduces the cost of returning an unchanged host record.
 FXM-05.E verifies bounded signed branches, backedges, and record ownership.
 FXM-05.F verifies typed short-circuit effects and signed loop exits.
 FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
-FXM-05.G next checks nested loop exits and conditional helper calls.
+FXM-05.G verifies nested loop exits and conditional helper calls.
+FXM-06.B next reconciles outstanding branches and integrates validated work
+on both independent defaults. FXM-02.D.9 remains queued to measure the next
+runtime residual against matched Rust and injection controls.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1238,3 +1242,41 @@ Local `runtime-parity-d8/manifest.json` SHA-256 `2F6823F3A86BA17DBE8ED2B7A9A46A9
 freeze, candidate, binaries, individual and grouped timing data, and
 compatibility logs. FXM-05.G next checks nested loop exits and conditional
 helper calls with an independent source ledger.
+
+## FXM-05.G nested signed loop exits and conditional calls
+
+The source ledger distinguishes both loop exits at each nesting level.
+Inner break still runs the outer update. Inner continue skips a matching
+call trigger and reaches the next inner guard. Outer continue skips both
+the inner loop and the outer update. Outer break skips the next guard.
+The ledger also distinguishes an untaken zero divisor, a reached zero
+divisor, signed division overflow, and overflow in the helper's caller
+and the outer update. Budget sweeps check which trap occurs first.
+
+Across direct, forced portable, decoded, artifact-injected, and generated
+AOT invocation, each available route replayed 52,511 cases with exact
+instruction, cell and frame limits. The mixed path with a reached helper
+needs 110 instructions, 25 cells and two frames. The cancellation path
+needs 108 instructions and 23 cells and returns the original allocation.
+A changed result detaches the record and retains its marker. Four
+rejected probes preserve the active revision, artifact bytes and host
+values. A successful exact probe activates the changed result.
+
+Win64 typed JIT and generated AOT complete six paths directly with two
+frames, including a long path with 1,022 helper calls. The planner accepts
+the export. Native admission declines a one-frame call because it reserves
+the call graph's maximum depth. Portable execution can complete with one
+frame on a path that skips the helper. Node Wasm exercises the portable
+routes and compiled Rust AOT fixture.
+
+Both defaults passed Windows release 69/69/71, the pinned host corpus,
+ten Node Wasm suites, three released FXH fixtures, browser rollback,
+highlighting, all three token seals, and historical replays at 18/843/15
+and 19/82/10. Timeline and counter bytes and three generated AOT fixtures
+matched. Linux x64 compiled.
+
+Run `cargo test --locked --release --all-features nested_loop` to replay
+the focused tests. Local `nested-loop-calls/manifest.json` SHA-256
+`87C98E8512921D7EB5D6F4863672AFD8257BF5EED109644D9240DF855343FAA9` binds the freeze, fixtures and compatibility logs. FXM-06.B
+reconciles outstanding branches before the next runtime pass. Both
+runtime parity gates remain open.

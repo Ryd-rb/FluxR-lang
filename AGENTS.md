@@ -10,3 +10,5 @@
 - At each checkpoint, improve README.md with a concise prose overview of FluxR's strengths, goals, current capabilities and remaining project-wide gaps. Keep feature history and checkpoint evidence in docs/modernization.md.
 
 - Keep the development and standalone release default branches at the same accepted feature level. Port each accepted language, runtime, tooling, and example change to both in the same checkpoint. Run equivalent behavior and compatibility checks in both repositories and preserve their independent Git histories.
+
+- Reconcile outstanding FluxR branches at each checkpoint. Land validated changes on both defaults promptly. Carry any work still off main through succession with its head, owner, blocker and next action.

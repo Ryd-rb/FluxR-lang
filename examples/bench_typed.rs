@@ -1062,6 +1062,12 @@ pub fn loop_exits_check() -> Vec<u32> {
     vec![boolean as u32, loops as u32]
 }
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn nested_loop_calls_check() -> u32 {
+    corpus_checks::check_nested_loop_calls() as u32
+}
+
 #[cfg(test)]
 #[test]
 fn host_corpus_matches_reference() {
@@ -1102,6 +1108,12 @@ fn control_flow_matches_specification() {
 #[test]
 fn loop_exits_and_booleans_match_specification() {
     assert_eq!(corpus_checks::check_loop_exits(), (24_492, 34_596));
+}
+
+#[cfg(test)]
+#[test]
+fn nested_loop_calls_match_source_ledger() {
+    assert_eq!(corpus_checks::check_nested_loop_calls(), 52_511);
 }
 
 #[cfg(test)]

@@ -51,6 +51,11 @@ mod loop_exits_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use loop_exits_checks::check_loop_exits;
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "nested_loop_calls_checks.rs"]
+mod nested_loop_calls_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use nested_loop_calls_checks::check_nested_loop_calls;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "recursive_effect_checks.rs"]
 mod recursive_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]

@@ -11,10 +11,11 @@ can pass nested values and recurse under explicit instruction, cell, and
 frame limits. A call reports the first exhausted limit or arithmetic trap.
 On Windows x64, the host can prepare supported bundled programs and live
 replacements for native execution. The native tier admits signed arithmetic,
-flat signed records, and supported branches and loops under the same
-instruction, cell, and frame limits as generated Rust and the portable
-evaluator. The portable evaluator also handles short-circuit boolean
-expressions whose values cross a block boundary.
+flat signed records, and nested loops with conditional calls. Generated
+Rust and the Windows JIT use the same checked operations. When a native
+invocation declines, the portable evaluator applies the path's exact
+resource limits. It also handles short-circuit boolean expressions whose
+values cross a block boundary.
 An unchanged record can share the host's allocation, and a write returns
 a separately owned record. A failed replacement probe preserves the active
 revision and the host's values. The browser scene lab supports replay.
