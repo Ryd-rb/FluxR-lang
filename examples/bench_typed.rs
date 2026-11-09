@@ -1055,6 +1055,13 @@ pub fn control_flow_check() -> u32 {
     corpus_checks::check_control_flow() as u32
 }
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn loop_exits_check() -> Vec<u32> {
+    let (boolean, loops) = corpus_checks::check_loop_exits();
+    vec![boolean as u32, loops as u32]
+}
+
 #[cfg(test)]
 #[test]
 fn host_corpus_matches_reference() {
@@ -1089,6 +1096,12 @@ fn recursive_effects_match_specification() {
 #[test]
 fn control_flow_matches_specification() {
     assert_eq!(corpus_checks::check_control_flow(), 41_110);
+}
+
+#[cfg(test)]
+#[test]
+fn loop_exits_and_booleans_match_specification() {
+    assert_eq!(corpus_checks::check_loop_exits(), (24_492, 34_596));
 }
 
 #[cfg(test)]

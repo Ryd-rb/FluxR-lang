@@ -46,6 +46,11 @@ mod list_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 pub(super) use list_effect_checks::check_list_effects;
 #[cfg(any(test, target_arch = "wasm32"))]
+#[path = "loop_exits_checks.rs"]
+mod loop_exits_checks;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub(super) use loop_exits_checks::check_loop_exits;
+#[cfg(any(test, target_arch = "wasm32"))]
 #[path = "recursive_effect_checks.rs"]
 mod recursive_effect_checks;
 #[cfg(any(test, target_arch = "wasm32"))]

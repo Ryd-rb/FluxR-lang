@@ -10,13 +10,15 @@ source with checked arithmetic, records, variants, and collections. Procedures
 can pass nested values and recurse under explicit instruction, cell, and
 frame limits. A call reports the first exhausted limit or arithmetic trap.
 On Windows x64, the host can prepare supported bundled programs and live
-replacements for native execution. Signed branches and loops use the same
-resource limits in JIT, generated Rust, and portable execution. An unchanged
-record can share the host's allocation, and a write returns a separately
-owned record. A failed replacement probe preserves the active revision and
-the host's values. The portable evaluator and browser scene lab support replay. The migration tools verify released
-artifact bytes, can replay results and traps against the original program,
-and can issue a receipt tying the result to the exact input.
+replacements for native execution. Supported signed branches and loops,
+including explicit break and continue, use the same resource limits in JIT,
+generated Rust, and portable execution. The portable evaluator short-circuits
+typed boolean expressions when the left operand determines the result.
+An unchanged record can share the host's allocation, and a write returns
+a separately owned record. A failed replacement probe preserves the active
+revision and the host's values. The browser scene lab supports replay.
+The migration tools verify released artifact bytes, replay results and traps
+against the original program, and issue receipts that tie results to exact inputs.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact

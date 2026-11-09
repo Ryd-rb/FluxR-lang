@@ -45,6 +45,7 @@ FXM-05.C extends the independent effect specification to compound calls.
 FXM-02.D.6 pairs long-scan wall time with thread-cycle counts.
 FXM-02.D.7 reduces the cost of returning an unchanged host record.
 FXM-05.E verifies bounded signed branches, backedges, and record ownership.
+FXM-05.F verifies typed short-circuit effects and signed loop exits.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1142,3 +1143,49 @@ Local `control-flow/manifest.json` SHA-256 `FCD22B2D2A94F69D611CF05E7A6C57E831B2
 ledger, generated fixture, and compatibility logs. FXM-05.F next checks
 short-circuit boolean effects and explicit loop exits. Both runtime parity
 gates remain open.
+
+## FXM-05.F short-circuit effects and signed loop exits
+
+Two source ledgers check the first observable result or trap. The boolean
+fixture evaluates the right side of AND only when enabled and the right
+side of OR only when the left side is false. The grid distinguishes a
+skipped zero divisor, a taken zero divisor, signed division overflow,
+and overflow in the subsequent record write. When the left helper returns
+true, the record write completes in 24 instruction units, 19 cells, and
+two frames. The native planner refuses this export because the boolean
+result crosses a block edge. Forced portable, decoded, injected, and
+direct fallback calls check 24,492 cases per route.
+
+The loop fixture charges a forward jump for a taken break and skips the
+next guard. A taken continue charges a backedge and skips the body
+arithmetic. The signed countdown can also complete through its ordinary
+backedge. Prepared Win64 JIT and generated AOT both finish the no-entry,
+immediate break, single continue, mixed, and 1,024-continue cases without
+portable fallback at their exact limits. The mixed path takes 88
+instruction units and 19 cells. The 1,024-continue path takes 17,422
+instruction units and 17 cells. Both need one frame. The loop grid checks
+34,596 cases per route across direct, forced portable, decoded, injected,
+and generated AOT calls. Node Wasm replays both grids through its
+available routes.
+
+Returning an unchanged record preserves its allocation. A changed result
+detaches and keeps the marker field. Eight failed replacement probes
+preserve the active revision, bytes, result, and host values. An exact
+probe publishes the replacement for each export. The initial loop trap
+probe exhausted its fuel before the division. The amended freeze reaches
+the divide-by-zero at 92 instruction units and retains the original.
+
+Both repositories passed Windows x64 release with 66 portable, 66
+native-JIT, and 68 typed-JIT tests. The pinned host corpus, nine Node Wasm
+suites, three released FXH fixtures, browser rollback, highlighting, all
+three token seals, historical replays at 18/843/15 and 19/82/10, and prior
+timeline and counter artifact bytes passed. Linux x64 compiled. The
+existing signed control-flow, counter, and volume checks serve as
+differential controls.
+
+Run `cargo test --locked --release --all-features loop_exits` or call
+`loop_exits_check()` from the Node Wasm build of `bench_typed`. Local
+`loop-exits/manifest.json` SHA-256 `7C50DA4A5ADBFFDD2D2904A07CAC1E9E1EA9D12B8561A2117A18D29971D0DF33` binds both ledgers, the
+generated fixture, and the compatibility logs. FXM-02.D.8 next isolates
+signed-record validation and packing against the matched production
+host controls. Both runtime parity gates remain open.

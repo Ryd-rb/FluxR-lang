@@ -45,6 +45,50 @@ mod control_flow {
     }
 }
 
+#[cfg(test)]
+mod loop_exits {
+    use super::*;
+    use crate as fluxr;
+
+    include!("../../examples/fixtures/loop_exits_aot.rs");
+
+    #[test]
+    fn exact_loop_exits_complete_without_portable_fallback() {
+        let module =
+            Module::compile_compact(include_str!("../../examples/fixtures/loop_exits.fluxr"))
+                .unwrap();
+        let aot = prepare(&module).unwrap();
+        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        let jit =
+            super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
+        for (n, stop, skip, step, instructions, cells, total) in [
+            (0, 0, 0, 0, 14, 17, 7),
+            (1, 0, 1, 0, 23, 17, 7),
+            (1, -1, 1, 0, 31, 17, 7),
+            (4, 0, 2, 6, 88, 19, 12),
+            (1024, -1, 1024, 0, 17_422, 17, 7),
+        ] {
+            let state = Value::Record([Value::I64(7), Value::I64(-11)].into());
+            let [n, stop, skip, step] = [n, stop, skip, step].map(Value::I64);
+            let args = [state, n, stop, skip, step];
+            let call = Invocation {
+                export: "walk",
+                inputs: &[],
+                arguments: &args,
+                limits: Limits {
+                    instructions,
+                    cells,
+                    frames: 1,
+                },
+            };
+            let expected = Value::Record([Value::I64(total), Value::I64(-11)].into());
+            assert_eq!(aot.boundary.run(&call, aot.kernel), Some(expected.clone()));
+            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            assert_eq!(jit.run(&call), Some(expected));
+        }
+    }
+}
+
 pub struct PreparedAot<'module> {
     module: &'module Module,
     export: &'module str,
