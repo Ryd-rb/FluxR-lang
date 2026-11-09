@@ -1961,3 +1961,49 @@ matched. Local `runtime-parity-d13/manifest.json` SHA-256
 `5E0D059DC1E6AA6B274451B90809A27299AB355D533C993AF105781EBF233CE5` binds the executables, diagnostic, replay, and validation.
 FXM-02.D.14 tests layout independently before another runtime candidate.
 Both program-wide warm parity gates remain open.
+
+## FXM-02.D.14 same-object Win64 link layout
+
+MSVC LINK 14.44 relinked one development build from identical COFF objects,
+libraries and flags, with three hot symbols placed first by `/ORDER` in B.
+The `Module::run_in`, `ModuleSlot::run_with` and typed `Native::run` RVAs
+moved from `0x5cb20`, `0x74c70` and `0x99d80` to `0x1000`, `0x1b40` and
+`0x1b60`. CDB loaded the matching PDBs. The three entries and two benchmark
+call sites matched byte for byte after masking 84 COFF relocation fields.
+Resolved destinations for named function targets matched the maps. A separate
+preflight matched JIT bytes and encoded modules across all three origins for
+record reuse and signed typed calls. The JIT bytes also matched D.13.
+
+Win64 CPU 12, Rust 1.99.1 release, typed JIT, telemetry off. Values are medians
+of four process percentiles per layout in ABBA and BAAB order.
+
+| Warm route | A p50 / p95 (ns) | B p50 / p95 (ns) |
+| --- | ---: | ---: |
+| Record reuse, bundled | 27.385 / 28.310 | 25.225 / 26.410 |
+| Record reuse, source | 26.755 / 27.400 | 25.190 / 26.755 |
+| Record reuse, artifact | 26.655 / 27.950 | 25.375 / 26.850 |
+| Signed typed, bundled | 17.370 / 17.790 | 16.990 / 17.405 |
+| Signed typed, source | 17.070 / 17.675 | 17.025 / 17.285 |
+| Signed typed, artifact | 17.020 / 17.470 | 16.975 / 17.390 |
+
+The source-minus-artifact p50 contrast moved by 0.285 ns for record reuse
+and was flat to the reported precision for signed typed. This placement
+contrast did not reproduce the sealed D.13 gap. Bundled record reuse changed
+about 7.9% p50, outside the 5% control band. All 57 injection comparisons
+passed the one-sided D.12 non-regression limits. The instrumented build
+and single layout contrast leave the broader cause unresolved.
+
+Each of eight processes passed 41,040 fold comparisons and the exact host
+ledger. Separate sealed projection binaries replayed both defaults. Ten
+standalone raw projection comparisons missed the 10% p50 limit, peaking at
+14.91% over the control. Development raw and both signed guards passed.
+Both defaults passed 86 Win64 release tests, 17 sealed Node suites, three
+historical FXH checks and Linux x64 compilation. Six CLI readers agreed on
+32 rule and limit cases and a malformed envelope. All twelve FSM artifacts
+matched. Both defaults retain the runtime, D.11 sparse-admission gain,
+and D.9, D.10 and D.12 rejections. Both warm parity gates remain open.
+
+Local `runtime-parity-d14/manifest.json` SHA-256 `98782DBB7BD6D7C7DA5FFF60F8B120D37FC671566AAACDC3F22CF645617F818D` binds the link
+inputs, normalized code, replays and guard results. FXM-03.B.6 can advance
+independently by extending the checked FR1 ingress and historical replay
+corpus.

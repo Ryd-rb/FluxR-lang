@@ -50,8 +50,9 @@ calls take about 2.3 times the matched Rust host time by median-latency
 geometric mean. Bulk validation lowers the cost of admitting flat signed
 lists, especially for sparse reads. Long signed folds still spend most of
 their time in the portable interpreter. Bundled modules and live replacements
-share the checked execution path. Warm call latency can still vary across
-source, artifact, and bundled routes on Win64, including across builds.
+share the checked execution path. Win64 warm latency varies with build
+and call route. Relinking identical objects changed host timings while
+the measured source and artifact routes stayed close.
 In a separate matched Windows comparison, default Rhai AST took 11.59 times
 the FluxR call time across seven groups. Rhai's checked Grain backend led on the
 256-element fold. The measurements separate warm calls from compilation,
