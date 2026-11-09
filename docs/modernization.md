@@ -33,7 +33,8 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. FXM-05.D checks bounded recursion and replacement probes. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 | FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. FXM-02.D.9 resumes on the combined baseline. |
-| FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Dedicated research chat. Freeze the protocol before using the shared timing lane. Validate Rhai-inspired changes against released behavior and non-regression gates before integration. |
+| FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Comparison accepted on both defaults. FXM-07.A screens typed-list traversal separately. |
+| FXM-07.A | Freeze a compact typed-list traversal experiment with equivalent expanded code, independent list workloads, and six-tokenizer source and edit counts. Require identical artifacts, exact traps and fuel, and released reader replay. | Main successor owns the scratch experiment. Retain explicit bounds and the existing public interface for the first screen. Record rejection if the gain or compatibility gates fail. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
 
@@ -1472,6 +1473,81 @@ Reproduce the focused check with
 The fixture covers this numerical and resource boundary. Other float
 arithmetic, NaN payload and comparison behavior, broader malformed input
 replay, machine-level backend isolation, native Linux and ARM64 execution,
-and the broader language and capability inventory remain open. FXM-07
-continues with review of the separately sealed Rust, FluxR and Rhai
-comparison.
+and the broader language and capability inventory remain open.
+
+## FXM-07 comparison with optimized Rust and Rhai
+
+The comparison freezes four programs across seven workload sizes on Windows
+x64. It uses Rust 1.99.1 release builds with overflow checks, FluxR typed JIT
+with telemetry off, and checked Rhai 1.27.0 with Simple optimization and
+fast operators. The optional Grain build has zero residuals on these cases.
+The development pin is `51ef8e01e763447a577ead8758eec67fefcb9803` and the
+standalone pin is `cad8c444ae8839f76a6772ef378b4e2eb28c6fbe`. Their structured
+runtime paths match the current defaults. The compact parser has since gained
+grouped bindings. Token counts use the frozen source spellings.
+
+Both builds ran twice per repository on RYDLEGION CPU 12 in development,
+standalone, standalone, development order. Each warm route recorded 25 batches
+of 512 calls with matching checksums. The table gives median process p50 and p95
+of batch means in ns. An asterisk marks a repeat spread above 5% at p50 or 10%
+at p95 within the same checkout and build.
+
+| Warm host group | Rust | FluxR | Default Rhai AST | Checked Grain |
+| --- | ---: | ---: | ---: | ---: |
+| Signed leaf | 8.30 / 8.50 | 33.30 / 34.77 | 439.36 / 456.05 | 310.94 / 321.58 |
+| Eight-way decision | 8.20 / 8.40 | 30.76 / 31.25 * | 751.86 / 760.45 | 467.97 / 481.93 |
+| Fold 16 | 9.38 / 9.38 | 1320.41 / 1336.33 | 2172.07 / 2194.73 | 1639.36 / 1663.67 |
+| Fold 256 | 67.48 / 88.57 * | 18848.34 / 18962.11 | 24609.96 / 24916.21 | 17241.70 / 17666.99 |
+| Record 0 updates | 8.59 / 8.79 | 75.10 / 77.64 * | 776.56 / 787.31 | 619.24 / 633.79 |
+| Record 8 updates | 9.96 / 10.06 | 134.77 / 136.72 | 4215.14 / 4233.98 | 2485.45 / 2542.19 * |
+| Record 64 updates | 37.70 / 37.99 | 218.85 / 224.02 | 27494.14 / 27721.09 | 15115.43 / 15505.86 |
+
+By p50 geometric mean across these groups, default Rhai AST took 11.59×
+the FluxR host time and FluxR took 16.98× the Rust host time. FluxR prepared
+native exports for the leaf, decision and record cases. Both folds used the
+portable route. Grain led FluxR on the 256-element host fold. The packed
+public calls were nearly tied there at p50, with FluxR at 18.76 µs and Grain
+at 18.73 µs. The checked Grain VM retained its operation count across calls.
+The initial reuse attempt failed in the 16-element fold. A separate probe at
+a 64-operation limit rejected reused call 65, and 128 fresh VMs passed.
+Corrected warm Grain timings include VM construction for every call.
+
+The sealed report separates startup, compilation, preparation, first call,
+artifact decode and activation. For the decision case, median process p50
+was 17.95 µs for FluxR source compilation, 434.15 µs for native preparation,
+and 459.85 µs for source activation with a probe and lazy preparation. Rhai
+source compilation took 27.55 µs and Grain lowering took 14.15 µs. The
+Rhai AST replacement adapter took 4.50 µs for activation. Grain artifact
+decode and execution were checked separately from transactional replacement.
+
+The cases exercise ordered checked arithmetic, argument shape, configured
+resource limits, host grants or registration, snapshot ownership and
+replacement rollback. FluxR meters instructions, logical cells and frames.
+Rhai's configured sandbox meters operations, call depth and individual
+collection sizes, disables `eval` and uses a dummy module resolver. FluxR
+checks the full typed replacement interface. The Rhai adapter checks
+revision and arity and probes the result type. The Rust control uses trusted
+typed code and host input limits. Machine isolation, hostile Grain bytecode,
+callbacks with external state, and broader cross-platform behavior remain open.
+
+Across six tokenizers, FluxR authored source totaled 83.7–88.3% of Rust and
+134.5–154.5% of Rhai. The decision case used fewer FluxR tokens than Rhai
+on every tokenizer. FluxR edit bodies totaled 75.5–85.9% of Rust and
+102.5–110.4% of Rhai. FluxR initial and edit contexts totaled 151.4–161.9%
+and 119.8–126.2% of Rust, respectively. The raw counts track handwritten
+host bindings separately. No tokenizer met the 10% Rust source threshold.
+
+The local `fxm-07/manifest.json` SHA-256
+`0603D47126E4D16790A68C8369BF745B2ACCEC02847725A8D10830F1FC1CDFE0`
+binds the source and toolchain pins, raw runs, failed Grain reuse, token counts
+and reproduction commands. Review recomputed the paired summaries and recounted
+all six encoders. The frozen AST and checked Grain harnesses passed behavior
+and lifecycle replay against both current defaults.
+
+Typed-list traversal is a separate experiment. A compact form must preserve
+released signatures and artifact bytes, replay exact traps and fuel, and
+reduce authored and edit tokens on independent list workloads. Measure
+grammar and host binding costs separately. A runtime change needs at least
+5% lower target p50, p95 within 10%, and unrelated warm p50 within 5%.
+Both warm parity gates, the whole-program token target, and live generation
+and editing remain open.

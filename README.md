@@ -38,8 +38,11 @@ bytes. Whole programs and edit bodies still exceed the target. In the frozen
 Windows host benchmark, bundled calls take 2.21–2.25 times as long as the matched
 Rust host at median latency by geometric mean across six workloads.
 Warm source and artifact injection still miss some latency targets.
-The benchmarks separate warm calls from compilation, native preparation,
-and replacement.
+In a separate seven-group Windows host comparison, FluxR took 16.98 times
+the optimized Rust call time by median-latency geometric mean. Default
+Rhai AST took 11.59 times the FluxR call time, while Rhai's checked Grain
+backend led FluxR on the 256-element list fold. The comparison separates warm
+calls from compilation, native preparation, and replacement.
 Broader language and backend safety coverage, native Linux and ARM64 replay,
 hardware counters, and an isolated release launch remain open. Live model
 generation and editing still need matched trials. The
