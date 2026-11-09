@@ -50,8 +50,11 @@ slot and return arithmetic result bits as a zero-extended integer.
 Rules evaluate both select arms in postfix order. A failed guard
 returns zero before later operands run. FXH restores the released FXD
 bytes and rule ABI. It validates the origin, bounds the projection, and
-requires the projection bytes to agree with the origin. Hosts can separately
-prepare checked execution with instruction, cell, and frame limits.
+requires the projection bytes to agree with the origin. At the rule limit of
+16 inputs and 256 operations, the signed fixture carries a canonical
+projection and the raw binary32 fixture carries only the FXD origin.
+Hosts can prepare checked execution from either artifact and set instruction,
+cell, and frame limits.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact

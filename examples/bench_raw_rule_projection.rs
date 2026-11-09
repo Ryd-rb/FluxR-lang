@@ -22,6 +22,12 @@ pub fn composed_rule_hir_check() -> usize {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn rule_limit_hir_check() -> usize {
+    composed::check_limits()
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn rule_origin_artifact_safety_check() -> usize {
     rule_origin_artifact::check()
 }
@@ -34,6 +40,11 @@ fn rule_origin_artifacts_match_frozen_refusals() {
 #[test]
 fn composed_rule_hir_matches_frozen_ledger() {
     assert_eq!(composed::check(), 28);
+}
+
+#[test]
+fn rule_limits_match_frozen_ledger() {
+    assert_eq!(composed::check_limits(), 18);
 }
 
 #[test]

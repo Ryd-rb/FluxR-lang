@@ -67,6 +67,7 @@ FXM-03.B.9 verifies composed eager rules against archived FXD and checked FXH.
 FXM-05.P checks malformed nested lists and variant payloads in portable artifacts.
 FXM-03.B.10 checks valid nested payloads and shared host values through FXH.
 FXM-05.Q checks malformed FXD origins and rule projections in FXH.
+FXM-03.B.11 verifies checked FXH replay at both FXD rule count limits.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2475,3 +2476,33 @@ Local `rule-origin-artifact-safety/manifest.json` SHA-256
 `6537EBA156631718BF426C42663BF91E63FCC647D05F2A1914B7B24A83BE234A` binds the freeze, exact diagnostics, canonical controls,
 and platform runs. FXM-03.B.11 next checks valid FXD rules at the input
 and instruction count limits through canonical FXH and checked execution.
+
+## FXM-03.B.11 rule limit replay
+
+Two archived FXD rules reach 16 inputs and 256 operations. The signed rule
+has a canonical shared projection. The mixed rule carries only its FXD
+origin and returns the exact raw binary32 division bits. The fixtures
+check both guard exits, division by zero, division overflow, and a late
+addition overflow. The mixed select evaluates its signed arm even when
+it returns the raw result. Raw rows cover negative zero, subnormal,
+canonical NaN, infinity, and high input bits discarded by raw division.
+
+Each platform replays 18 rows through the source, archived FXD and restored
+FXD. The checked FXD and FXH paths make 144 calls at the exact instruction,
+cell, and frame limits and with each limit one unit short. The first guard
+returns in eight checked instructions. The final result needs 770 or 771,
+depending on the select branch. Signed and mixed rules need 37 and 38
+entry cells respectively. A result, including an early guard exit, needs
+one more cell. Four current and retained CLIs reproduce 16 round trips,
+144 archived replay outcomes, and 32 byte comparisons.
+
+Each default passes 99 Win64 release tests, one focused portable test,
+26 Node Wasm suites, five retained FXH cases under Node, and Linux x64
+compilation. Run `cargo test --locked --release --no-default-features
+--example bench_raw_rule_projection rule_limits_match_frozen_ledger`
+or call `rule_limit_hir_check()` from the Node Wasm example.
+
+Local `rule-limit-hir-replay/manifest.json` SHA-256
+`0096AE2ABE6A44B0FD3086B2FDD0A9276F73DCB14690FAA5A9515A3F52B89433` binds the freeze, reader checks, and platform runs.
+FXM-05.R next checks host argument admission and workspace recovery
+for the checked rule projections.
