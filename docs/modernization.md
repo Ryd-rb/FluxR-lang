@@ -50,8 +50,8 @@ FXM-05.F verifies typed short-circuit effects and signed loop exits.
 FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
 FXM-05.G verifies nested loop exits and conditional helper calls.
 FXM-06.B reconciles three branches and adds the optional native host to both
-defaults. FXM-02.D.9 next measures a runtime residual against matched Rust and
-injection controls.
+defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
+measurements on both defaults.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1320,3 +1320,54 @@ Local `branch-integration/manifest.json` SHA-256
 `474631507479E7BEA503EFAD30624862F39AF4F998F59BCBBCD1699152D40ED0` binds the paired source, branch audit, binaries, and compatibility
 logs. FXM-02.D.9 measures the next independent residual. Both warm runtime
 parity gates remain open.
+
+## FXM-02.D.9 signed-pair packing experiment
+
+The frozen Win64 corpus measured a residual in typed signed addition.
+The bundled and injected routes took about 17 ns per call at p50, and
+the matched optimized Rust host took 5.57–5.93 ns. The candidate
+preselected direct lane packing for two signed arguments and no host
+inputs. It used the same JIT and AOT kernel ABI and kept the existing
+budget and tag checks.
+
+Both independent defaults ran baseline and candidate builds in ABBA and
+BAAB process orders on logical CPU 12, with Rust 1.99.1 release and
+telemetry off. Each process verified the frozen checksums, exact budget
+frontiers and portable trap order on bundled, source-injected and
+artifact-injected calls. Focused checks passed for lane contents and
+malformed values, and confirmed that unchanged records retain the host
+allocation.
+
+| Typed signed route | Baseline p50 | Candidate p50 |
+| --- | ---: | ---: |
+| Bundled | 17.04–17.15 ns | 16.11–17.08 ns |
+| Source-injected | 16.88–17.04 ns | 16.94–17.31 ns |
+| Artifact-injected | 16.94–17.16 ns | 16.79–16.98 ns |
+
+Across the three routes, grouped p50 improved 0.3–2.0%, below the frozen
+5% minimum in all four groups. Record controls exceeded the frozen
+regression guards, with the largest observed p50 and p95 increases at
+12.0% and 62.3% on different routes. The candidate was rejected and the
+original source bytes were restored in both checkouts.
+
+The retained baseline's source compilation p50 was 5.95–6.30 µs and
+artifact decode was 9.05–9.35 µs. Native preparation was 74.70–79.20 µs
+across source and artifact. Activation was 0.60–0.70 µs and first
+execution was 0.10 µs. The seal retains both builds' p50 and p95 results
+for each phase separately from warm calls.
+
+The retained runtime measured 2.21–2.25× the matched Rust host at p50
+and 2.01–2.09× at p95 by geometric mean across the six frozen workloads.
+Five grouped and 18 individual injection comparisons missed the warm
+parity thresholds. Both warm parity gates remain open.
+
+All three token seals replayed against both restored runtimes using the
+archived inputs and cached tokenizers. The FXM-06.B compatibility seal
+applies to the identical runtime trees. Local
+`runtime-parity-d9/manifest.json` SHA-256
+`57757C2859DF8A913E2151596AA4B4E6539A456E27DB2AA0A6DFDE48982B96CA` binds the freeze, binaries, behavior checks, timing data and
+token replay.
+
+FXM-04.D next tests one source-density change using archived training inputs
+and a frozen behavior-matched holdout. Live generation and edit evidence
+remain gated by model budget.
