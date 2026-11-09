@@ -347,6 +347,13 @@ impl<'a> Parser<'a> {
                     },
                 ]);
             }
+            "scan" => {
+                let index = self.word()?;
+                let end = self.expr()?;
+                let body = self.block()?;
+                self.expect(")")?;
+                return Ok(scan(index, end, body).into());
+            }
             "while" => Stmt::While {
                 test: self.expr()?,
                 body: self.block()?,

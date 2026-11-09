@@ -302,3 +302,41 @@ fluxr = "(? (== r.lo r.hi) r.lo (* r.hi d))"
 rust = "if r.lo == r.hi { Some(r.lo) } else { r.hi.checked_mul(d) }"
 fluxr_span = ["(* r.hi d)", "(* r.lo d)"]
 rust_span = ["r.hi.checked_mul", "r.lo.checked_mul"]
+
+# FXM-07.A representative authored pair and matching insertion.
+[scan_holdout.sentinel]
+task = "Sum the prefix up to the first zero or n values. Check additions in order."
+edit = "Before initializing acc, scan the first n elements and return -1 if any is negative."
+insert_before = "  (= acc 0)"
+expanded = '''
+v2
+(pub sentinel (xs:[i64] n:u64) i64 (i:u64 x acc:i64)
+  (= acc 0)
+  (= i 0u)
+  (while (< i n) (
+    (= x (at xs i))
+    (when (== x 0) (break))
+    (= acc (+ acc x))
+    (= i (+ i 1u))))
+  (ret acc))
+'''
+fluxr = '''
+v2
+(pub sentinel (xs:[i64] n:u64) i64 (i:u64 x acc:i64)
+  (= acc 0)
+  (scan i n (
+    (= x (at xs i))
+    (when (== x 0) (break))
+    (= acc (+ acc x))))
+  (ret acc))
+'''
+expanded_edit = '''
+  (= i 0u)
+  (while (< i n) (
+    (when (< (at xs i) 0) (ret -1))
+    (= i (+ i 1u))))
+'''
+fluxr_edit = '''
+  (scan i n (
+    (when (< (at xs i) 0) (ret -1))))
+'''

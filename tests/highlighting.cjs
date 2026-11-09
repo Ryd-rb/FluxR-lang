@@ -95,6 +95,9 @@ async function main() {
   const tail = tokens("v2 (pub pick (b:bool) i64 = (? b 1 0))");
   scoped(tail, "=", "keyword.operator.fluxr");
   scoped(tail, "?", "keyword.control.fluxr");
+  const traversal = tokens("v2 (pub first (xs:[i64] n:u64) u64 (i:u64) (scan i n ((when (< (at xs i) 0) (break)))) (ret i))");
+  scoped(traversal, "scan", "keyword.control.fluxr");
+  scoped(traversal, "at", "support.function.fluxr");
   const projection = tokens("v2 (pub project (x:i64) i64 = (ftoi64 (sqrt (i64tof x))))");
   for (const op of ["i64tof", "ftoi64", "sqrt"]) {
     scoped(projection, op, "support.function.fluxr");

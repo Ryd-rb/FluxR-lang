@@ -34,7 +34,10 @@ gates can reach that target. Reusing typed declarations and supplying only the
 edited function body reduces repeated prompt context in both FluxR and Rust.
 Grouped bindings use one type annotation for adjacent names. They cut median
 authored source by 4.9–7.1% on the tested typed programs and preserve compiled
-bytes. Whole programs and edit bodies still exceed the target. In the frozen
+bytes. An explicit-bound `scan` can shorten indexed list traversals while
+preserving compiled bytes, trap order, and fuel. It reduced authored source
+21.4–24.1% on four matched list workloads. Whole programs and edit bodies
+still exceed the target. In the frozen
 Windows host benchmark, bundled calls take 2.21–2.25 times as long as the matched
 Rust host at median latency by geometric mean across six workloads.
 Warm source and artifact injection still miss some latency targets.

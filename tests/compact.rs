@@ -250,6 +250,71 @@ fn collection_forms_and_boolean_chains_preserve_portable_lowering() {
 }
 
 #[test]
+fn bounded_scan_preserves_edit_lowering_and_loop_effects() {
+    let compact = "(scan i n (
+        (= n (- n 1u))
+        (when (< (at xs i) 0) (continue)))) (ret i)";
+    let expanded = "(= i 0u) (while (< i n) (
+        (= n (- n 1u))
+        (when (< (at xs i) 0) (continue))
+        (= i (+ i 1u)))) (ret i)";
+    assert_eq!(
+        Stmt::parse_compact_body(compact).unwrap(),
+        Stmt::parse_compact_body(expanded).unwrap(),
+    );
+    assert!(Stmt::parse_compact_body("(scan i n)").is_err());
+    assert!(Stmt::parse_compact_body("(scan i n () extra)").is_err());
+
+    let module = |body| {
+        Module::compile_compact(&format!("v2 (pub f (xs:[i64] n:u64) u64 (i:u64) {body})")).unwrap()
+    };
+    let compact = module(compact);
+    let expanded = module(expanded);
+    assert_eq!(compact.encode(), expanded.encode());
+    assert_eq!(
+        compact.compact_text().unwrap(),
+        expanded.compact_text().unwrap()
+    );
+
+    for (values, bound, expected) in [
+        (vec![], 0, Some(0)),
+        (vec![-1], 4, Some(0)),
+        (vec![1, 2], 3, Some(2)),
+        (vec![1], 3, None),
+    ] {
+        let arguments = [
+            Value::List(std::sync::Arc::new(
+                values.into_iter().map(Value::I64).collect(),
+            )),
+            Value::U64(bound),
+        ];
+        let invoke = |module: &Module, instructions| {
+            module.run(Invocation {
+                export: "f",
+                inputs: &[],
+                arguments: &arguments,
+                limits: Limits {
+                    instructions,
+                    ..Limits::default()
+                },
+            })
+        };
+        for fuel in 0..96 {
+            assert_eq!(invoke(&compact, fuel), invoke(&expanded, fuel));
+        }
+        match expected {
+            Some(index) => assert_eq!(invoke(&compact, 96).unwrap(), Value::U64(index)),
+            None => assert!(
+                invoke(&compact, 96)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("index")
+            ),
+        }
+    }
+}
+
+#[test]
 fn gates_preserve_exact_lazy_fact_order() {
     use fluxr::Gate;
     let gate = Gate::compile_text("(& a (| b c) (! d))").unwrap();

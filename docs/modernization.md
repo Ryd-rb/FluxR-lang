@@ -34,7 +34,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
 | FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. FXM-02.D.9 resumes on the combined baseline. |
 | FXM-07 | Compare FluxR, optimized Rust and Rhai on matched performance, safety and token counts. Freeze common workloads, feature flags and safety settings. Separate warm invocation from compilation and reload, and count source, host bindings, edits and context separately. | Comparison accepted on both defaults. FXM-07.A screens typed-list traversal separately. |
-| FXM-07.A | Freeze a compact typed-list traversal experiment with equivalent expanded code, independent list workloads, and six-tokenizer source and edit counts. Require identical artifacts, exact traps and fuel, and released reader replay. | Main successor owns the scratch experiment. Retain explicit bounds and the existing public interface for the first screen. Record rejection if the gain or compatibility gates fail. |
+| FXM-07.A | Screen compact typed-list traversal against equivalent expanded code on independent list workloads. Require identical artifacts, exact traps and fuel, and released reader replay. | Explicit-bound `scan` passed all six encoders and the compatibility checks. Length inference and runtime changes remain separate experiments. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
 
@@ -1551,3 +1551,30 @@ grammar and host binding costs separately. A runtime change needs at least
 5% lower target p50, p95 within 10%, and unrelated warm p50 within 5%.
 Both warm parity gates, the whole-program token target, and live generation
 and editing remain open.
+
+## FXM-07.A explicit-bound scan
+
+`scan` expands through the same checked indexed loop as the existing compact
+collection forms. Its body uses ordinary list access and control flow. The
+bound is tested on each iteration, and continue skips the trailing increment.
+Public interfaces, canonical printing and the artifact format are preserved.
+
+Four workloads cover checked squares, filtered differences, sentinel
+termination, and ragged nested traversal. Across six encoders, the scan
+spellings saved 21.4–24.1% of original source tokens, 24.1–26.2% of edited
+source tokens and 33.3–36.2% of replacement payload tokens. Both localized
+edits tied. The two edits adding a traversal supplied the payload savings.
+Shared host bindings were identical. Teaching the form added 33–39 tokens.
+With the instruction shared, the four source and edit pairs saved 89–119
+tokens after paying for it. Standalone cold prompts grew when each request
+carried its own instruction.
+
+All eight original and edited artifacts match the preceding defaults byte
+for byte. Both released CLIs read, print and recompile the candidate artifacts
+to those same bytes. The frozen workloads match across 31,200 fuel and cell
+limit comparisons on each checkout. The focused test also exercises a
+changing bound and continue. Both checkouts pass 82 release tests, TextMate
+scope checks and 12 Node Wasm suites. The local
+`typed-list-traversal/manifest.json` SHA-256
+`BBA9C2FFD5A07532A9CD898EAEFA37D63C147745E40E6B1D0D51429734E5DBF2`
+binds the freeze, token counts, artifact hashes and validation logs.

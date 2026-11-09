@@ -99,7 +99,7 @@
           }
         },
         {
-          "match": "(\\()\\s*(inputs|pub|fn|rec|enum|if|when|while|break|continue|ret|find|indices|\\?)(?=[\\s()]|$)",
+          "match": "(\\()\\s*(inputs|pub|fn|rec|enum|if|when|while|scan|break|continue|ret|find|indices|\\?)(?=[\\s()]|$)",
           "captures": {
             "1": { "name": "punctuation.section.group.begin.fluxr" },
             "2": { "name": "keyword.control.fluxr" }

@@ -217,6 +217,13 @@ output locals with the usual types. The loop retains index errors, evaluation
 order and metering. A when guards one statement. Ampersand and pipe chains
 evaluate left to right and short-circuit.
 
+`(scan i n (body...))` uses a declared u64 index slot and an explicit u64
+bound expression. It expands to `(= i 0u)` followed by
+`(while (< i n) (body... (= i (+ i 1u))))`. The test reevaluates the bound
+each time. A continue skips the increment, and a break or return exits
+before it. List access stays explicit with `(at xs i)`. The canonical
+printer emits the expanded statements.
+
 Lazy gates express boolean decisions over consecutive facts named a through
 p. A flat gate such as &abcde requires all its facts. A vertical bar accepts
 the first true fact. Nested gates use the compact expression syntax.
