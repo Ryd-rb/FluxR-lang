@@ -18,6 +18,11 @@ rust = "examples/fixtures/modern_reference.rs"
 rust_item = "fn counter"
 performance = "cargo run --locked --release --features native-jit --example bench_modern"
 
+[case.native_projection]
+fluxr = "examples/fixtures/native_projection.fluxr"
+rust = "examples/fixtures/native_projection.rs"
+performance = "cargo run --locked --release --example bench_modern"
+
 [case.modern_rule]
 fluxr = "examples/fixtures/modern_rule.flux"
 rust = "examples/fixtures/modern_reference.rs"

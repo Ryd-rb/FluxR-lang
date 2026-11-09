@@ -583,6 +583,16 @@ fn unary(kind: Unary, value: Value) -> Value {
         (Unary::Not, Value::Bool(value)) => Value::Bool(!value),
         (Unary::AbsF32, Value::F32(bits)) => Value::F32(bits & 0x7fff_ffff),
         (Unary::U64ToF32, Value::U64(value)) => Value::F32((value as f32).to_bits()),
+        (Unary::I64ToF32, Value::I64(value)) => Value::F32((value as f32).to_bits()),
+        (Unary::F32ToI64, Value::F32(bits)) => Value::I64(f32::from_bits(bits) as i64),
+        (Unary::SqrtF32, Value::F32(bits)) => {
+            let value = f32::from_bits(bits).sqrt();
+            Value::F32(if value.is_nan() {
+                0x7fc0_0000
+            } else {
+                value.to_bits()
+            })
+        }
         _ => unreachable!("checked unary operation"),
     }
 }

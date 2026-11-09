@@ -395,10 +395,13 @@ impl<'a> Parser<'a> {
             return Ok(Expr::Binary { kind, left, right });
         }
         let item = match tag {
-            "!" | "abs" | "tof" => {
+            "!" | "abs" | "tof" | "i64tof" | "ftoi64" | "sqrt" => {
                 let kind = match tag {
                     "!" => Unary::Not,
                     "abs" => Unary::AbsF32,
+                    "i64tof" => Unary::I64ToF32,
+                    "ftoi64" => Unary::F32ToI64,
+                    "sqrt" => Unary::SqrtF32,
                     _ => Unary::U64ToF32,
                 };
                 Expr::Unary {

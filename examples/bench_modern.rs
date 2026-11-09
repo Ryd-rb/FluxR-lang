@@ -10,6 +10,8 @@ const RULE: &str = include_str!("fixtures/modern_rule.flux");
 const GATE: &str = include_str!("fixtures/modern_gate.flux");
 const COUNTER: &str = include_str!("../tests/fixtures/structured_counter.fluxm");
 
+#[path = "fixtures/native_projection.rs"]
+mod projection;
 #[path = "fixtures/modern_reference.rs"]
 mod reference;
 
@@ -95,6 +97,28 @@ fn leaf(args: &[Value]) -> Invocation<'_> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     telemetry::configure("off")?;
+    let projection = Module::compile_compact(include_str!("fixtures/native_projection.fluxr"))?;
+    let mut projection_workspace = Workspace::default();
+    compare(
+        "structured.projection.direct",
+        CALLS,
+        |i| projection::project(i64::from(i) - 100),
+        |i| {
+            scalar(
+                projection
+                    .run_with(
+                        Invocation {
+                            export: "project",
+                            inputs: &[],
+                            arguments: &[Value::I64(i64::from(i) - 100)],
+                            limits: Limits::default(),
+                        },
+                        &mut projection_workspace,
+                    )
+                    .unwrap(),
+            )
+        },
+    );
     let module = Module::compile_compact(LEAF)?;
     let mut slot = ModuleSlot::new(module.clone(), &[])?;
     let candidate = Module::compile_compact(LEAF)?;

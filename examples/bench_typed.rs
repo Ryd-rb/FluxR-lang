@@ -1068,6 +1068,29 @@ pub fn nested_loop_calls_check() -> u32 {
     corpus_checks::check_nested_loop_calls() as u32
 }
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn native_projection_check() -> u32 {
+    #[path = "fixtures/native_projection.rs"]
+    mod reference;
+    let module =
+        Module::compile_compact(include_str!("fixtures/native_projection.fluxr")).unwrap();
+    let module = Module::decode(&module.encode()).unwrap();
+    let cases = [i64::MIN, -1, 0, 24, 25, i64::MAX];
+    for input in cases {
+        let value = module
+            .run(Invocation {
+                export: "project",
+                inputs: &[],
+                arguments: &[Value::I64(input)],
+                limits: Limits::default(),
+            })
+            .unwrap();
+        assert_eq!(value, Value::I64(reference::project(input)));
+    }
+    cases.len() as u32
+}
+
 #[cfg(test)]
 #[test]
 fn host_corpus_matches_reference() {

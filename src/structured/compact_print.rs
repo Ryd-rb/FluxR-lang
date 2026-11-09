@@ -212,6 +212,9 @@ fn expr(out: &mut String, value: &Expr) {
                         super::Unary::Not => "!",
                         super::Unary::AbsF32 => "abs",
                         super::Unary::U64ToF32 => "tof",
+                        super::Unary::I64ToF32 => "i64tof",
+                        super::Unary::F32ToI64 => "ftoi64",
+                        super::Unary::SqrtF32 => "sqrt",
                     });
                     expr(out, value);
                 }

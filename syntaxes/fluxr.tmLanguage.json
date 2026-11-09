@@ -106,7 +106,7 @@
           }
         },
         {
-          "match": "(\\()\\s*(abs|tof|new|list|local|input|field|at|empty|last|minidx|tag|is|payload|m|call|push|pop)(?=[\\s()]|$)",
+          "match": "(\\()\\s*(abs|tof|i64tof|ftoi64|sqrt|new|list|local|input|field|at|empty|last|minidx|tag|is|payload|m|call|push|pop)(?=[\\s()]|$)",
           "captures": {
             "1": { "name": "punctuation.section.group.begin.fluxr" },
             "2": { "name": "support.function.fluxr" }

@@ -1,4 +1,112 @@
 use fluxr::structured::{Invocation, Limits, Module, Stmt, Value};
+use std::fmt::Write;
+
+#[test]
+fn compact_signed_float_conversions_and_sqrt_round_trip() {
+    let module =
+        Module::compile_compact(include_str!("../examples/fixtures/native_projection.fluxr"))
+            .unwrap();
+    let bytes = module.encode();
+    let module = Module::decode(&bytes).unwrap();
+    assert_eq!(
+        Module::compile_compact(&module.compact_text().unwrap())
+            .unwrap()
+            .encode(),
+        bytes
+    );
+    for (input, expected) in [(24, -4), (25, -5), (-1, 0), (i64::MIN, 0)] {
+        assert_eq!(
+            module
+                .run(Invocation {
+                    export: "project",
+                    inputs: &[],
+                    arguments: &[Value::I64(input)],
+                    limits: Limits::default(),
+                })
+                .unwrap(),
+            Value::I64(expected),
+        );
+    }
+    let edges = Module::compile_compact(
+        "v2 (pub root (x:f32) f32 = (sqrt x)) (pub int (x:f32) i64 = (ftoi64 x))",
+    )
+    .unwrap();
+    let run = |export, bits| {
+        edges
+            .run(Invocation {
+                export,
+                inputs: &[],
+                arguments: &[Value::F32(bits)],
+                limits: Limits::default(),
+            })
+            .unwrap()
+    };
+    assert_eq!(run("root", (-0.0_f32).to_bits()), Value::F32(0x8000_0000));
+    assert_eq!(run("root", (-1.0_f32).to_bits()), Value::F32(0x7fc0_0000));
+    assert_eq!(run("int", f32::INFINITY.to_bits()), Value::I64(i64::MAX));
+    assert_eq!(
+        run("int", f32::NEG_INFINITY.to_bits()),
+        Value::I64(i64::MIN)
+    );
+    assert_eq!(run("int", 0x7fc0_0000), Value::I64(0));
+}
+
+#[test]
+fn compact_declaration_and_canonical_budgets() {
+    let mut source = String::from("v2\n");
+    for i in 0..512 {
+        writeln!(source, "(pub f{i} () i64 = {i})").unwrap();
+    }
+    let module = Module::decode(&Module::compile_compact(&source).unwrap().encode()).unwrap();
+    assert_eq!(
+        module
+            .run(Invocation {
+                export: "f511",
+                inputs: &[],
+                arguments: &[],
+                limits: Limits::default(),
+            })
+            .unwrap(),
+        Value::I64(511)
+    );
+    source.push_str("(pub extra () i64 = 0)");
+    assert!(
+        Module::compile_compact(&source)
+            .unwrap_err()
+            .to_string()
+            .contains("declaration count")
+    );
+
+    let body = "(= x (+ x 1)) ".repeat(48);
+    let mut source = String::from("v2\n");
+    for i in 0..64 {
+        writeln!(source, "(pub f{i} (x:i64) i64 () {body}(ret x))").unwrap();
+    }
+    let bytes = Module::compile_compact(&source).unwrap().encode();
+    assert!(source.len() < 256 * 1024 && bytes.len() > 256 * 1024);
+    let module = Module::decode(&bytes).unwrap();
+    assert_eq!(module.encode(), bytes);
+    assert_eq!(
+        module
+            .run(Invocation {
+                export: "f31",
+                inputs: &[],
+                arguments: &[Value::I64(2)],
+                limits: Limits::default(),
+            })
+            .unwrap(),
+        Value::I64(50)
+    );
+
+    let mut oversized = b"FSM\0\x02\0".to_vec();
+    oversized.resize(6 + 1024 * 1024 + 1, b' ');
+    assert!(
+        Module::decode(&oversized)
+            .unwrap_err()
+            .to_string()
+            .contains("canonical byte budget")
+    );
+}
 
 #[test]
 fn compact_and_released_json_encode_and_run_identically() {

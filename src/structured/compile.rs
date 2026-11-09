@@ -1,9 +1,19 @@
 use super::*;
 use std::collections::BTreeSet;
 
-const MAX_DECLARATIONS: usize = 256;
+const MAX_DECLARATIONS: usize = 512;
 const MAX_BINDINGS: usize = 256;
 const MAX_CODE: usize = 32_768;
+// Compact source has its own byte bound. The FSM payload expands its operations
+// into JSON objects and can use more bytes while preserving the released format.
+const MAX_CANONICAL_SOURCE: usize = 1024 * 1024;
+
+fn bound_canonical(length: usize) -> Result<(), Error> {
+    if length > MAX_CANONICAL_SOURCE {
+        return Err(error("structured program exceeds canonical byte budget"));
+    }
+    Ok(())
+}
 
 #[derive(Clone, Debug)]
 pub(crate) enum Operand {
@@ -111,12 +121,12 @@ pub(super) fn encode_source(source: &Source) -> Result<Vec<u8>, Error> {
     let mut bytes = Vec::new();
     FsmSource::serialize(source, &mut serde_json::Serializer::new(&mut bytes))
         .map_err(|e| error(e.to_string()))?;
-    bound(bytes.len())?;
+    bound_canonical(bytes.len())?;
     Ok(bytes)
 }
 
 fn decode_source(source: &[u8]) -> Result<Source, Error> {
-    bound(source.len())?;
+    bound_canonical(source.len())?;
     let text = std::str::from_utf8(source).map_err(|e| error(e.to_string()))?;
     let mut parser = serde_json::Deserializer::from_str(text);
     let source = FsmSource::deserialize(&mut parser).map_err(|e| error(e.to_string()))?;
@@ -758,6 +768,9 @@ impl<'a, 'src> Compiler<'a, 'src> {
                     Unary::Not => (Type::Bool, Type::Bool),
                     Unary::AbsF32 => (Type::F32, Type::F32),
                     Unary::U64ToF32 => (Type::U64, Type::F32),
+                    Unary::I64ToF32 => (Type::I64, Type::F32),
+                    Unary::F32ToI64 => (Type::F32, Type::I64),
+                    Unary::SqrtF32 => (Type::F32, Type::F32),
                 };
                 require(&self.expr(value, next)?, &argument)?;
                 (Op::Unary(*kind), result)

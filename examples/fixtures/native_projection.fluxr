@@ -1,0 +1,2 @@
+v2
+(pub project (n:i64) i64 = (ftoi64 (- 0f (sqrt (i64tof n)))))

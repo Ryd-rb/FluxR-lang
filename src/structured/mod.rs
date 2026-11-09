@@ -11,7 +11,7 @@ mod native_scalar;
 mod typed_jit;
 mod vm;
 
-use crate::{Error, bound};
+use crate::Error;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -233,6 +233,9 @@ pub enum Unary {
     Not,
     AbsF32,
     U64ToF32,
+    I64ToF32,
+    F32ToI64,
+    SqrtF32,
 }
 
 /// A host-owned value. Records and enum tags follow their declared field order.
