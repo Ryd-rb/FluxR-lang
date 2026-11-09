@@ -10,6 +10,9 @@ const PAYLOAD: &str = "enum payload does not match variant";
 #[path = "method_edit_isolation_checks.rs"]
 mod method_edit_isolation;
 pub(crate) use method_edit_isolation::check_method_edit_isolation;
+#[path = "method_artifact_safety_checks.rs"]
+mod method_artifact_safety;
+pub(crate) use method_artifact_safety::check_method_artifact_safety;
 
 #[derive(Clone, Copy, Debug)]
 struct Case {

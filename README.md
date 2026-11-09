@@ -29,6 +29,9 @@ variants. Hosts can publish a checked method body edit without editing its
 callers. A retained revision keeps its original behavior and can run alongside
 the new revision with a separate workspace and the same read-only inputs.
 A failed replacement probe leaves the active revision available.
+Portable FSM modules recheck method declarations, nominal call types, and
+body limits on decode. A rejected artifact leaves the active revision and
+its results available.
 The browser scene lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also

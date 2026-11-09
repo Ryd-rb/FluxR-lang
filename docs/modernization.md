@@ -59,6 +59,8 @@ FXM-05.K checks admission of mixed host values with repeated references.
 FXM-03.B.7 replays released FR1 semantic edits against checked ingress.
 FXM-05.L verifies method call order, frame entry, and receiver ownership.
 FXM-05.M verifies method body edits and isolation across revisions.
+FXM-05.N checks portable method artifacts and rejects malformed replacements
+before publication.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2225,3 +2227,33 @@ binds the frozen ledger, artifacts, and validation.
 
 FXM-05.N next checks malformed method-bearing FSM artifacts and
 publication refusals. Wider safety and checked migration remain open.
+
+## FXM-05.N portable method artifact safety
+
+The ledger replays 27 malformed artifacts against each of the original and
+edited FSM v2 revisions. It checks declaration shape and identity, including
+an exported method, a missing or mismatched `self`, and a duplicate nominal
+method. Call checks distinguish scalar and unrelated receivers from a
+same-shaped `Twin` whose result cannot stand in for `Point`. Other cases
+check argument count and order, field assignments, returns, control flow,
+and declaration and instruction limits.
+
+Each refusal matches its exact diagnostic. Decoding before slot admission
+leaves the active revision and bytes intact. The indexed, projected, and
+same-shaped control calls still match their expected results. The indexed
+and projected results retain the original snapshot allocation and detach the
+updated receiver. The accepted edit still publishes at revision one.
+
+Both canonical revisions match the sealed FSM bytes for explicit and
+dotted source. Two current and two retained CLI readers agree on all 216
+refusals without creating output and complete 32 byte-identical round trips.
+Each default passes 92 Win64 release tests, a focused portable test, 18
+Node Wasm suites, five retained Node FXH cases, and Linux x64 compilation.
+Run `cargo test --locked --release --all-features --example bench_typed
+method_artifacts_match_portable_safety_ledger` or call
+`method_artifact_safety_check()` from the Node Wasm example.
+
+Local `method-artifact-safety/manifest.json` SHA-256
+`394407C1094A2CA95D30C3826B4A49710C140EE3FB6C85943A358C92E4F22A9D`
+binds the frozen ledger, pilot correction, compatibility artifacts, and
+validation. FXM-03.B.8 next checks method-bearing HIR and FXH replay.

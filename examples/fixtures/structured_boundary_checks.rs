@@ -8,6 +8,12 @@ const PREPARED: bool = cfg!(all(
     target_arch = "x86_64"
 ));
 
+pub(super) fn replace_fsm_body(original: &[u8], body: &[u8]) -> Vec<u8> {
+    let mut bytes = original[..6].to_vec();
+    bytes.extend_from_slice(body);
+    bytes
+}
+
 fn check_type_depth() {
     let source = |depth| {
         let open = "[".repeat(depth);
@@ -140,8 +146,7 @@ pub(crate) fn check_structured_boundary() -> usize {
     ] {
         let rejected = body.replace(before, after);
         assert_ne!(body, rejected);
-        let mut bytes = original[..6].to_vec();
-        bytes.extend_from_slice(rejected.as_bytes());
+        let bytes = replace_fsm_body(&original, rejected.as_bytes());
         assert!(Module::decode(&bytes).is_err(), "mutated source {before}");
     }
     changed[6] = 0xff;

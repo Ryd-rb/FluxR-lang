@@ -1141,6 +1141,17 @@ fn method_body_edits_preserve_revision_isolation() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
+pub fn method_artifact_safety_check() -> u32 {
+    corpus_checks::check_method_artifact_safety() as u32
+}
+
+#[test]
+fn method_artifacts_match_portable_safety_ledger() {
+    assert_eq!(corpus_checks::check_method_artifact_safety(), 27);
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;
