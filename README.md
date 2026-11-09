@@ -48,6 +48,22 @@ python -m http.server 58843 --bind 127.0.0.1 --directory web
 
 Open `http://127.0.0.1:58843`. The text and typed views synchronize after a successful compile. Use `Program::bind_track` in Rust or `Scene.bind_track` in the browser to sample a timeline channel repeatedly. Bind each accepted replacement before switching the active program.
 
+## Benchmarks
+
+Run `python -B tools/bench_tokens.py` with Python 3.11+ and `tiktoken` installed.
+It counts exact UTF-8 text with LF line endings using `o200k_base`. Whole-file
+input and output have the same count when the payload is identical. For a case
+with distinct replacement or edit payloads, add an `output` table with paired
+`fluxr` and `rust` paths. List host bindings, generated native source, and
+shared task context separately. Counts exclude provider framing and tool metadata.
+
+Run `cargo run --locked --release --example bench_volume` for matched checked
+volume interpolation in Rust, the structured VM, and ahead-of-time compiled FluxR.
+Run `cargo run --locked --release --example bench` for the timeline benchmark.
+Register new source pairs and corresponding runtime commands in
+[`benchmarks/cases.toml`](benchmarks/cases.toml) when a new language case warrants
+measurement. Use the same semantics, inputs, target, and build profile.
+
 ## Decision rules
 
 `r1 2 i0 i1 < 100 0 ?` accepts two signed 64-bit inputs and returns `100` when input 0 is smaller. The equivalent `.rule.json` is `[1,2,[[0,0],[0,1],[7],[1,100],[1,0],[11]]]`. Use `fluxr-cli test rule.fluxr cases.json` with cases such as `[[[2,3],100],[[3,2],0]]`. The browser `Rule` binding runs the same replay. `encode` writes a versioned `FXD` program to `.fxr`.
@@ -144,6 +160,52 @@ Gate::rust_function generates inline Rust with lazy fact closures. Neither
 an expensive fact nor an authority effect is evaluated past a short-circuit.
 The emit-gate CLI command produces a fixed-name sample for local comparisons.
 
+### FR1 packed structured source
+
+FR1 is a bounded authoring format for an ordered-effect export and collection
+exports. Its header names every export. Its payload carries structural types
+and policy instructions using a frozen 16-bit word alphabet derived from
+o200k_base. The host supplies a separate nominal interface containing only
+record, variant and function declarations. Python 3.11+ reads the frozen
+alphabet from disk. The authoring tool sends the decoded program through the
+ordinary FluxR typed compiler, which emits the existing portable FSM format.
+
+```sh
+cargo build --bin fluxr-cli
+python tools/fr1/compile.py ruler.fr1 ruler.fsm --interface interface.json --compiler target/debug/fluxr-cli
+```
+
+The interface file has `records`, `enums` and `functions` arrays matching the
+corresponding declarations in a compact module. Function entries contain
+`name`, `export: true`, `params` and `result`. Use `--emit-source` to inspect the
+generated compact FluxR. Use `--edits edits.txt --emit-packet edited.fr1`
+to type-check and re-encode semantic edits. A line `c export=expression`
+replaces a collection declaration's body with the same positional arguments.
+A line `o tag old new` replaces matching binary32 literals in emit instructions
+for the numeric tag, including guards and payloads. All lines are applied in
+order. Files are published only after typed compilation succeeds. A host can
+load the compiled module without the alphabet or authoring tools.
+
+For a straight-line export, `--emit-native path.rs --native-export NAME`
+also emits typed Rust and the compiled module's SHA-256. Hosts must match that
+identity, validate argument types and use `Module::native_ceiling` for budget
+admission. The metered VM remains available for edited programs, smaller
+budgets and native argument or arithmetic errors.
+Pass `--native-loops` to emit a supported loop with a shared loop-body quota.
+The host supplies that quota and checks `Module::native_loop_ceiling` with the
+same value before invoking generated code. Quota exhaustion delegates the
+original invocation to the metered VM.
+
+Use `--compact` in place of `--interface` to compile compact structured source
+through the same checked emitter. To regenerate the benchmark's native fixture,
+build `fluxr-cli` and run the following command. On Windows, append `.exe` to the
+compiler path.
+
+```sh
+cargo build --locked --release --bin fluxr-cli
+python tools/fr1/compile.py examples/bench_volume.flux target/bench_volume.fsm --compact --compiler target/release/fluxr-cli --emit-native examples/fixtures/bench_volume_native.rs --native-export volume
+```
+
 ## Concurrent structured authoring
 
 A structured module can opt in through a separate manifest of stable target
@@ -183,7 +245,28 @@ admission to the host.
 
 ## Local telemetry
 
-Collection is off by default. Set `FLUXR_TELEMETRY` to `all` or a comma-separated list of operations. Pass `--stats` before the CLI command to write a JSON snapshot to stderr. The browser demo exposes `sceneEditor.telemetry.configure(selection)` and `sceneEditor.telemetry.snapshot()` for local inspection. Counters are independent of program output and replay.
+Telemetry starts disabled. Set `FLUXR_TELEMETRY` to `all` or a comma-separated
+list of feature names. Pass `--stats` to the CLI to emit a JSON snapshot on
+stderr.
+
+```powershell
+$env:FLUXR_TELEMETRY = 'all'
+cargo run --locked -- --stats test web/well.flux web/well.replay.json
+```
+
+The Rust API exposes `fluxr::telemetry::configure` and
+`fluxr::telemetry::snapshot`. A long-running native host can set
+`FLUXR_TELEMETRY_SNAPSHOT` to a writable path and call
+`fluxr::telemetry::configure_from_env()` and
+`fluxr::telemetry::start_snapshot_worker()` to write snapshots locally.
+The optional `FLUXR_TELEMETRY_CONTROL` file accepts `off`, `all` or a list
+of feature names for changing collection while the host runs. For browser
+inspection, use `sceneEditor.telemetry.configure(selection)` and
+`sceneEditor.telemetry.snapshot()`.
+
+Feature names are `compile-text`, `compile-typed`, `encode`, `decode`,
+`replay`, `sample`, `sample-batch`, `reload` and `rule-evaluate`.
+Counters are observational and do not affect replay or compiled output.
 
 ## License
 

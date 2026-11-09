@@ -1,0 +1,6 @@
+[case.volume]
+fluxr = "examples/bench_volume.flux"
+rust = "examples/fixtures/bench_volume_reference.rs"
+host = "examples/fixtures/bench_volume_host.rs"
+generated = "examples/fixtures/bench_volume_native.rs"
+performance = "cargo run --locked --release --example bench_volume"

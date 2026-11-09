@@ -30,6 +30,40 @@ fn version_two_arg_min_preserves_first_ties_and_charges_each_value() {
     );
 }
 
+#[test]
+fn native_budget_covers_list_copy_and_rejects_unbounded_control_flow() {
+    let source = "v2
+(pub append (values:[u64]) [u64] (copy:[u64])
+  (= copy values)
+  (push copy 1u)
+  (ret copy))
+(pub repeat (active:bool) bool ()
+  (while active ())
+  (ret false))
+";
+    let module = Module::compile_compact(source).unwrap();
+    let original = Value::List(vec![Value::U64(2), Value::U64(3)].into());
+    let arguments = [original.clone()];
+    let bound = module.native_ceiling("append", 3).unwrap();
+    assert_eq!(
+        run(&module, "append", &arguments, bound).unwrap(),
+        Value::List(vec![Value::U64(2), Value::U64(3), Value::U64(1)].into())
+    );
+    assert_eq!(original, arguments[0]);
+    assert!(module.native_ceiling("repeat", 1).is_none());
+    let bound = module.native_loop_ceiling("repeat", 1, 4).unwrap();
+    assert_eq!(
+        run(&module, "repeat", &[Value::Bool(false)], bound).unwrap(),
+        Value::Bool(false)
+    );
+    assert!(run(&module, "repeat", &[Value::Bool(true)], bound).is_err());
+    assert!(
+        module
+            .native_loop_ceiling("repeat", 1, usize::MAX)
+            .is_none()
+    );
+}
+
 const COUNTER: &str = include_str!("../examples/structured-counter.fluxr");
 
 fn compile(source: &str) -> Module {

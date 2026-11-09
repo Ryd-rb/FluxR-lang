@@ -1,6 +1,7 @@
 //! Versioned, deterministic modules with typed state and bounded execution.
 mod compact;
 mod compile;
+mod native_budget;
 mod vm;
 
 use crate::{Error, bound};
