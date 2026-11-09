@@ -29,8 +29,10 @@ lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.
-The migration tools verify released artifact bytes, replay results and traps
-against the original program, and issue receipts that tie results to exact inputs.
+The migration tools check released packets against the host's nominal interface
+and can restore checked FXH to the original portable artifact. Replay checks
+compare exact values, trap order, and resource limits, including ordered effects
+and list indexing. Receipts bind the migration to its inputs and artifact bytes.
 Hosts can opt into structured resource limits for signed integer and
 raw binary32 rules. Float operators read the low 32 bits of each signed
 slot and return arithmetic result bits as a zero-extended integer.

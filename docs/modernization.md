@@ -53,6 +53,8 @@ FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
 FXM-05.G verifies nested loop exits and conditional helper calls.
 FXM-03.B.4 adds opt-in checked execution for signed integer rule bitwise and.
 FXM-03.B.5 extends that route to raw binary32 and mixed rules.
+FXM-03.B.6 adds a second FR1 packet with ordered effects and list-boundary
+replay against the released reader.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2007,3 +2009,38 @@ Local `runtime-parity-d14/manifest.json` SHA-256 `98782DBB7BD6D7C7DA5FFF60F8B120
 inputs, normalized code, replays and guard results. FXM-03.B.6 can advance
 independently by extending the checked FR1 ingress and historical replay
 corpus.
+
+## FXM-03.B.6 checked FR1 replay
+
+The new `route` and `pick` packet binds a nominal record, a two-tag effect
+list, and an indexed collection export through the released FR1 alphabet.
+The planner emits a payload, then guards the rest of the sequence. A false
+guard returns the first effect without reading the list. A true guard emits
+the tag without a payload and then reads index 1 for the final payload.
+`pick` covers both ends of the list and indices that exceed its length.
+
+The archived `bd4dbca` reader and both defaults emitted identical compact
+source and FSM v2 bytes. The FXM-03.B.2 CLI and both defaults emitted identical
+FXH v1 bytes and receipts. Each default matched all 256 archived results
+through direct compile, compact compile, compact migration, current FXH
+restoration, and released FXH restoration. Values and first traps matched
+across the instruction, cell, and frame sweeps. The successful full planner
+path needs 28 instructions, 21 cells, and one frame. With the list too short,
+the bounds trap becomes visible at 23 instructions and 12 cells.
+
+Six malformed packets or interfaces exited with exact diagnostics and produced
+no output. The original reader reports a missing nominal lookup for an
+`i64` collection argument. Both defaults report a signature mismatch because
+they recognize the scalar shape. The freeze records that diagnostic split
+and the extension of the full planner cell sweep from 14 to 26.
+
+Each default passed 87 Win64 release tests, four Node Wasm FXH checks, and
+Linux x64 compilation. The B.3 replay also passed 18 inputs, 843 probes, and
+15 refusals per default. Run `cargo test --locked --release --test hir
+fr1_route_and_pick_preserve_released_results_and_metering` for the retained
+fixture. Readers and runtime code retain their released behavior.
+
+Local `fr1-hir-replay/manifest.json` SHA-256
+`B9FA5882122B73F25E6F6D50A919258373C0CFBF1299C3C330B4662C01662F51`
+binds the frozen packet and interface, amended probes, outputs, and
+validation. Wider checked ingress and historical replay remain open.

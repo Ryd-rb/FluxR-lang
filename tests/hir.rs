@@ -24,6 +24,113 @@ fn released_guard_fxh_round_trips_exactly() {
 }
 
 #[test]
+fn fr1_route_and_pick_preserve_released_results_and_metering() {
+    let wire = include_bytes!("fixtures/fr1/route.fxh");
+    let fsm = include_bytes!("fixtures/fr1/route.fsm");
+    let hir = Hir::decode(wire).unwrap();
+    assert_eq!(hir.encode().unwrap(), wire);
+    let projected = Module::compile(hir.source().unwrap()).unwrap();
+    let Artifact::Structured(restored) = hir.into_artifact() else {
+        panic!("FR1 origin changed");
+    };
+    let ids = |values: &[u64]| {
+        Value::List(
+            values
+                .iter()
+                .copied()
+                .map(Value::U64)
+                .collect::<Vec<_>>()
+                .into(),
+        )
+    };
+    let route = |enabled, values: &[u64]| Value::Record([Value::Bool(enabled), ids(values)].into());
+    let event_id = |id| Value::Variant(1, Some(Value::U64(id).into()));
+    let outside = Err("list index out of bounds".to_owned());
+    for module in [projected, restored, Module::decode(fsm).unwrap()] {
+        assert_eq!(module.encode(), fsm);
+        let mut workspace = Workspace::default();
+        for (export, arguments, expected, instructions, cells) in [
+            (
+                "route",
+                vec![route(false, &[])],
+                Ok(Value::List(vec![event_id(7)].into())),
+                14,
+                12,
+            ),
+            (
+                "route",
+                vec![route(true, &[13, 99])],
+                Ok(Value::List(
+                    vec![event_id(7), Value::Variant(0, None), event_id(99)].into(),
+                )),
+                28,
+                21,
+            ),
+            ("route", vec![route(true, &[13])], outside.clone(), 23, 12),
+            (
+                "pick",
+                vec![ids(&[13, u64::MAX]), Value::U64(1)],
+                Ok(Value::U64(u64::MAX)),
+                4,
+                8,
+            ),
+            (
+                "pick",
+                vec![ids(&[13, 99]), Value::U64(2)],
+                outside.clone(),
+                3,
+                7,
+            ),
+        ] {
+            let mut run = |limits| {
+                module
+                    .run_portable_with(
+                        Invocation {
+                            export,
+                            inputs: &[],
+                            arguments: &arguments,
+                            limits,
+                        },
+                        &mut workspace,
+                    )
+                    .map_err(|error| error.to_string())
+            };
+            let limits = Limits {
+                instructions,
+                cells,
+                frames: 1,
+            };
+            assert_eq!(run(limits), expected);
+            for (limits, error) in [
+                (
+                    Limits {
+                        instructions: instructions - 1,
+                        ..Limits::default()
+                    },
+                    "module instruction budget exhausted",
+                ),
+                (
+                    Limits {
+                        cells: cells - 1,
+                        ..Limits::default()
+                    },
+                    "module cell budget exhausted",
+                ),
+                (
+                    Limits {
+                        frames: 0,
+                        ..Limits::default()
+                    },
+                    "module frame limit exceeded",
+                ),
+            ] {
+                assert_eq!(run(limits).unwrap_err(), error);
+            }
+        }
+    }
+}
+
+#[test]
 fn shared_rule_projection_preserves_order_and_checked_arithmetic() {
     let probes = [i64::MIN, -2, -1, 0, 1, 2, i64::MAX];
     for text in [
