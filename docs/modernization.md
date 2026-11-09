@@ -37,6 +37,12 @@ FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered t
 
 Evidence and semantic work can run in parallel once case IDs and the oracle interface are frozen. Source encoding work can use the same semantic version while the runtime explores backend choices. Native tier and ABI changes share a writer until they stabilize. Benchmarks use one local measurement lane.
 
+FXM-02.D.4 narrows the remaining runtime cost and retains a smaller packing
+path. FXM-04.C can now test declaration and edit context reuse against the
+same runtime and both prior seals. Rust-host and injection parity, wider
+safety coverage, platform execution, and the isolated release launch remain
+open.
+
 ### Corpus and measurement contract
 
 Freeze case IDs, sources, input seeds and distributions, edge cases, checked semantics, outputs, toolchain, optimization profile, CPU features, telemetry and resource policy before tuning. Use more than one scale and branch distribution. Measure dynamic inputs with whole outputs or hashed output streams, and run full equality checks outside the timing loop. Compare a fast typed Rust kernel and a separate Rust host adapter that performs equivalent input validation, metering and effects. The first pass uses the kernel comparison.
@@ -679,3 +685,73 @@ the performance evidence.
 Local `default-sync/manifest.json` SHA-256
 `1DEF27C82C6D27429337762BCCAF1952EFB4140AFFCE491AE82E224E28059044`
 binds both tested trees, scripts, artifacts, and validation logs.
+
+## FXM-02.D.4 host admission and native entry
+
+A bounded diagnostic used the frozen Windows x64 corpus, logical CPU 12,
+Rust 1.99.1 release with `typed-jit`, and telemetry off. Two diagnostic
+processes rotated 256-call blocks for typed calls and 64-call blocks for
+scans. All routes checked every result and an order-sensitive checksum.
+The prepacked signed and record-read JIT entries both took 3.52 ns p50.
+The packing and admission controls, which use a checked Rust addition in
+place of the JIT entry, took 11.33 and 16.80 ns. Full named calls took
+16.80–17.19 and 24.22–24.61 ns. An independent named lookup took
+6.64–7.03 ns against a 1.56 ns known-index control. These timings overlap
+in setup and result handling; they do not add up to the named call.
+
+For 16 and 256 values, the portable p50 was 39.06 and 242.19 ns. The
+prevalidated scan kernel took 12.50 and 151.56–153.12 ns. The native scan
+with admission took 25.00 and 218.75–220.31 ns. The portable constant-return
+control uses the same list type and includes the generic frame and result
+work. These controls bound admission cost without attributing cycles to
+individual instructions. WPR kernel counters still require elevation.
+
+Direct lookup for single-export modules was reverted. Record-read p50
+fell 6.6–6.8%, while record reuse slowed 5.5–14.7% and one order regressed
+the skewed decision by 24.3%. The retained change packs host inputs and
+arguments in separate slices. It keeps their contiguous lane order and
+one-based origin index, and uses that index to reuse the original record.
+It preserves the ABI and uses the same portable fallback on decline.
+
+Each binary ran eight times across two ABBA and two BAAB orders. The table
+shows the median of eight process statistics over 21 pass means, in ns
+per call. All three entry routes use the same prepared tier.
+
+| Workload | Route | Baseline p50 / p95 | Split packing p50 / p95 |
+| --- | --- | ---: | ---: |
+| Record read | Bundled | 25.41 / 26.17 | 24.06 / 24.96 |
+| Record read | Source injection | 25.41 / 26.07 | 23.97 / 25.09 |
+| Record read | Artifact injection | 25.37 / 26.09 | 24.08 / 24.92 |
+| Record reuse | Bundled | 36.31 / 37.00 | 35.33 / 37.57 |
+| Record write | Bundled | 58.04 / 59.30 | 57.35 / 58.20 |
+| Counter | AOT host | 76.61 / 78.38 | 74.07 / 74.94 |
+
+Record-read bundled p50 fell 4.4–5.1% in three orders and 17.1% in the
+fourth. The latter order also moved the long-scan Rust-host block p95 by
+−35.0%, alongside −38.6% for the bundled path and −34.1% for portable.
+Record reuse was mixed. Counter AOT host p50 fell 2.4–8.1% in all four
+orders. Lifecycle timings are separate: record-read native preparation from source
+median p50 was 78.25 µs versus 79.55 µs before, with mixed per-order
+changes. This pass makes no lifecycle speed claim.
+
+The split-packing runs had 20 per-process injection threshold misses
+versus 11 at baseline across the named and block routes. One aggregate
+missed both signed-typed p50 injection comparisons by about −5.7%.
+The other aggregate misses were scans, with up to +15.6% p95 on the
+short artifact-injected scan. The six-workload bundled/Rust-host
+geometric mean stayed at 2.28–2.33× p50 and 2.09–2.14× p95. Keep the
+measured record-read and AOT host gains. Injection and Rust parity
+remain open. Any future timing pass should retain the rotating block
+and Rust-host controls and examine tail drift before changing the scan.
+
+Both repositories passed 59 portable, 59 native-JIT and 61 typed-JIT
+Windows release tests, the frozen host and budget checks, both sealed
+token corpora, five Node Wasm suites, browser edit and rollback, and
+TextMate scope checks. The timeline and counter artifacts match each
+other and the previous checkpoint byte for byte. Linux x64 compiled;
+native Linux and ARM64 execution remain open.
+
+Local `runtime-parity-next/manifest.json` SHA-256
+`3464AFAD2D10D875FB0E3D6C113220ECA79B916A9608C273070E46483B153F39`
+binds the exact binaries, symbols, patches, run orders, checks, and all
+threshold misses.

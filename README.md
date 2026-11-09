@@ -5,22 +5,22 @@ applications. A host supplies inputs and capabilities, checks programs against
 a budget, and can probe a replacement before activating it.
 
 One timeline row can describe hundreds of related tracks. Decision gates
-evaluate facts lazily in a predictable order. Typed modules provide checked
-arithmetic, records, and collections. On Windows x64, prepared native execution
-uses small scratch buffers for compact signatures and can return an unchanged
-host record without allocating. Compact return and branch forms shorten typed
-modules while preserving their portable bytes. The portable evaluator and
-browser scene lab support replay, and the migration tools verify released
-artifact bytes.
+evaluate facts lazily in a predictable order. Typed modules combine compact
+source with checked arithmetic, records, and collections. The host can
+prepare supported bundled programs and live replacements for native
+execution on Windows x64. Those calls still enforce resource budgets and can
+return an unchanged host record without allocating. The portable evaluator
+and browser scene lab support replay, and the migration tools verify
+released artifact bytes.
 
 FluxR aims to approach optimized Rust in speed and safety while using at most
 one tenth of equivalent Rust's source tokens on most tested tokenizers. Compact
-gates can reach that token target. On six new typed workloads, the shorter
-forms saved 11–15% over expanded FluxR, while the resulting source still used
-78–81% of matched Rust's tokens. Rust host parity, injection tail latency,
-broader safety coverage, and native validation across supported platforms
-remain open. The [modernization plan](docs/modernization.md) records the
-acceptance criteria and measured results.
+gates can reach that token target; typed programs still need more reuse of
+declarations and edit context. The frozen host corpus also shows a gap to
+Rust and injection tail latency still varies. Broader safety coverage and
+native validation on Linux and ARM64 remain open. The
+[modernization plan](docs/modernization.md) records the acceptance criteria
+and measured results.
 
 ## Quick start
 

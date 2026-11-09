@@ -58,6 +58,45 @@ fn typed_record_preserves_values_at_both_scratch_widths() {
 }
 
 #[test]
+fn typed_record_return_reuses_the_original_input_or_argument() {
+    for extra in ["", " delta:i64"] {
+        let source = format!(
+            "v2 (rec R x:i64) (inputs snapshot:R{extra})
+             (pub from_input (candidate:R) R = (input snapshot))
+             (pub from_arg (candidate:R) R = candidate)"
+        );
+        let module = Module::compile_compact(&source).unwrap();
+        let snapshot: Arc<[Value]> = [Value::I64(17)].into();
+        let candidate: Arc<[Value]> = [Value::I64(29)].into();
+        let mut inputs = vec![Value::Record(snapshot.clone())];
+        if !extra.is_empty() {
+            inputs.push(Value::I64(41));
+        }
+        let arguments = [Value::Record(candidate.clone())];
+        let malformed = [Value::Record([Value::Bool(false)].into())];
+        let mut workspace = Workspace::default();
+        for (export, expected) in [("from_input", &snapshot), ("from_arg", &candidate)] {
+            assert_eq!(module.prepare_native(export), TYPED_JIT);
+            let call = |arguments| Invocation {
+                export,
+                inputs: &inputs,
+                arguments,
+                limits: Limits::default(),
+            };
+            let Value::Record(result) = module.run_with(call(&arguments), &mut workspace).unwrap()
+            else {
+                panic!("expected record");
+            };
+            assert!(Arc::ptr_eq(&result, expected));
+            assert_eq!(
+                module.run_with(call(&malformed), &mut workspace),
+                module.run_portable_with(call(&malformed), &mut workspace)
+            );
+        }
+    }
+}
+
+#[test]
 fn volume_matches_portable_with_helper_calls_and_budget_precedence() {
     let module = Module::compile_compact(VOLUME).unwrap();
     assert_eq!(module.prepare_native("volume"), TYPED_JIT);

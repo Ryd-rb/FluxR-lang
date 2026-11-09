@@ -197,18 +197,15 @@ impl Boundary {
             pack_signed(arguments, call.arguments)?;
             return (kernel(&raw, &mut out, fuel, cells as u64) == 0).then(|| Value::I64(out[0]));
         }
-        let host_values = call.inputs.iter().chain(call.arguments);
         let mut offset = 0;
-        for (index, (&shape, value)) in self
-            .inputs
-            .iter()
-            .chain(&self.args)
-            .zip(host_values.clone())
-            .enumerate()
-        {
-            shape.pack(value, index + 1, &mut raw[offset..])?;
-            offset += shape.lanes();
-        }
+        pack_values(&self.inputs, call.inputs, 1, &mut raw, &mut offset)?;
+        pack_values(
+            &self.args,
+            call.arguments,
+            call.inputs.len() + 1,
+            &mut raw,
+            &mut offset,
+        )?;
         if kernel(&raw, &mut out, fuel, cells as u64) != 0 {
             return None;
         }
@@ -218,12 +215,31 @@ impl Boundary {
             Shape::Record(fields) if out[0] == 0 => {
                 Value::Record(out[1..=fields].iter().copied().map(Value::I64).collect())
             }
-            Shape::Record(_) => host_values
-                .into_iter()
-                .nth(usize::try_from(out[0]).ok()?.checked_sub(1)?)?
-                .clone(),
+            Shape::Record(_) => {
+                let index = usize::try_from(out[0]).ok()?.checked_sub(1)?;
+                if index < call.inputs.len() {
+                    call.inputs[index].clone()
+                } else {
+                    call.arguments.get(index - call.inputs.len())?.clone()
+                }
+            }
         })
     }
+}
+
+#[inline]
+fn pack_values(
+    shapes: &[Shape],
+    values: &[Value],
+    origin: usize,
+    raw: &mut [i64],
+    offset: &mut usize,
+) -> Option<()> {
+    for (i, (&shape, value)) in shapes.iter().zip(values).enumerate() {
+        shape.pack(value, origin + i, &mut raw[*offset..])?;
+        *offset += shape.lanes();
+    }
+    Some(())
 }
 
 #[inline]
