@@ -32,7 +32,7 @@ FluxR should accept compact, model-authored programs and edits, validate them ag
 | FXM-04 | Model-facing source and edit formats. Pre-register a six-tokenizer panel spanning at least four independent model families. At least four tokenizers must meet both median and aggregate FluxR/Rust ≤0.10 on held-out, behavior-matched tasks. Report every family and p95. Include compiler feedback, retries, host bindings, and initial context in separate metrics. | FXM-01 for the locked corpus and FXM-05 for typed semantics. Prototype typed shape inference and reusable semantic forms. Run generation and edit success comparisons at matched model settings. |
 | FXM-05 | Safety and language coverage. FXM-05.B checks typed list effects and the structured host boundary, and demonstrates a universal tape simulator. FXM-05.C checks compound calls and trap precedence. FXM-05.D checks bounded recursion and replacement probes. | Extend the specification and proof checker beyond the bounded fragments. Complete the open feature inventory, backend safety checks and portable conformance matrix. |
 | FXM-06 | Integrate accepted features on the combined baseline. Verify Windows x64, Linux x64, ARM64 and browser/portable paths, package compatibility, and isolated host launches. | FXM-01 through FXM-05. Integrate the volume branch with independent baseline evidence, then perform release-level replay and cleanup. |
-| FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | After FXM-05.G, audit `codex/fluxr-modernization` and `codex/fr1-arithmetic`, and integrate the pinned `codex/native-window-audio` snapshot. Preserve the active consumer checkout. |
+| FXM-06.B | Reconcile local and remote branches. Land validated unique work on both defaults promptly and record already ported or superseded changes. | Accepted on both defaults. The consumer remains pinned. FXM-02.D.9 resumes on the combined baseline. |
 
 FXM-02.A established the first integrated runtime baseline. FXM-02.B delivered the Windows shared typed subset below. FXM-01.B freezes and measures the structured host corpus. FXM-05.A verifies typed list admission and the length-dependent scan effect. FXM-02.C can now test bulk admission and scan changes against this contract and corpus. The remaining program-wide gates stay open.
 
@@ -49,9 +49,9 @@ FXM-05.E verifies bounded signed branches, backedges, and record ownership.
 FXM-05.F verifies typed short-circuit effects and signed loop exits.
 FXM-02.D.8 speeds up packing for a narrow signed-record argument shape.
 FXM-05.G verifies nested loop exits and conditional helper calls.
-FXM-06.B next reconciles outstanding branches and integrates validated work
-on both independent defaults. FXM-02.D.9 remains queued to measure the next
-runtime residual against matched Rust and injection controls.
+FXM-06.B reconciles three branches and adds the optional native host to both
+defaults. FXM-02.D.9 next measures a runtime residual against matched Rust and
+injection controls.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1280,3 +1280,43 @@ the focused tests. Local `nested-loop-calls/manifest.json` SHA-256
 `87C98E8512921D7EB5D6F4863672AFD8257BF5EED109644D9240DF855343FAA9` binds the freeze, fixtures and compatibility logs. FXM-06.B
 reconciles outstanding branches before the next runtime pass. Both
 runtime parity gates remain open.
+
+## FXM-06.B synchronized branch integration
+
+`codex/fluxr-modernization` at `6dbbbe4` reached the typed JIT, migration,
+benchmark, and token work already ported through `fe3fd2f` and `88a8fbd`.
+The signed arithmetic, division, and release cleanup from
+`codex/fr1-arithmetic` at `2ab4463` were already present. The defaults carry subsequent compiler, documentation,
+and telemetry work.
+
+The snapshot of `codex/native-window-audio` at `1550756` adds an optional
+native application host, authenticated TCP, and the structured CLI. Both
+defaults gained equivalent code with their own histories. The compact
+checker now accepts 512 functions and 512 record and enum declarations
+combined. The FSM reader accepts canonical payloads up to 1 MiB. The checked VM, compact printer, and
+highlighting support signed binary32 conversions and square root. Released
+timeline, rule, FSM, and FXH readers remain available. The Blueward
+consumer retains its clean checkout at the original native branch tip.
+
+Both checkouts passed 72 portable, 72 native-JIT, 74 typed-JIT, and 79
+all-feature Windows release tests, the pinned host corpus, 11 Node Wasm
+suites, three released FXH fixtures, browser rollback, highlighting, and
+all three token seals. Historical replay matched 18/843/15 and 19/82/10.
+Timeline, counter, and three generated AOT outputs matched the released
+fixtures. Each isolated Win64 app exercised frame input, audio host
+initialization, PNG capture, timing, and graceful close. Each service
+exchange passed against an independent authenticated loopback peer. Linux
+x64 passed all-feature cross-compilation. Native Linux and ARM64 execution
+remain open.
+
+The signed projection fixture used 29 authored FluxR tokens and 33 Rust
+tokens with `o200k_base`. Its Rust host setup and invocation used 103
+tokens, measured separately. Win64 release calls through a reused portable
+workspace took 99.33 and 103.01 ns/call at the median across nine batches
+on the two checkouts. The equivalent Rust control took 1.27 and 1.30
+ns/call. These timings exclude compilation and preparation.
+
+Local `branch-integration/manifest.json` SHA-256
+`474631507479E7BEA503EFAD30624862F39AF4F998F59BCBBCD1699152D40ED0` binds the paired source, branch audit, binaries, and compatibility
+logs. FXM-02.D.9 measures the next independent residual. Both warm runtime
+parity gates remain open.
