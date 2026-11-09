@@ -66,6 +66,7 @@ FXM-05.O verifies bounded recursive nominal methods and snapshot ownership.
 FXM-03.B.9 verifies composed eager rules against archived FXD and checked FXH.
 FXM-05.P checks malformed nested lists and variant payloads in portable artifacts.
 FXM-03.B.10 checks valid nested payloads and shared host values through FXH.
+FXM-05.Q checks malformed FXD origins and rule projections in FXH.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2440,3 +2441,37 @@ Local `nested-payload-hir-replay/manifest.json` SHA-256
 binds the fixture and oracle hashes, reader receipts, and platform checks.
 FXM-05.Q next checks malformed FXD origins and inconsistent rule projections
 inside FXH.
+
+## FXM-05.Q rule origin and projection safety
+
+The frozen ledger derives 25 malformed FXH v1 inputs and 13 direct FXD
+inputs from the signed and mixed FXM-03.B.9 controls. It checks missing,
+short, long, and maximum-declared origin lengths. FXD cases cover the
+header, version, input and instruction counts, operand truncation,
+invalid input indices and opcodes, stack underflow, and version-gated
+raw binary32 arithmetic.
+
+The signed origin requires its canonical projection. The mixed raw
+binary32 origin requires an empty projection. The reader rejects missing
+and extra projections, invalid UTF-8, trailing whitespace, and a canonical
+structured program whose guard differs from the origin. A 256 KiB
+projection passes the byte bound and fails the canonical comparison.
+One extra byte reports the byte budget error.
+
+Two current and two retained CLIs pass 304 refusal checks. Each case
+leaves absent output absent and preserves existing output bytes. The
+CLI distinguishes an FXD file with invalid magic from invalid magic
+inside an FXH origin. The valid controls retain canonical FXD and FXH
+bytes across 16 round trips, 224 archived replay probes, and 32 byte
+comparisons. Runtime, CLI reader code, and wire formats are unchanged.
+
+Both defaults pass 98 Win64 release tests, one focused portable test,
+25 Node Wasm suites, five retained FXH cases under Node, and Linux x64
+compilation. Run `cargo test --locked --release --no-default-features
+--example bench_raw_rule_projection rule_origin_artifacts_match_frozen_refusals`
+or call `rule_origin_artifact_safety_check()` from the Node Wasm example.
+
+Local `rule-origin-artifact-safety/manifest.json` SHA-256
+`6537EBA156631718BF426C42663BF91E63FCC647D05F2A1914B7B24A83BE234A` binds the freeze, exact diagnostics, canonical controls,
+and platform runs. FXM-03.B.11 next checks valid FXD rules at the input
+and instruction count limits through canonical FXH and checked execution.

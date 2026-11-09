@@ -1,0 +1,26 @@
+case	control	section	mutation	diagnostic
+missing-origin-size	signed	payload	cut 1	missing FXH rule origin size
+origin-length-u16-max	mixed	payload	write 0 255 255	truncated FXH rule origin
+zero-origin-length	signed	payload	write 0 0 0	invalid rule magic
+origin-length-one-short	signed	payload	write 0 34 0	truncated rule
+origin-length-one-long	signed	payload	write 0 36 0	trailing bytes in rule
+bad-origin-magic	signed	origin	write 2 72	invalid rule magic
+short-origin-header	mixed	origin	cut 7	truncated rule
+unsupported-rule-version	mixed	origin	write 4 5	unsupported rule version 5
+input-count-over-limit	signed	origin	write 5 17	rule inputs or instruction count outside limits
+zero-instructions	signed	origin	write 6 0 0	rule instruction count outside limits
+instructions-over-limit	mixed	origin	write 6 1 1	rule instruction count outside limits
+invalid-opcode	signed	origin	write 8 255	invalid rule opcode or operand
+invalid-input-index	signed	origin	write 9 7	unknown rule input
+truncated-input-index	signed	origin	write 34 0	truncated rule
+truncated-i64-operand	mixed	origin	write 40 1	truncated rule
+operand-stack-underflow	mixed	origin	write 6 22 0 2 2	rule stack outside limits
+raw-op-in-v3	mixed	origin	write 4 3	f32 arithmetic requires rule version 4
+trailing-origin-byte	mixed	origin	append 0	trailing bytes in rule
+missing-signed-projection	signed	projection	cut 0	noncanonical FXH payload
+extra-raw-projection	mixed	projection	append 32	noncanonical FXH payload
+changed-signed-projection	signed	projection	write 128 49	noncanonical FXH payload
+trailing-projection-space	signed	projection	append 32	noncanonical FXH payload
+invalid-projection-utf8	signed	projection	write 0 255	noncanonical FXH payload
+projection-at-byte-limit	mixed	projection	fill 262144	noncanonical FXH payload
+projection-over-byte-limit	mixed	projection	fill 262145	program exceeds byte budget

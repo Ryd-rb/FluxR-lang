@@ -4,6 +4,9 @@ mod checks;
 #[cfg(any(test, target_arch = "wasm32"))]
 #[path = "fixtures/composed_rule_hir_checks.rs"]
 mod composed;
+#[cfg(any(test, target_arch = "wasm32"))]
+#[path = "fixtures/rule_origin_artifact_checks.rs"]
+mod rule_origin_artifact;
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
@@ -15,6 +18,17 @@ pub fn raw_rule_projection_check() -> usize {
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn composed_rule_hir_check() -> usize {
     composed::check()
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn rule_origin_artifact_safety_check() -> usize {
+    rule_origin_artifact::check()
+}
+
+#[test]
+fn rule_origin_artifacts_match_frozen_refusals() {
+    assert_eq!(rule_origin_artifact::check(), 25);
 }
 
 #[test]
