@@ -58,6 +58,7 @@ replay against the released reader.
 FXM-05.K checks admission of mixed host values with repeated references.
 FXM-03.B.7 replays released FR1 semantic edits against checked ingress.
 FXM-05.L verifies method call order, frame entry, and receiver ownership.
+FXM-05.M verifies method body edits and isolation across revisions.
 FXM-06.B reconciles three branches and adds the optional native host to both
 defaults. FXM-02.D.9 rejects direct signed-pair packing after matched
 measurements on both defaults. FXM-04.D accepts grouped bindings for
@@ -2181,3 +2182,46 @@ from the Node Wasm example.
 Local `method-call-order/manifest.json` SHA-256
 `5A76997B86A46E4FFB6035B40A1FA0BC503C616B0D3DA41CCD4FDFF0FDBECB31` binds the freeze and validation. FXM-05.M next
 checks method body edits and isolation across retained and active revisions.
+
+## FXM-05.M method edits and revision isolation
+
+The fixture changes `Point.update` from addition to subtraction. The
+indexed and projected callers keep their declaration revisions and
+dispatch to the method in their own snapshot. An independent compile
+matches the edited artifact byte for byte. `Twin.update` has the same
+method name and receiver field layout. Its revision and result remain
+stable, and its revision pin cannot authorize a `Point.update` edit.
+
+A batch with a valid method edit and a wrong nominal return type is
+rejected as a unit. A stale edit, a stale dependency, and an activation
+prepared against the old snapshot are also rejected. Source and artifact
+slots each reject an incompatible nominal interface, a division trap
+after the first field write, a result admission budget failure, and a
+stale revision. An exact probe publishes each replacement at revision 1.
+
+The independent FXM-05.L oracle checks 54 revision and budget cases per
+route across the snapshot, forced portable, decoded portable, source
+slot, and artifact slot. The ledger includes overflow that changes with
+the method, ordered traps, and exact instruction, cell, and frame limits.
+Indexed success needs 24 instructions, 31 cells, and two frames.
+Projected success needs 23 instructions, 34 cells, and two frames.
+Win64 runs 256 calls in synchronized rounds with separate workspaces
+and the same read-only values. Node Wasm replays both revisions
+sequentially. Both runs check the original record allocation and the
+detached method result.
+
+Two current and two retained readers agree on the FSM bytes for both
+revisions in explicit and dotted form. Win64 JIT and generated Rust
+decline the indexed and projected exports. Each default passes 91 Win64
+release tests, a focused portable test, 17 Node Wasm suites, five Node FXH
+cases, and Linux x64 compilation. Run
+`cargo test --locked --release --all-features --example bench_typed
+method_body_edits_preserve_revision_isolation` or call
+`method_edit_isolation_check()` from the Node Wasm example.
+
+Local `method-edit-isolation/manifest.json` SHA-256
+`8128C09BD3A8B0A17FDA084174ACFBBC389C33DB8193495CF3C31F66888F9C4D`
+binds the frozen ledger, artifacts, and validation.
+
+FXM-05.N next checks malformed method-bearing FSM artifacts and
+publication refusals. Wider safety and checked migration remain open.

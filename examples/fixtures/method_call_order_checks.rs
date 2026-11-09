@@ -7,6 +7,10 @@ const SOURCE: &str = include_str!("method_call_order.fluxr");
 const BOUNDS: &str = "list index out of bounds";
 const PAYLOAD: &str = "enum payload does not match variant";
 
+#[path = "method_edit_isolation_checks.rs"]
+mod method_edit_isolation;
+pub(crate) use method_edit_isolation::check_method_edit_isolation;
+
 #[derive(Clone, Copy, Debug)]
 struct Case {
     index: u64,

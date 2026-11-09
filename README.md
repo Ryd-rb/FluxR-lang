@@ -25,8 +25,11 @@ values cross a block boundary.
 Before execution, the portable evaluator charges one cell per nested host
 value visited, even when several references share the same allocation.
 It copies shared lists or records on write, including values held inside
-variants. If a replacement probe fails, the active revision and original
-inputs remain available. The browser scene lab supports replay.
+variants. Hosts can publish a checked method body edit without editing its
+callers. A retained revision keeps its original behavior and can run alongside
+the new revision with a separate workspace and the same read-only inputs.
+A failed replacement probe leaves the active revision available.
+The browser scene lab supports replay.
 An optional native host runs typed modules as windowed applications with
 drawing, input, audio, and authenticated peer exchanges. The CLI also
 invokes structured exports and replays state transitions from local manifests.
@@ -61,9 +64,10 @@ In a separate matched Windows comparison, default Rhai AST took 11.59 times
 the FluxR call time across seven groups. Rhai's checked Grain backend led on the
 256-element fold. The measurements separate warm calls from compilation,
 preparation, and replacement.
-Broader language and backend safety coverage, native Linux and ARM64 replay,
-hardware counters, and an isolated release launch remain open. The warm
-latency targets for Rust and live replacements still need to be met.
+Open work covers wider language and backend safety, checked migration,
+native Linux and ARM64 replay, hardware counters, and an isolated release
+launch. The warm latency targets for Rust and live replacements still
+need to be met.
 Live model generation and editing still need matched trials. The
 [modernization plan](docs/modernization.md) records the acceptance criteria and
 measurements.

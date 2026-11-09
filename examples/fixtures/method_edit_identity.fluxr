@@ -1,0 +1,5 @@
+(rec Twin value:i64 audit:u64)
+(fn Twin.update (self:Twin delta:i64 scale:u64) Twin ()
+  (ret (new Twin 13 60u)))
+(pub twin (receiver:Twin) Twin ()
+  (ret (m receiver update 4 2u)))
