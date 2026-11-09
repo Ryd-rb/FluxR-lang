@@ -217,11 +217,15 @@ impl Boundary {
             }
             Shape::Record(_) => {
                 let index = usize::try_from(out[0]).ok()?.checked_sub(1)?;
-                if index < call.inputs.len() {
-                    call.inputs[index].clone()
+                let original = if index < call.inputs.len() {
+                    &call.inputs[index]
                 } else {
-                    call.arguments.get(index - call.inputs.len())?.clone()
-                }
+                    call.arguments.get(index - call.inputs.len())?
+                };
+                let Value::Record(fields) = original else {
+                    return None;
+                };
+                Value::Record(Arc::clone(fields))
             }
         })
     }

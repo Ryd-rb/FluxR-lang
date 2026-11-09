@@ -43,6 +43,7 @@ export resolution and admission costs and measures long-scan tail variation.
 FXM-03.B.3 expands migration replay and cuts FXH guard preparation time.
 FXM-05.C extends the independent effect specification to compound calls.
 FXM-02.D.6 pairs long-scan wall time with thread-cycle counts.
+FXM-02.D.7 reduces the cost of returning an unchanged host record.
 Rust-host and injection parity, the whole-program token gate, wider safety,
 native platform execution, and the isolated release launch remain open.
 
@@ -1048,3 +1049,58 @@ in the Node Wasm build of that example. Local `recursive-effects/manifest.json`
 SHA-256 `9892A6AE81461E517387E1FE877FCD6CC15BC60682ABEB417B28714C6ADCD56A` binds source, checks and compatibility logs.
 FXM-02.D.7 next isolates result handling in the matched signed-record host
 routes. Both numeric parity gates remain open.
+
+## FXM-02.D.7 signed record result ownership
+
+The Windows x64 typed-JIT diagnostic used Rust 1.99.1 release, telemetry
+off, logical CPU 12, and the frozen 20,000-input record-write and
+record-reuse cases. Each process checked complete values and allocation
+identity against the Rust host and prepared JIT. It then rotated routes
+over 21 passes of matched 256-call blocks, including the final 32-call
+block in each pass. Both repositories ran in ABBA and BAAB order.
+
+| Isolated paired p50 difference | Record reuse | Record write |
+| --- | ---: | ---: |
+| Limit and count validation above known budgets | 1.56 ns | 1.56 ns |
+| Tag checks and packing above prepacked input | 12.89–14.84 ns | 12.89–14.45 ns |
+| Native entry above reading the frozen output | 7.03–7.42 ns | 7.03 ns |
+| Result above the prepacked native entry | 16.02–19.14 ns | 30.86–32.42 ns |
+| Rust result above reading the frozen output | 3.12 ns | 25.78–31.25 ns |
+
+Allocating and releasing one uninitialized record slot cost 23.44–25.39 ns
+over the raw output control. The Rust write materializer includes initializing
+the field, consuming the result and dropping it. Reuse adds and releases an
+owner on the existing allocation. The control differences include each
+route's observation and dispatch costs. They overlap and cannot be added to
+predict a complete call.
+
+The shared JIT and AOT boundary now clones the validated record's Arc
+directly when the native result carries its original input or argument index.
+A write still constructs a new owned record. A combined candidate also
+specialized one-field writes. It improved bundled record-write p50 by
+1.2–7.9% but increased the bundled signed-scalar p50 by 7.5–8.3% in three
+of four order summaries. The one-field shortcut was reverted. With only the
+reuse change, bundled signed-scalar p50 changed by −1.4% to +1.7%.
+
+In uninstrumented release binaries, bundled reuse fell from 35.39–36.91 ns
+to 30.55–31.55 ns at p50 and improved 8.0–15.0% at p95. Source and artifact
+reuse p50 improved 15.4–17.1% and 13.4–16.0%, respectively. Their p95 was
+6.2–7.5% slower than baseline in the development ABBA order and improved in
+the other three summaries. The matched Rust reuse p50 was 7.25–7.57 ns.
+Across the six frozen hot workloads, bundled/Rust-host geometric means
+were 2.21–2.27× at p50 and 2.05–2.12× at p95. Eight summarized injection
+comparisons and 23 individual comparisons missed the injection thresholds.
+Both parity gates remain open. Long-scan variation was visible on both
+FluxR and the Rust host. The D.5 reverts and D.6 attribution limits stand.
+
+Both repositories passed Windows x64 release with 62 portable, 62
+native-JIT and 64 typed-JIT tests, including exact budgets and the
+record-ownership checks. Seven Node Wasm suites, three released FXH fixtures,
+the pinned host corpus, browser edit and rollback, highlighting, all three
+token seals, and historical replays at 18/843/15 and 19/82/10 passed. Prior
+timeline and counter artifacts match byte for byte. Linux x64 compiled.
+
+Local `record-return/manifest.json` SHA-256 `C1447C892FC815CD7CFBEF985863E9757BACC3BF0AD750BE8AD1963F2B29E72B` binds the diagnostics,
+both production variants, their binaries and symbols, and the validation logs.
+FXM-05.E next checks exact effects for bounded native branches and backedges
+against an independent source ledger and the portable routes.
