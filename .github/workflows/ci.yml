@@ -26,8 +26,6 @@ jobs:
     name: Portable checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
-    env:
-      TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/fluxr-tokenizers
     strategy:
       fail-fast: false
       matrix:
@@ -44,10 +42,15 @@ jobs:
       - name: Install pinned Python test dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Prepare token-accounting vocabulary cache
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/fluxr-tokenizers
         run: python -c "import tiktoken; [tiktoken.get_encoding(name) for name in ('o200k_base', 'cl100k_base')]"
       - name: Validate implementation requirements
         run: python tools/check_requirements.py
       - name: Verify exact checkout and collect evidence
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/fluxr-tokenizers
+          CARGO_TARGET_DIR: ${{ runner.temp }}/fluxr-debug-target
         run: python tools/verify_checkout.py --profile debug --jobs 4 --output "${{ runner.temp }}/fluxr-debug-evidence"
       - name: Retain evidence including failed checks
         if: always()
@@ -63,7 +66,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     env:
-      CARGO_TARGET_DIR: ${{ runner.temp }}/fluxr-release-target
       CARGO_BUILD_JOBS: '1'
     strategy:
       fail-fast: false
@@ -79,9 +81,13 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Execute release tests with typed-jit and host-transport features
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/fluxr-release-target
         run: python tools/verify_checkout.py --profile release --output "${{ runner.temp }}/fluxr-release-evidence"
       - name: Build semantic campaign driver with the same release target
         if: runner.os == 'Linux'
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/fluxr-release-target
         shell: bash
         run: |
           cargo build --locked --release --features typed-jit,host-transport --example semantic_campaign_driver \
@@ -125,6 +131,8 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Check all features without claiming runtime execution
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/fluxr-all-features-target
         run: python tools/verify_checkout.py --profile all-features --output "${{ runner.temp }}/fluxr-all-features-evidence"
       - name: Retain evidence including failed checks
         if: always()
