@@ -192,21 +192,37 @@ def profile_checks(repository, profile):
     return checks, skipped
 
 
+def signal_group(process, signum):
+    deadline = time.monotonic() + 0.5
+    while True:
+        # Reap an exited leader before signaling its remaining group.
+        process.poll()
+        try:
+            os.killpg(process.pid, signum)
+        except ProcessLookupError:
+            return True
+        except PermissionError:
+            # Darwin may return EPERM while exited members are being reaped.
+            # Retry until signaling succeeds or the group disappears.
+            if sys.platform != "darwin" or time.monotonic() >= deadline:
+                return False
+            time.sleep(0.02)
+        else:
+            return True
+
+
 def terminate(process):
     """Best-effort descendant cleanup, explicitly not hostile-code containment."""
+    group_signaled = True
     if os.name == "posix":
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
+        signal_group(process, signal.SIGTERM)
         try:
             process.wait(timeout=0.5)
         except subprocess.TimeoutExpired:
             pass
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+        group_signaled = signal_group(process, signal.SIGKILL)
+        if not group_signaled and process.poll() is None:
+            process.kill()
     else:
         # Windows process groups do not enforce a job-object lifetime. taskkill
         # is best effort; a hosted CI job timeout is an additional outer bound.
@@ -223,7 +239,7 @@ def terminate(process):
         process.wait(timeout=5)
     except subprocess.TimeoutExpired:
         return False
-    return True
+    return group_signaled
 
 
 def run_check(check, repository, log_path, timeout_seconds, max_log_bytes, cancel_event=None):

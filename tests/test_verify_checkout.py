@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -351,6 +352,23 @@ class VerificationTests(unittest.TestCase):
 
 
 class ProcessEvidenceTests(unittest.TestCase):
+    def test_darwin_group_signal_retries_until_group_disappears(self):
+        process = mock.Mock(pid=42)
+        with (mock.patch.object(driver.sys, "platform", "darwin"),
+              mock.patch.object(driver.os, "killpg", create=True,
+                                side_effect=[PermissionError, ProcessLookupError]) as kill,
+              mock.patch.object(driver.time, "sleep")):
+            self.assertTrue(driver.signal_group(process, signal.SIGTERM))
+        self.assertEqual(kill.call_args_list, [mock.call(42, signal.SIGTERM)] * 2)
+        self.assertEqual(process.poll.call_count, 2)
+
+    def test_darwin_group_signal_keeps_unresolved_permission_failure(self):
+        process = mock.Mock(pid=42)
+        with (mock.patch.object(driver.sys, "platform", "darwin"),
+              mock.patch.object(driver.os, "killpg", create=True, side_effect=PermissionError),
+              mock.patch.object(driver.time, "monotonic", side_effect=[0, 1])):
+            self.assertFalse(driver.signal_group(process, signal.SIGTERM))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fluxr-process-evidence-")
         self.addCleanup(self.temporary.cleanup)
