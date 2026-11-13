@@ -1,0 +1,2 @@
+fluxr 1
+pub run 1 x float float ret add mul x 0x3f000000f 0x3fa00000f

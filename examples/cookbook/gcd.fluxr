@@ -1,0 +1,7 @@
+fluxr 1
+pub run 2 a uint b uint uint do 1 remainder uint 2
+  while not eq b 0u 3
+    set remainder rem a b
+    set a b
+    set b remainder
+  ret a

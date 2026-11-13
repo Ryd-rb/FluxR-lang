@@ -1,0 +1,5 @@
+v2
+(pub sum (x:i64 n:i64) i64 (acc:i64)
+  (= acc x)
+  (while (< 0 n) ((= acc (+ acc (* n 3))) (= n (- n 1))))
+  (ret acc))

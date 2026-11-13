@@ -1,0 +1,1 @@
+v2 (pub run (allowed:bool blocked:bool score:i64) bool = (&& (&& allowed (! blocked)) (|| (<= 10 score) (== score -1))))

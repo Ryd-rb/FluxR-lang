@@ -10,8 +10,9 @@ publish = false
 [features]
 host-transport = ["dep:ring"]
 native-jit = []
+vulkan = ["dep:ash"]
 native-runtime = ["dep:gltf", "dep:macroquad", "dep:image", "host-transport"]
-typed-jit = ["native-jit", "dep:cranelift-codegen", "dep:cranelift-frontend"]
+typed-jit = ["native-jit", "dep:cranelift-codegen", "dep:cranelift-frontend", "dep:gimli"]
 
 [lib]
 crate-type = ["rlib", "cdylib"]
@@ -21,19 +22,24 @@ name = "fluxr-cli"
 path = "src/main.rs"
 
 [dependencies]
+fluxr-entry = { path = "crates/fluxr-entry", version = "=0.1.0" }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 sha2 = "0.10"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ash = { version = "=0.38.0", optional = true, default-features = false, features = ["loaded", "std", "debug"] }
 ring = { version = "0.17.14", optional = true }
 gltf = { version = "1.4.1", default-features = false, features = ["names", "utils"], optional = true }
 image = { version = "0.24", default-features = false, features = ["jpeg"], optional = true }
 macroquad = { version = "0.4.16", default-features = false, features = ["audio"], optional = true }
 
-[target.'cfg(all(target_os = "windows", target_arch = "x86_64"))'.dependencies]
+[target.'cfg(all(target_arch = "x86_64", any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))))'.dependencies]
 cranelift-codegen = { version = "=0.136.3", optional = true, default-features = false, features = ["std", "x86", "unwind"] }
 cranelift-frontend = { version = "=0.136.3", optional = true }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
+gimli = { version = "=0.33.0", optional = true, default-features = false, features = ["write"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.130"

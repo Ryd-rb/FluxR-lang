@@ -1,0 +1,5 @@
+fluxr 1
+native-fn main 0 unit 3
+let data macro vec 3 int 1 int 2 int 3
+do method method call std::thread::spawn 1 move 0 call drop 1 path data join 0 unwrap 0
+do macro println 2 str "{}" method path data len 0

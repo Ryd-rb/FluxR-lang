@@ -1,0 +1,153 @@
+fluxr 1
+rust 904
+//! Independent expected behavior for structured FN1 lowering.
+use std::sync::atomic::{AtomicUsize, Ordering};
+type Callback = fn() -> usize;
+fn apply(value: i32, operation: impl FnOnce(i32) -> i32) -> i32 { operation(value) }
+fn evaluate_future<F: std::future::Future>(future: F) -> F::Output {
+    use std::task::{Context, Poll, Wake, Waker};
+    struct Noop;
+    impl Wake for Noop { fn wake(self: std::sync::Arc<Self>) {} }
+    let waker = Waker::from(std::sync::Arc::new(Noop));
+    let mut context = Context::from_waker(&waker);
+    let mut future = std::pin::pin!(future);
+    match future.as_mut().poll(&mut context) { Poll::Ready(value) => value, Poll::Pending => panic!("unexpected pending fixture") }
+}
+fn touch(log: &mut Vec<i32>, value: i32) -> i32 { log.push(value); value }
+fn target(log: &mut Vec<i32>) -> &mut i32 { log.push(2); log.first_mut().unwrap() }
+struct Record { number: i32 }
+
+
+native-fn arithmetic 2 a i32 b i32 i32 1
+tail bin rem bin sub bin mul bin add path a path b int 3 bin div path a path b int 7
+rust 0
+
+native-fn boolean 2 a i32 b i32 bool 1
+tail bin and bin and bin and bin ne path a path b bin or bin lt path a path b bin ge path a path b not bin eq path a path b bin or bin le path a path b bin gt path a path b
+rust 0
+
+native-fn bits 2 a u32 b u32 u32 1
+tail bin xor bin bitor bin shl path a int 2 bin shr path b int 1 bin bitand path a path b
+rust 0
+
+native-fn tuple_array_index 0 "(i32, usize)" 2
+let values array 3 int 2 int 7 int 11
+tail tuple 2 index path values int 1 method path values len 0
+rust 0
+
+native-fn field_and_references 0 i32 4
+var record Record rust 20
+Record { number: 3 }
+let number mutref field path record number
+set deref path number bin add deref path number int 4
+tail deref ref field path record number
+rust 0
+
+native-fn native_closures 0 i32 2
+let offset int 7
+tail bin add call apply 2 int 5 move 1 x bin add path x path offset call apply 2 int 3 closure 1 x bin mul path x int 2
+rust 0
+
+native-fn closure_cast 0 Callback 1
+tail cast move 0 int 42usize Callback
+rust 0
+
+native-fn flow 0 i32 4
+var total i32 int 0
+for i bin range-inclusive int 0 int 5 3
+if-stmt bin eq path i int 2 1 continue 0
+if-stmt bin eq path i int 5 1 break 0
+set path total bin add path total path i
+while bin lt path total int 10 1 set path total bin add path total int 1
+return path total
+rust 0
+
+native-fn block_if_negation 1 flag bool i32 2
+let-type result i32 block 1 let temp neg int 4 if path flag path temp neg path temp
+tail path result
+rust 0
+
+native-fn result_propagation 1 value "&str" "Result<i32, std::num::ParseIntError>" 2
+let-type number i32 try method path value parse 0
+tail call Ok 1 bin add path number int 1
+rust 0
+
+native-asyncfn async_await 0 usize 2
+let value async int 41usize
+tail bin add await path value int 1
+rust 0
+
+native-asyncfn async_move 0 usize 2
+let value int 7usize
+tail await async-move bin add path value int 1
+rust 0
+
+native-fn unsafe_pointer 0 i32 3
+let value int 19i32
+let pointer cast ref path value "*const i32"
+tail unsafe deref path pointer
+rust 0
+
+native-fn call_evaluation_order 1 log "&mut Vec<i32>" i32 1
+tail call std::cmp::max 2 call touch 2 path log int 1 call touch 2 path log int 2
+rust 0
+
+native-fn assignment_order 1 log "&mut Vec<i32>" unit 1
+set deref call target 1 path log call touch 2 path log int 1
+rust 0
+
+native-fn short_circuit 1 counter "&AtomicUsize" bool 1
+tail bin or bin and bool false bin eq method path counter fetch_add 2 int 1 path Ordering::SeqCst int 0 bool true
+rust 0
+
+native-fn strings_and_macro 0 String 1
+tail macro format 3 str "{}:{}" str "héllo\n\t\u0000\"\\🌍" int 42
+rust 0
+
+native-fn units_and_one_tuple 0 "((),)" 1 tail tuple 1 unit
+rust 1
+
+
+native-pubfn public_value 0 i32 1 tail int 23
+rust 0
+
+native-pubasyncfn public_async 0 i32 1 tail int 24
+rust 1415
+
+#[test]
+fn arithmetic_relations_bits_and_aggregates() {
+    assert_eq!(arithmetic(12, 3), 6);
+    assert!(boolean(3, 9)); assert!(!boolean(3, 3));
+    assert_eq!(bits(9, 6), 39);
+    assert_eq!(tuple_array_index(), (7, 3));
+    assert_eq!(field_and_references(), 7);
+    assert_eq!(units_and_one_tuple(), ((),));
+    assert_eq!(public_value(), 23);
+    assert_eq!(evaluate_future(public_async()), 24);
+}
+#[test]
+fn functions_closures_cast_flow_and_blocks() {
+    assert_eq!(native_closures(), 18);
+    assert_eq!(closure_cast()(), 42);
+    assert_eq!(flow(), 10);
+    assert_eq!(block_if_negation(true), -4);
+    assert_eq!(block_if_negation(false), 4);
+}
+#[test]
+fn errors_async_and_unsafe_native_boundary() {
+    assert_eq!(result_propagation("41").unwrap(), 42);
+    assert!(result_propagation("no").is_err());
+    assert_eq!(evaluate_future(async_await()), 42);
+    assert_eq!(evaluate_future(async_move()), 8);
+    assert_eq!(unsafe_pointer(), 19);
+}
+#[test]
+fn side_effects_and_short_circuit() {
+    let mut log = Vec::new();
+    assert_eq!(call_evaluation_order(&mut log), 2); assert_eq!(log, vec![1,2]);
+    log.clear(); assignment_order(&mut log); assert_eq!(log, vec![1,2]);
+    let counter = AtomicUsize::new(0); assert!(short_circuit(&counter)); assert_eq!(counter.load(Ordering::SeqCst), 0);
+}
+#[test]
+fn unicode_and_escapes_are_exact() { assert_eq!(strings_and_macro(), "héllo\n\t\0\"\\🌍:42"); }
+

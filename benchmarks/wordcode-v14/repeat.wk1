@@ -1,0 +1,2 @@
+wk1 core v2
+pub calc 2 n int x int int do 0 2 repeat n 1 next x ret x

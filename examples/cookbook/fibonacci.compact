@@ -1,0 +1,1 @@
+v2 (pub run (n:i64) i64 (a:i64 b:i64 next_value:i64) (= a 0) (= b 1) (while (< 0 n) ((= next_value (+ a b)) (= a b) (= b next_value) (= n (- n 1)))) (ret a))

@@ -1,0 +1,5 @@
+fluxr 1
+pub run 2 base int exponent uint int do 1 product int 3
+  set product 1
+  while lt 0u exponent 2 scale product base set exponent sub exponent 1u
+  ret product

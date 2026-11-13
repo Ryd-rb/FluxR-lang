@@ -1,0 +1,28 @@
+[measurement]
+schema = "fluxr-unified-update-tokens-v1"
+tiktoken_version = "0.14.0"
+tokenizers = ["o200k_base", "cl100k_base"]
+protocol = "benchmarks/unified-steps-v1/protocol.txt"
+shared_validation_host = "tests/unified_steps.rs"
+validation = "cargo test --locked --test unified_steps"
+scope = "Four signed unit-step source pairs against the already compact bump/set spellings. The ascending-loop baseline reuses the retained update fixture unchanged; previous update savings are not counted again. Rust controls match checked integer kernel arithmetic. Context, wire and validation-host costs are separate; no live-model, universal token-ratio or accepted-development-throughput claim."
+
+[case.increment]
+before = "benchmarks/unified-steps-v1/increment.before.fluxr"
+after = "benchmarks/unified-steps-v1/increment.after.fluxr"
+rust = "benchmarks/unified-steps-v1/increment.rs"
+
+[case.decrement]
+before = "benchmarks/unified-steps-v1/decrement.before.fluxr"
+after = "benchmarks/unified-steps-v1/decrement.after.fluxr"
+rust = "benchmarks/unified-steps-v1/decrement.rs"
+
+[case.ascending_loop]
+before = "benchmarks/unified-updates-v1/loop.after.fluxr"
+after = "benchmarks/unified-steps-v1/ascending.after.fluxr"
+rust = "benchmarks/unified-updates-v1/loop.rs"
+
+[case.descending_loop]
+before = "benchmarks/unified-steps-v1/descending.before.fluxr"
+after = "benchmarks/unified-steps-v1/descending.after.fluxr"
+rust = "benchmarks/unified-steps-v1/descending.rs"

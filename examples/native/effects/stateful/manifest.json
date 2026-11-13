@@ -1,0 +1,16 @@
+{
+  "abi": "fluxr-scalar-library-v1",
+  "numeric_profile": "fsm2-finite-f32-portable-v1",
+  "source_sha256": "4ff117d69fcc8fe67129adc49ae0ccfcaf472ed0e342e27857387a50ef9f9018",
+  "package": "fluxr.effects.stateful",
+  "version": 1,
+  "exports": {
+    "smooth": 3,
+    "residual": 2,
+    "envelope": 3,
+    "gain": 2
+  },
+  "capabilities": [
+    "compute.cpu"
+  ]
+}

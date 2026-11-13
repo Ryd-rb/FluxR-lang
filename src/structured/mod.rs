@@ -1,15 +1,30 @@
 //! Versioned, deterministic modules with typed state and bounded execution.
+mod agent;
+pub mod authoring;
 mod compact;
 mod compact_print;
 mod compile;
+#[cfg(all(
+    feature = "typed-jit",
+    target_os = "linux",
+    target_env = "gnu",
+    target_arch = "x86_64"
+))]
+mod linux_jit;
 mod native_aot;
 mod native_budget;
 mod native_ir;
 #[cfg(all(feature = "native-jit", target_os = "windows", target_arch = "x86_64"))]
 mod native_scalar;
-#[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+#[cfg(all(
+    feature = "typed-jit",
+    target_arch = "x86_64",
+    any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+))]
 mod typed_jit;
+mod unified_source;
 mod vm;
+pub mod wordcode;
 
 use crate::Error;
 use serde::{Deserialize, Serialize};
@@ -19,8 +34,9 @@ use std::sync::Arc;
 pub(crate) use compact::parse_expression;
 pub(crate) use compile::BodyChecker;
 pub use compile::Module;
-pub use native_aot::PreparedAot;
-pub use vm::Workspace;
+pub use native_aot::{NativeKernel, OwnedPreparedAot, PreparedAot};
+pub use unified_source::{NativeItemSpan, SourceDocument};
+pub use vm::{ExecutionRoute, PreparedCall, Workspace};
 
 const VERSION: u16 = 2;
 const MAGIC: &[u8; 4] = b"FSM\0";
@@ -204,6 +220,14 @@ pub enum Expr {
         #[serde(default)]
         args: Vec<Expr>,
     },
+    /// A typed, explicitly registered native service. The runtime must admit
+    /// the exact signature before an injected module can be published.
+    HostCall {
+        name: String,
+        params: Vec<Type>,
+        result: Type,
+        args: Vec<Expr>,
+    },
     Method {
         receiver: Box<Expr>,
         name: String,
@@ -278,6 +302,102 @@ pub struct Invocation<'a> {
     pub inputs: &'a [Value],
     pub arguments: &'a [Value],
     pub limits: Limits,
+}
+
+/// Native services are a capability boundary, not access to arbitrary Rust
+/// memory. Implementations must respect their own I/O and cancellation bounds.
+pub trait HostServices: Send + Sync {
+    fn call(&self, name: &str, arguments: &[Value]) -> Result<Value, Error>;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostSignature {
+    pub params: Vec<Type>,
+    pub result: Type,
+}
+
+impl Module {
+    pub fn same_interface(&self, other: &Self) -> bool {
+        self.interface == other.interface
+    }
+
+    pub fn input_bindings(&self) -> &[Binding] {
+        &self.interface.inputs
+    }
+
+    pub fn export_signatures(&self) -> &BTreeMap<String, (Vec<Type>, Type)> {
+        &self.interface.exports
+    }
+
+    /// Return all native service requirements, including unreachable bodies.
+    /// One service name cannot be assigned inconsistent signatures.
+    pub fn host_requirements(&self) -> Result<BTreeMap<String, HostSignature>, Error> {
+        let mut result = BTreeMap::new();
+        for code in &self.code {
+            for instruction in &code.ops {
+                if let compile::Op::HostCall { name, signature } = &instruction.op {
+                    if let Some(prior) = result.insert(name.clone(), signature.clone()) {
+                        if prior != *signature {
+                            return Err(error(format!("inconsistent host signature for {name}")));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Check the transitive call graph, so an effectful export cannot enter a
+    /// native tier whose speculative fallback would repeat host effects.
+    pub fn export_uses_host(&self, export: &str) -> bool {
+        let Some(&entry) = self.exports.get(export) else {
+            return false;
+        };
+        let mut pending = vec![entry];
+        let mut seen = std::collections::BTreeSet::new();
+        while let Some(index) = pending.pop() {
+            if !seen.insert(index) {
+                continue;
+            }
+            for instruction in &self.code[index].ops {
+                match instruction.op {
+                    compile::Op::HostCall { .. } => return true,
+                    compile::Op::Call(next) => pending.push(next),
+                    _ => {}
+                }
+            }
+        }
+        false
+    }
+
+    pub fn export_host_requirements(
+        &self,
+        export: &str,
+    ) -> Result<BTreeMap<String, HostSignature>, Error> {
+        let &entry = self
+            .exports
+            .get(export)
+            .ok_or_else(|| error(format!("unknown export {export}")))?;
+        let mut pending = vec![entry];
+        let mut seen = std::collections::BTreeSet::new();
+        let mut requirements = BTreeMap::new();
+        while let Some(index) = pending.pop() {
+            if !seen.insert(index) {
+                continue;
+            }
+            for instruction in &self.code[index].ops {
+                match &instruction.op {
+                    compile::Op::HostCall { name, signature } => {
+                        requirements.insert(name.clone(), signature.clone());
+                    }
+                    compile::Op::Call(next) => pending.push(*next),
+                    _ => {}
+                }
+            }
+        }
+        Ok(requirements)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -358,6 +478,6 @@ impl ModuleSlot {
     }
 }
 
-fn error(message: impl Into<String>) -> Error {
+pub(crate) fn error(message: impl Into<String>) -> Error {
     Error(message.into())
 }

@@ -1,0 +1,7 @@
+# Experimental source token pair, separate from frozen executable replay.
+[case.stateful_effect_library]
+fluxr = "examples/native/effects/stateful/program.flux"
+rust = "examples/native/effects/stateful/reference.rs"
+host = "examples/stateful_stream_demo.rs"
+context = "docs/native-stateful-v1.md"
+performance = "cargo run --locked --release --example stateful_stream_demo -- examples/native OUTPUT_JSON"

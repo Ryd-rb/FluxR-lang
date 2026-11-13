@@ -5,15 +5,23 @@ use std::sync::Arc;
 #[cfg(all(feature = "host-transport", not(target_arch = "wasm32")))]
 pub mod authenticated_tcp;
 pub mod collaboration;
+pub mod compute;
+pub mod cpu_compute;
 mod gate;
+pub mod offline_audio;
+#[cfg(all(feature = "vulkan", not(target_arch = "wasm32")))]
+pub mod vulkan;
 pub use gate::Gate;
 pub mod hir;
 #[cfg(all(feature = "native-runtime", not(target_arch = "wasm32")))]
 pub mod native_runtime;
 mod rules;
+pub mod runtime;
 pub mod structured;
+pub use fluxr_entry::program;
 pub mod structured_series;
 pub mod telemetry;
+pub mod testing;
 mod timeline_compact;
 pub use rules::{PreparedRule, RuleProgram};
 use telemetry::{Feature, Work, measured};

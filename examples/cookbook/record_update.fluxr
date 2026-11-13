@@ -1,0 +1,5 @@
+fluxr 1
+rec Point 2 x int y int
+pub run 2 point record Point delta int record Point do 0 2
+  put point x add field point x delta
+  ret point

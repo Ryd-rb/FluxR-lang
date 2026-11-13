@@ -1,0 +1,1 @@
+v2 (pub run (n:i64) i64 () (if (<= n 0) ((ret 0)) ((ret (+ n (call run (- n 1)))))))

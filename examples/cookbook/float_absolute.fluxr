@@ -1,0 +1,2 @@
+fluxr 1
+pub run 1 x float float ret abs x

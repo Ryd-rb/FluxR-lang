@@ -1,0 +1,2 @@
+fluxr 1
+pub run 5 a int b int c int d int e int int ret add add add add a b c d e

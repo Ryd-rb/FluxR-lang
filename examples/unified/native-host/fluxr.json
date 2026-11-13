@@ -1,0 +1,30 @@
+{
+  "format": "fluxr-project-v1",
+  "rustflags": [],
+  "files": [
+    {
+      "source": "main.fluxr",
+      "output": "src/main.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "math.fluxr",
+      "output": "src/math.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "Cargo.toml",
+      "output": "Cargo.toml",
+      "mode": "copy",
+      "executable": false
+    },
+    {
+      "source": "Cargo.lock",
+      "output": "Cargo.lock",
+      "mode": "copy",
+      "executable": false
+    }
+  ]
+}

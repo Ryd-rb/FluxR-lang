@@ -1,3 +1,4 @@
 /target/
 /web/pkg/
 __pycache__/
+/.fluxr-agent/

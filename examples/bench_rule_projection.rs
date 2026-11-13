@@ -23,6 +23,7 @@ fn main() {
     use fluxr::structured::{Limits, Value, Workspace};
     use std::{hint::black_box, time::Instant};
 
+    assert_eq!(checks::check(), 16_195);
     let reverse = std::env::args().any(|arg| arg == "reverse");
     let rule = RuleProgram::compile_text(checks::AND).unwrap();
     let hir = Hir::from_rule(rule.clone()).unwrap();
@@ -39,7 +40,7 @@ fn main() {
     for (case, factor) in [("mixed_sign", -1i64), ("same_sign", 1)] {
         let pairs: [[i64; 2]; 256] =
             std::array::from_fn(|i| [i as i64 * 29 - 73, (i as i64 * 13 - 67) * factor]);
-        let args = pairs.clone().map(|pair| pair.map(Value::I64));
+        let args = pairs.map(|pair| pair.map(Value::I64));
         for (&[a, b], args) in pairs.iter().zip(&args) {
             assert_eq!(rule.evaluate(&[a, b]), Ok(a & b));
             assert_eq!(

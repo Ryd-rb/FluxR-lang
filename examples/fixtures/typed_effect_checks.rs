@@ -8,7 +8,10 @@ use fluxr::structured::{Binding, Limits, Module, Type, Value};
 
 const PREPARED: bool = cfg!(all(
     feature = "typed-jit",
-    target_os = "windows",
+    any(
+        target_os = "windows",
+        all(target_os = "linux", target_env = "gnu")
+    ),
     target_arch = "x86_64"
 ));
 const INPUT: &str = "v2 (inputs samples:[f32]) (pub pick () u64 () (ret (minidx (input samples))))";

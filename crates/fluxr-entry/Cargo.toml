@@ -1,0 +1,10 @@
+[package]
+name = "fluxr-entry"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Mandatory unified FluxR runtime startup for generated applications"
+
+[lib]
+proc-macro = true

@@ -1,0 +1,6 @@
+fluxr 1
+native-fn dangling 0 "&'static str" 2
+let value call String::from 1 str "temporary"
+tail ref path value
+native-fn main 0 unit 1
+do macro println 2 str "{}" call dangling 0

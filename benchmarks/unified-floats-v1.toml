@@ -1,0 +1,33 @@
+[measurement]
+schema = "fluxr-unified-update-tokens-v1"
+tiktoken_version = "0.14.0"
+tokenizers = ["o200k_base", "cl100k_base"]
+protocol = "benchmarks/unified-floats-v1/protocol.txt"
+shared_validation_host = "tests/unified_float_literals.rs"
+validation = "cargo test --locked --test unified_float_literals"
+scope = "Five complete current-source pairs compare finite decimal binary32 literals against retained exact raw-bit literals. Existing update/step spellings are identical in both arms. Rust controls match arithmetic and raw-bit results; VM metering, context, wire and validation-host costs are separate. No live-model, universal token-ratio or accepted-development-throughput claim."
+
+[case.affine]
+before = "benchmarks/unified-floats-v1/affine.before.fluxr"
+after = "benchmarks/unified-floats-v1/affine.after.fluxr"
+rust = "benchmarks/unified-floats-v1/affine.rs"
+
+[case.threshold]
+before = "benchmarks/unified-floats-v1/threshold.before.fluxr"
+after = "benchmarks/unified-floats-v1/threshold.after.fluxr"
+rust = "benchmarks/unified-floats-v1/threshold.rs"
+
+[case.constants]
+before = "benchmarks/unified-floats-v1/constants.before.fluxr"
+after = "benchmarks/unified-floats-v1/constants.after.fluxr"
+rust = "benchmarks/unified-floats-v1/constants.rs"
+
+[case.loop]
+before = "benchmarks/unified-floats-v1/loop.before.fluxr"
+after = "benchmarks/unified-floats-v1/loop.after.fluxr"
+rust = "benchmarks/unified-floats-v1/loop.rs"
+
+[case.special]
+before = "benchmarks/unified-floats-v1/special.before.fluxr"
+after = "benchmarks/unified-floats-v1/special.after.fluxr"
+rust = "benchmarks/unified-floats-v1/special.rs"

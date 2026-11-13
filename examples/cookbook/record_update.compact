@@ -1,0 +1,1 @@
+v2 (rec Point x:i64 y:i64) (pub run (point:Point delta:i64) Point () (= point.x (+ point.x delta)) (ret point))

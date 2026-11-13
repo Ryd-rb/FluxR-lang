@@ -1,0 +1,7 @@
+# Experimental counting corpus. This does not change frozen replay admission.
+[case.vkf1_affine]
+fluxr = "examples/vkf1-affine.fluxr"
+rust = "examples/fixtures/vkf1_reference.rs"
+host = "examples/compute_probe.rs"
+context = "docs/vulkan-vkf1.md"
+performance = "python3 tools/verify_compute.py --output OUT --target-dir TARGET --spirv-tools SDK/usr/bin --icd SDK/lvp-local.json"

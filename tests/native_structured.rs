@@ -5,7 +5,10 @@ const VOLUME: &str = include_str!("../examples/bench_volume.flux");
 const COUNTER: &str = include_str!("fixtures/structured_counter.fluxm");
 const TYPED_JIT: bool = cfg!(all(
     feature = "typed-jit",
-    target_os = "windows",
+    any(
+        target_os = "windows",
+        all(target_os = "linux", target_env = "gnu")
+    ),
     target_arch = "x86_64"
 ));
 

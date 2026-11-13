@@ -1,0 +1,7 @@
+# Experimental source token pair. Frozen replay admission is unchanged.
+[case.stream_effect_library]
+fluxr = "examples/native/effects/softclip/program.flux"
+rust = "examples/native/effects/softclip/reference.rs"
+host = "examples/native_stream_demo.rs"
+context = "docs/native-stream-v1.md"
+performance = "python3 tools/qualify_native_stream.py --binary PATH --output OUT (CPU stream execution, exact Rust effect schedule; no real-time claim)"

@@ -1,0 +1,1 @@
+v2 (pub run (rows:[[i64]]) i64 = (last (last rows)))

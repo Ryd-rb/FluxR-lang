@@ -1,0 +1,1 @@
+v2 (rec Point x:i64 y:i64) (pub run (x:i64) Point = (new Point x (+ x 1)))

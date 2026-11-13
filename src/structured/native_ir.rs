@@ -10,6 +10,7 @@ pub(super) const MAX_LANES: usize = 32;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Shape {
     I64,
+    U64,
     Bool,
     // The first lane holds the original host index (zero after a write).
     Record(usize),
@@ -19,6 +20,7 @@ impl Shape {
     fn for_type(ty: &Type, module: &Module) -> Option<Self> {
         match ty {
             Type::I64 => Some(Self::I64),
+            Type::U64 => Some(Self::U64),
             Type::Bool => Some(Self::Bool),
             Type::Record(name) => {
                 let fields = &module.records.get(name)?.fields;
@@ -39,6 +41,9 @@ impl Shape {
     fn pack(self, value: &Value, origin: usize, out: &mut [i64]) -> Option<()> {
         match (self, value) {
             (Self::I64, Value::I64(value)) => out[0] = *value,
+            // Native lanes are raw 64-bit storage. Preserve the high bit while
+            // retaining the unsigned tag in the checked boundary and Plan.
+            (Self::U64, Value::U64(value)) => out[0] = *value as i64,
             (Self::Bool, Value::Bool(value)) => out[0] = i64::from(*value),
             (Self::Record(count), Value::Record(fields)) if count == fields.len() => {
                 out[0] = origin as i64;
@@ -66,6 +71,7 @@ pub(super) enum Step {
     Update(usize, usize, Temp),
     Field(Temp, usize),
     Binary(Binary, Temp, Temp),
+    UnsignedBinary(Binary, Temp, Temp),
     Call(usize, Vec<Temp>),
 }
 
@@ -110,6 +116,116 @@ pub(super) struct Boundary {
     single_signed_record: bool,
     // One-block call graphs can have all their metering performed at admission.
     pub(super) fixed: Option<(u64, usize)>,
+}
+
+/// Admission for the JIT's fixed-bound scalar-register entry. This is derived
+/// only after the JIT has selected its own conservative resource ceiling; it
+/// does not alter the shared AOT boundary or its artifact identity.
+#[cfg(all(
+    feature = "typed-jit",
+    target_arch = "x86_64",
+    any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+))]
+#[derive(Debug)]
+pub(super) struct ScalarAdmission {
+    inputs: usize,
+    args: usize,
+    fuel: u64,
+    cells: usize,
+    frames: usize,
+}
+
+#[cfg(all(
+    feature = "typed-jit",
+    target_arch = "x86_64",
+    any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+))]
+impl ScalarAdmission {
+    #[inline]
+    pub(super) fn pack(&self, call: &Invocation<'_>) -> Option<[i64; 4]> {
+        if call.inputs.len() != self.inputs
+            || call.arguments.len() != self.args
+            || call.limits.frames < self.frames
+            || call.limits.instructions < self.fuel
+            || call.limits.cells < self.cells
+        {
+            return None;
+        }
+        let mut values = [0; 4];
+        let (inputs, arguments) = values.split_at_mut(self.inputs);
+        pack_signed(inputs, call.inputs)?;
+        pack_signed(arguments, call.arguments)?;
+        Some(values)
+    }
+}
+
+/// A separate scalar admission for Boolean or unsigned boundary tags. Keeping
+/// this apart from ScalarAdmission leaves the signed-only call's packing path
+/// unchanged. Both use the same fixed register signature and resource ceiling.
+#[cfg(all(
+    feature = "typed-jit",
+    target_arch = "x86_64",
+    any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+))]
+#[derive(Debug)]
+pub(super) struct TaggedScalarAdmission {
+    inputs: usize,
+    args: usize,
+    boolean_lanes: u8,
+    unsigned_lanes: u8,
+    boolean_result: bool,
+    unsigned_result: bool,
+    fuel: u64,
+    cells: usize,
+    frames: usize,
+}
+
+#[cfg(all(
+    feature = "typed-jit",
+    target_arch = "x86_64",
+    any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+))]
+impl TaggedScalarAdmission {
+    #[inline]
+    pub(super) fn pack(&self, call: &Invocation<'_>) -> Option<[i64; 4]> {
+        if call.inputs.len() != self.inputs
+            || call.arguments.len() != self.args
+            || call.limits.frames < self.frames
+            || call.limits.instructions < self.fuel
+            || call.limits.cells < self.cells
+        {
+            return None;
+        }
+        let mut values = [0; 4];
+        for (index, (lane, value)) in values
+            .iter_mut()
+            .zip(call.inputs.iter().chain(call.arguments))
+            .enumerate()
+        {
+            *lane = match (
+                self.boolean_lanes & (1 << index) != 0,
+                self.unsigned_lanes & (1 << index) != 0,
+                value,
+            ) {
+                (false, false, Value::I64(value)) => *value,
+                (false, true, Value::U64(value)) => *value as i64,
+                (true, false, Value::Bool(value)) => i64::from(*value),
+                _ => return None,
+            };
+        }
+        Some(values)
+    }
+
+    #[inline]
+    pub(super) fn unpack(&self, value: i64) -> Value {
+        if self.boolean_result {
+            Value::Bool(value != 0)
+        } else if self.unsigned_result {
+            Value::U64(value as u64)
+        } else {
+            Value::I64(value)
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -161,14 +277,77 @@ impl Plan {
         })
     }
 
-    #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+    #[cfg(all(
+        feature = "typed-jit",
+        target_arch = "x86_64",
+        any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+    ))]
     pub(super) fn function(&self, index: usize) -> &Function {
         self.functions[index].as_ref().expect("lowered call target")
     }
 }
 
 impl Boundary {
-    #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+    #[cfg(all(
+        feature = "typed-jit",
+        target_arch = "x86_64",
+        any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+    ))]
+    pub(super) fn scalar_admission(&self) -> Option<ScalarAdmission> {
+        if !self.signed_io || self.inputs.len().checked_add(self.args.len())? > 4 {
+            return None;
+        }
+        let (fuel, cells) = self.fixed?;
+        Some(ScalarAdmission {
+            inputs: self.inputs.len(),
+            args: self.args.len(),
+            fuel,
+            cells: self.boundary_cells.checked_add(cells)?,
+            frames: self.frames,
+        })
+    }
+
+    #[cfg(all(
+        feature = "typed-jit",
+        target_arch = "x86_64",
+        any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+    ))]
+    pub(super) fn tagged_scalar_admission(&self) -> Option<TaggedScalarAdmission> {
+        if self.signed_io
+            || self.inputs.len().checked_add(self.args.len())? > 4
+            || !matches!(self.result, Shape::I64 | Shape::U64 | Shape::Bool)
+        {
+            return None;
+        }
+        let mut boolean_lanes = 0;
+        let mut unsigned_lanes = 0;
+        for (index, shape) in self.inputs.iter().chain(&self.args).enumerate() {
+            match shape {
+                Shape::I64 => {}
+                Shape::U64 => unsigned_lanes |= 1 << index,
+                Shape::Bool => boolean_lanes |= 1 << index,
+                Shape::Record(_) => return None,
+            }
+        }
+        let (fuel, cells) = self.fixed?;
+        Some(TaggedScalarAdmission {
+            inputs: self.inputs.len(),
+            args: self.args.len(),
+            boolean_lanes,
+            unsigned_lanes,
+            boolean_result: self.result == Shape::Bool,
+            unsigned_result: self.result == Shape::U64,
+            fuel,
+            cells: self.boundary_cells.checked_add(cells)?,
+            frames: self.frames,
+        })
+    }
+
+    #[cfg(all(
+        feature = "typed-jit",
+        target_arch = "x86_64",
+        any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+    ))]
     pub(super) fn fits_lanes(&self, lanes: usize) -> bool {
         let output_lanes = self.result.lanes();
         output_lanes <= lanes && self.boundary_cells - output_lanes <= lanes
@@ -224,6 +403,7 @@ impl Boundary {
         }
         Some(match self.result {
             Shape::I64 => Value::I64(out[0]),
+            Shape::U64 => Value::U64(out[0] as u64),
             Shape::Bool => Value::Bool(out[0] != 0),
             Shape::Record(fields) if out[0] == 0 => {
                 Value::Record(out[1..=fields].iter().copied().map(Value::I64).collect())
@@ -595,6 +775,7 @@ impl BlockBuilder<'_> {
     fn operand(&mut self, operand: &Operand) -> Option<Temp> {
         let (step, shape) = match operand {
             Operand::Const(Value::I64(value)) => (Step::Const(*value), Shape::I64),
+            Operand::Const(Value::U64(value)) => (Step::Const(*value as i64), Shape::U64),
             Operand::Const(Value::Bool(value)) => (Step::Const(i64::from(*value)), Shape::Bool),
             Operand::Input(index) => (
                 Step::Input(*index),
@@ -618,9 +799,17 @@ impl BlockBuilder<'_> {
         }
         let result = match (kind, left_type) {
             (Add | Sub | Mul | Div | Rem, Shape::I64) => Shape::I64,
-            (Eq, Shape::I64 | Shape::Bool) | (Lt | Le, Shape::I64) => Shape::Bool,
+            (Add | Sub | Mul, Shape::U64) => Shape::U64,
+            (Eq, Shape::I64 | Shape::U64 | Shape::Bool) | (Lt | Le, Shape::I64 | Shape::U64) => {
+                Shape::Bool
+            }
             _ => return None,
         };
-        Some((Step::Binary(kind, left, right), result))
+        let step = if left_type == Shape::U64 {
+            Step::UnsignedBinary(kind, left, right)
+        } else {
+            Step::Binary(kind, left, right)
+        };
+        Some((step, result))
     }
 }

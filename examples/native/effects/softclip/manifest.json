@@ -1,0 +1,14 @@
+{
+  "abi": "fluxr-scalar-library-v1",
+  "numeric_profile": "fsm2-finite-f32-portable-v1",
+  "source_sha256": "0ac8b47b564a99424b189ca2583d11af028b962e488a1dc1bf2a5aabe271253c",
+  "package": "fluxr.effects.softclip",
+  "version": 1,
+  "exports": {
+    "softclip": 2,
+    "mix": 3
+  },
+  "capabilities": [
+    "compute.cpu"
+  ]
+}

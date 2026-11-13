@@ -1,0 +1,13 @@
+{
+  "abi": "fluxr-model-v1",
+  "completed_steps": 0,
+  "parameter_bits": [
+    1065353216,
+    0,
+    1073741824,
+    1065353216
+  ],
+  "program_identity": "7f157c608303143cdb436d0a2a912f867138ad5685833a59565c3c9ae3c0cd33",
+  "provenance": "Analytical fixture: ReLU(x)*2+1 for positive x; parameters are not from a learned model zoo",
+  "rng_seed": 0
+}

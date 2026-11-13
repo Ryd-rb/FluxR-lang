@@ -1,0 +1,136 @@
+name: FluxR compatibility and evidence
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # This event only becomes an integration gate if the repository/provider
+  # supports and enables a protected merge queue. It grants no authority itself.
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fluxr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTUP_TOOLCHAIN: '1.99.1'
+  CARGO_TERM_COLOR: never
+
+jobs:
+  portable:
+    name: Portable checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/fluxr-tokenizers
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Install pinned Python test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Prepare token-accounting vocabulary cache
+        run: python -c "import tiktoken; [tiktoken.get_encoding(name) for name in ('o200k_base', 'cl100k_base')]"
+      - name: Validate implementation requirements
+        run: python tools/check_requirements.py
+      - name: Verify exact checkout and collect evidence
+        run: python tools/verify_checkout.py --profile debug --jobs 4 --output "${{ runner.temp }}/fluxr-debug-evidence"
+      - name: Retain evidence including failed checks
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: portable-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/fluxr-debug-evidence
+          if-no-files-found: warn
+          retention-days: 14
+
+  release-features:
+    name: Release feature checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_DIR: ${{ runner.temp }}/fluxr-release-target
+      CARGO_BUILD_JOBS: '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Execute release tests with typed-jit and host-transport features
+        run: python tools/verify_checkout.py --profile release --output "${{ runner.temp }}/fluxr-release-evidence"
+      - name: Build semantic campaign driver with the same release target
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cargo build --locked --release --features typed-jit,host-transport --example semantic_campaign_driver \
+            2>&1 | tee "${{ runner.temp }}/fluxr-release-evidence/semantic-driver-build.log"
+      - name: Verify independent semantic model and real prepared execution
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          FLUXR_SEMANTIC_DRIVER: ${{ runner.temp }}/fluxr-release-target/release/examples/semantic_campaign_driver
+          FLUXR_SEMANTIC_REQUIRE_NATIVE: '1'
+        run: |
+          python -B tools/run_python_suite.py tests 'test_semantic_campaign*.py' \
+            2>&1 | tee "${{ runner.temp }}/fluxr-release-evidence/semantic-suites.log"
+          python -B tools/semantic_campaign.py run --driver "$FLUXR_SEMANTIC_DRIVER" \
+            --seed 243 --programs 64 --calls-per-program 8 --max-depth 4 --require-native \
+            --timeout 120 --output "${{ runner.temp }}/fluxr-release-evidence/semantic-campaign.json" \
+            2>&1 | tee "${{ runner.temp }}/fluxr-release-evidence/semantic-campaign.log"
+          python -B tools/semantic_campaign.py mutations --driver "$FLUXR_SEMANTIC_DRIVER" \
+            --timeout 120 --output "${{ runner.temp }}/fluxr-release-evidence/semantic-mutations.json" \
+            2>&1 | tee "${{ runner.temp }}/fluxr-release-evidence/semantic-mutations.log"
+      - name: Retain evidence including failed checks
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-features-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/fluxr-release-evidence
+          if-no-files-found: warn
+          retention-days: 14
+
+  all-features:
+    name: Linux all-features compile check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Check all features without claiming runtime execution
+        run: python tools/verify_checkout.py --profile all-features --output "${{ runner.temp }}/fluxr-all-features-evidence"
+      - name: Retain evidence including failed checks
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: all-features-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/fluxr-all-features-evidence
+          if-no-files-found: warn
+          retention-days: 14

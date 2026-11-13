@@ -1,0 +1,1 @@
+v2 (pub run (n:u64) u64 (product:u64 factor:u64) (= product 1u) (= factor 2u) (while (<= factor n) ((= product (* product factor)) (= factor (+ factor 1u)))) (ret product))

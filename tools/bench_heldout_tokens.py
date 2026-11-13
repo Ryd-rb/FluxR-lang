@@ -12,6 +12,8 @@ import tempfile
 import tomllib
 from urllib.request import urlopen
 
+from eval.isolation import admit_frozen_fixtures
+
 ROOT = Path(__file__).resolve().parents[1]
 PANEL = ROOT / "benchmarks/token-panel.toml"
 CASES = ROOT / "benchmarks/cases.toml"
@@ -94,7 +96,8 @@ def write(path, text):
 
 def seal_inputs(cases):
     evaluator = Path(__file__).resolve()
-    sources = (PANEL, CASES, REPLAY, evaluator, evaluator.with_name("bench_heldout_live.py"))
+    sources = (PANEL, CASES, REPLAY, evaluator, evaluator.with_name("bench_heldout_live.py"),
+               *sorted((evaluator.parent / "eval").glob("*.py")))
     return {
         "files": {path.relative_to(ROOT).as_posix(): sha256(read(path).encode()).hexdigest() for path in sources},
         "prompts": {
@@ -105,21 +108,25 @@ def seal_inputs(cases):
 
 
 def replay(cases, target, override=None):
-    """Override one authored body and compare against the other frozen arm."""
+    """Replay only byte-pinned, reviewed repository fixtures.
+
+    Generated overrides are deliberately denied. The legacy comparison binary
+    embeds Rust fixture code in its oracle process and cannot safely grade an
+    untrusted candidate. See tools/eval/README.md for the replacement boundary.
+    """
+    admitted = admit_frozen_fixtures(ROOT, cases, override)
+    cases = admitted["cases"]
     with tempfile.TemporaryDirectory(prefix="fluxr-heldout-") as directory:
         folder = Path(directory)
+        replay_source = folder / "trusted-replay.rs"
+        replay_source.write_bytes(admitted["replay_bytes"])
         modules = []
         calls = []
         for name, case in cases.items():
             for action in ACTIONS:
-                if override and (name, action) != (override[0], override[2]):
-                    continue
                 bodies = {language: case[language] for language in LANGUAGES}
                 if action == "edit":
                     bodies = {language: edit(case, language, case[f"{language}_span"][1]) for language in LANGUAGES}
-                if override:
-                    _, language, _, body = override
-                    bodies[language] = edit(case, language, body) if action == "edit" else body
                 key = f"{name}_{action}"
                 write(folder / f"{key}.flux", bodies["fluxr"])
                 modules.append(f"mod {key} {{\n{bodies['rust']}}}\n")
@@ -135,7 +142,7 @@ def replay(cases, target, override=None):
         binary = folder / ("replay.exe" if os.name == "nt" else "replay")
         subprocess.run(
             ["rustc", "--edition=2024", "-C", "opt-level=3", "--extern", f"fluxr={build / 'libfluxr.rlib'}",
-             "-L", f"dependency={build / 'deps'}", "-o", str(binary), str(REPLAY)],
+             "-L", f"dependency={build / 'deps'}", "-o", str(binary), str(replay_source)],
             check=True, timeout=90, env={**os.environ, "FLUXR_HELDOUT": directory},
         )
         subprocess.run([str(binary)], check=True, timeout=10, env={**os.environ, "FLUXR_TELEMETRY": "off"})

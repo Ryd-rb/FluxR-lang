@@ -1,0 +1,10 @@
+# Experimental static source/host/context accounting; no executable replay admission.
+# The arithmetic pair is intentionally inherited unchanged, including its failures.
+[case.stateful_checkpoint_continuation]
+fluxr = "examples/native/effects/stateful/program.flux"
+rust = "examples/native/effects/stateful/reference.rs"
+host = "examples/stateful_checkpoint_demo.rs"
+context = "docs/native-checkpoint-v1.md"
+performance = "Build stateful_checkpoint_demo once in release; invoke save NATIVE_ROOT CHECKPOINT ADMISSION_JSON, then resume NATIVE_ROOT CHECKPOINT ADMISSION_JSON REPORT_JSON using that same binary and fresh external output paths."
+baseline_scope = "Direct Rust and resumed FluxR continuation use identical rows, recurrence/envelope/gain operations and output vector append. FluxR additionally pays tensor admission, VM calls and receipt hashes. File I/O, encode, decode/validation and graph preparation are separately timed; the ratio is not an equal-functionality whole-checkpoint speed claim."
+source_scope = "Full-string arithmetic source counts preserve the <=10% target. Checkpoint admission/orchestration and protocol context are reported separately and belong in complete-episode costs. Static counts establish no live-model competence."

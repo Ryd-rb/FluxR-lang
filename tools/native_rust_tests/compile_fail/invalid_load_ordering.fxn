@@ -1,0 +1,9 @@
+fluxr 1
+rust 34
+#![deny(invalid_atomic_ordering)]
+
+native-use std::sync::atomic::AtomicUsize
+native-use std::sync::atomic::Ordering
+native-fn main 0 unit 2
+let value call AtomicUsize::new 1 int 0
+do method path value load 1 path Ordering::Release

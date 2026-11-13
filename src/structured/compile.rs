@@ -50,7 +50,11 @@ pub(crate) enum Op {
     Payload(usize),
     List(usize),
     Empty,
+    // These consume the following Empty/Last instruction as a second slot.
+    // Keeping both slots preserves branch indices and all compile/cache limits.
+    EmptyLocal(usize),
     Last,
+    LastLocal(usize),
     Index,
     /// Consumes a checked list<f32> and produces u64. After the instruction's
     /// base fuel, debit one unit per element before evaluating the minimum.
@@ -58,6 +62,10 @@ pub(crate) enum Op {
     Push(usize),
     Pop(usize),
     Call(usize),
+    HostCall {
+        name: String,
+        signature: HostSignature,
+    },
     Jump(usize),
     JumpFalse(usize),
     JumpTrue(usize),
@@ -103,7 +111,11 @@ pub struct Module {
     pub(super) enums: BTreeMap<String, Enum>,
     pub(super) exports: BTreeMap<String, usize>,
     pub(super) code: Vec<Arc<Code>>,
-    #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+    #[cfg(all(
+        feature = "typed-jit",
+        target_arch = "x86_64",
+        any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+    ))]
     pub(super) native: Arc<[super::typed_jit::Cache]>,
 }
 
@@ -122,11 +134,53 @@ struct FsmSource {
 }
 
 pub(super) fn encode_source(source: &Source) -> Result<Vec<u8>, Error> {
-    let mut bytes = Vec::new();
+    let mut bytes = CanonicalWriter(Vec::new());
     FsmSource::serialize(source, &mut serde_json::Serializer::new(&mut bytes))
         .map_err(|e| error(e.to_string()))?;
-    bound_canonical(bytes.len())?;
-    Ok(bytes)
+    Ok(bytes.0)
+}
+
+// Reject overflow before extending the canonical output buffer. Admitted
+// encodings are unchanged; an oversized public Source never gets a complete
+// oversized canonical copy merely so its length can be checked afterward.
+struct CanonicalWriter(Vec<u8>);
+
+impl std::io::Write for CanonicalWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > MAX_CANONICAL_SOURCE - self.0.len() {
+            return Err(std::io::Error::other(
+                "structured program exceeds canonical byte budget",
+            ));
+        }
+        self.0.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod canonical_writer_tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn canonical_overflow_never_appends_bytes_past_the_limit() {
+        let mut writer = CanonicalWriter(Vec::new());
+        writer.write_all(&vec![b'x'; MAX_CANONICAL_SOURCE]).unwrap();
+        assert_eq!(writer.0.len(), MAX_CANONICAL_SOURCE);
+        assert!(writer.write_all(b"x").is_err());
+        assert_eq!(writer.0.len(), MAX_CANONICAL_SOURCE);
+        let mut fresh = CanonicalWriter(Vec::new());
+        assert!(
+            fresh
+                .write_all(&vec![b'x'; MAX_CANONICAL_SOURCE + 1])
+                .is_err()
+        );
+        assert!(fresh.0.is_empty());
+    }
 }
 
 fn decode_source(source: &[u8]) -> Result<Source, Error> {
@@ -153,23 +207,33 @@ impl Module {
     }
 
     pub(crate) fn compile_borrowed(source: &Source) -> Result<Self, Error> {
-        Self::compile_source(source, false)
+        Self::compile_source(source, false, false)
+    }
+
+    /// A unified document may contain only native items. Its checked module is
+    /// then empty, with no synthetic or hidden exports.
+    pub(crate) fn compile_unified(source: &Source) -> Result<Self, Error> {
+        Self::compile_source(source, false, true)
     }
 
     /// Only the opaque checked rule projection can hold this module. Its
     /// compiler input permits rule-only operations and has no released encoding.
     pub(crate) fn compile_rule_projection(source: &Source) -> Result<Self, Error> {
-        Self::compile_source(source, true)
+        Self::compile_source(source, true, false)
     }
 
-    fn compile_source(source: &Source, rule_projection: bool) -> Result<Self, Error> {
+    fn compile_source(
+        source: &Source,
+        rule_projection: bool,
+        allow_empty: bool,
+    ) -> Result<Self, Error> {
         if !(1..=VERSION).contains(&source.version) {
             return Err(error(format!(
                 "unsupported module version {}",
                 source.version
             )));
         }
-        let mut env = Environment::new(source)?;
+        let mut env = Environment::with_empty(source, allow_empty)?;
         env.rule_projection = rule_projection;
         let mut code = Vec::with_capacity(source.functions.len());
         let mut exports = BTreeMap::new();
@@ -196,9 +260,13 @@ impl Module {
         } else {
             encode_source(source)?.into()
         };
-        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        #[cfg(all(
+            feature = "typed-jit",
+            target_arch = "x86_64",
+            any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+        ))]
         let native = (0..code.len()).map(|_| Default::default()).collect();
-        Ok(Self {
+        let module = Self {
             version: source.version,
             canonical,
             interface,
@@ -206,9 +274,15 @@ impl Module {
             enums: env.enums,
             exports,
             code,
-            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            #[cfg(all(
+                feature = "typed-jit",
+                target_arch = "x86_64",
+                any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+            ))]
             native,
-        })
+        };
+        module.host_requirements()?;
+        Ok(module)
     }
 
     // The collaboration path only changes bodies. The environment's function
@@ -222,23 +296,50 @@ impl Module {
         let mut module = self.clone();
         // Code bodies can be reused across generations. Inlined native calls
         // depend on the complete generation, including unchanged callers.
-        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        #[cfg(all(
+            feature = "typed-jit",
+            target_arch = "x86_64",
+            any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+        ))]
         if !changed.is_empty() {
             module.native = (0..self.code.len()).map(|_| Default::default()).collect();
         }
         for &index in changed {
             let function = &source.functions[index];
-            module.code[index] = Arc::new(compile_body(&checker.env, function, &function.body)?);
+            module.code[index] = checker.compiled_body(index, &function.body)?;
         }
         if module.code.iter().map(|body| body.ops.len()).sum::<usize>() > MAX_CODE {
             return Err(error("module instruction count exceeds limit"));
         }
         module.canonical = encode_source(source)?.into();
+        module.host_requirements()?;
         Ok(module)
     }
 
     pub(crate) fn canonical_source(&self) -> &[u8] {
         &self.canonical
+    }
+
+    /// Resolved function dependencies, including calls through typed methods.
+    /// Use the compiler's indices rather than repeating source name resolution
+    /// in collaboration tooling. Indices refer to the admitted source order.
+    pub(crate) fn call_dependencies(&self) -> Vec<BTreeSet<usize>> {
+        (0..self.code.len())
+            .map(|index| self.call_dependencies_at(index))
+            .collect()
+    }
+
+    /// Read only the compiled body being replaced; unchanged bodies already
+    /// have immutable dependency entries in the authoring snapshot.
+    pub(crate) fn call_dependencies_at(&self, index: usize) -> BTreeSet<usize> {
+        self.code[index]
+            .ops
+            .iter()
+            .filter_map(|instruction| match instruction.op {
+                Op::Call(index) => Some(index),
+                _ => None,
+            })
+            .collect()
     }
 
     pub(crate) fn checked_source(&self) -> Result<Source, Error> {
@@ -260,7 +361,8 @@ impl Module {
             .strip_prefix(MAGIC)
             .and_then(|bytes| bytes.split_first_chunk::<2>())
             .ok_or_else(|| error("unknown structured module envelope"))?;
-        let module = Self::compile(decode_source(source)?)?;
+        let decoded = decode_source(source)?;
+        let module = Self::compile_unified(&decoded)?;
         if module.version != u16::from_le_bytes(*version) {
             return Err(error(
                 "structured module envelope version differs from source",
@@ -272,17 +374,56 @@ impl Module {
 
 pub(crate) struct BodyChecker<'a> {
     env: Environment<'a>,
+    // Scoped to one preparation, so compiler/environment changes cannot reuse
+    // old code. Borrow the checked AST rather than duplicating proposal bodies.
+    checked: BTreeMap<usize, (&'a [Stmt], Arc<Code>)>,
+    cached_instructions: usize,
 }
 
 impl<'a> BodyChecker<'a> {
     pub(crate) fn new(source: &'a Source) -> Result<Self, Error> {
         Ok(Self {
             env: Environment::new(source)?,
+            checked: BTreeMap::new(),
+            cached_instructions: 0,
         })
     }
 
-    pub(crate) fn check(&self, index: usize, body: &[Stmt]) -> Result<(), Error> {
-        compile_body(&self.env, &self.env.functions[index], body).map(|_| ())
+    pub(crate) fn check(&mut self, index: usize, body: &'a [Stmt]) -> Result<(), Error> {
+        let compiled = self.compiled_body(index, body)?;
+        let previous = self
+            .checked
+            .get(&index)
+            .map_or(0, |(_, code)| code.ops.len());
+        let retained = self.cached_instructions - previous + compiled.ops.len();
+        // A hostile/conflicting batch must not retain MAX_EDITS full modules.
+        // Cache at most one body's code per declaration and at most the admitted
+        // module instruction budget. Uncached valid bodies compile on selection.
+        if retained <= MAX_CODE {
+            self.checked.insert(index, (body, compiled));
+            self.cached_instructions = retained;
+        }
+        Ok(())
+    }
+
+    /// Check a projection argument against the same environment and expression
+    /// rules as ordinary source, without changing the emitted program.
+    pub(crate) fn expression_type(&self, index: usize, expr: &Expr) -> Result<Type, Error> {
+        let function = self
+            .env
+            .functions
+            .get(index)
+            .ok_or_else(|| error("projection function index out of range"))?;
+        Compiler::new(&self.env, function)?.expr(expr, 0)
+    }
+
+    fn compiled_body(&self, index: usize, body: &[Stmt]) -> Result<Arc<Code>, Error> {
+        if let Some((checked, compiled)) = self.checked.get(&index)
+            && *checked == body
+        {
+            return Ok(Arc::clone(compiled));
+        }
+        compile_body(&self.env, &self.env.functions[index], body).map(Arc::new)
     }
 }
 
@@ -324,7 +465,10 @@ struct Environment<'a> {
 
 impl<'a> Environment<'a> {
     fn new(source: &'a Source) -> Result<Self, Error> {
-        if source.functions.is_empty()
+        Self::with_empty(source, false)
+    }
+    fn with_empty(source: &'a Source, allow_empty: bool) -> Result<Self, Error> {
+        if (!allow_empty && source.functions.is_empty())
             || source.functions.len() > MAX_DECLARATIONS
             || source.records.len() + source.enums.len() > MAX_DECLARATIONS
         {
@@ -853,10 +997,21 @@ impl<'a, 'src> Compiler<'a, 'src> {
                 (Op::List(items.len()), Type::List(Box::new(element.clone())))
             }
             Expr::Empty { list } => {
+                let first = self.ops.len();
                 list_element(self.expr(list, next)?)?;
+                if let [Op::Operand(Operand::Local(index))] = &self.ops[first..] {
+                    self.ops[first] = Op::EmptyLocal(*index);
+                }
                 (Op::Empty, Type::Bool)
             }
-            Expr::Last { list } => (Op::Last, list_element(self.expr(list, next)?)?),
+            Expr::Last { list } => {
+                let first = self.ops.len();
+                let element = list_element(self.expr(list, next)?)?;
+                if let [Op::Operand(Operand::Local(index))] = &self.ops[first..] {
+                    self.ops[first] = Op::LastLocal(*index);
+                }
+                (Op::Last, element)
+            }
             Expr::Index { list, index } => {
                 let ty = list_element(self.expr(list, next)?)?;
                 require(&self.expr(index, next)?, &Type::U64)?;
@@ -888,6 +1043,41 @@ impl<'a, 'src> Compiler<'a, 'src> {
                 )
             }
             Expr::Call { name, args } => self.call(None, name, args, next)?,
+            Expr::HostCall {
+                name,
+                params,
+                result,
+                args,
+            } => {
+                if self.env.rule_projection {
+                    return Err(error(
+                        "native host services are not rule projection operators",
+                    ));
+                }
+                let valid = !name.is_empty()
+                    && name.len() <= 64
+                    && name.bytes().enumerate().all(|(i, b)| {
+                        b.is_ascii_alphabetic() || b == b'_' || (i > 0 && b.is_ascii_digit())
+                    });
+                if !valid || params.len() > MAX_BINDINGS || params.len() != args.len() {
+                    return Err(error("invalid host service name or argument count"));
+                }
+                self.env.check_type(result)?;
+                for (arg, ty) in args.iter().zip(params) {
+                    self.env.check_type(ty)?;
+                    require(&self.expr(arg, next)?, ty)?;
+                }
+                (
+                    Op::HostCall {
+                        name: name.clone(),
+                        signature: HostSignature {
+                            params: params.clone(),
+                            result: result.clone(),
+                        },
+                    },
+                    result.clone(),
+                )
+            }
             Expr::Method {
                 receiver,
                 name,
@@ -977,5 +1167,134 @@ impl<'a, 'src> Compiler<'a, 'src> {
             require(&self.expr(arg, depth)?, &param.ty)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod prepared_body_tests {
+    use super::*;
+
+    #[test]
+    fn checked_code_cache_is_bounded_and_uncached_selection_keeps_module_limits() {
+        let mut text = String::from("v1 ");
+        for index in 0..128 {
+            text.push_str(&format!("(pub f{index} () i64 (x:i64) (ret 0)) "));
+        }
+        let source = Source::parse_compact(&text).unwrap();
+        let original = Module::compile_borrowed(&source).unwrap();
+        let mut body = vec![
+            Stmt::Set {
+                local: "x".into(),
+                value: Expr::I64 { value: 17 },
+            };
+            255
+        ];
+        body.push(Stmt::Return {
+            value: Expr::Local { name: "x".into() },
+        });
+        let mut checker = BodyChecker::new(&source).unwrap();
+        for index in 0..128 {
+            checker.check(index, &body).unwrap();
+        }
+        assert!(checker.cached_instructions <= MAX_CODE);
+        assert!(!checker.checked.contains_key(&127));
+        // The last proposal did not fit in the compile cache. It is still
+        // recompiled and admitted correctly when selected by composition.
+        let mut edited = source.clone();
+        edited.functions[127].body = body.clone();
+        let next = original
+            .replace_bodies(&edited, &checker, &BTreeSet::from([127]))
+            .unwrap();
+        let cold = Module::compile(edited.clone()).unwrap();
+        assert_eq!(next.encode(), cold.encode());
+        assert_eq!(
+            next.run(Invocation {
+                export: "f127",
+                inputs: &[],
+                arguments: &[],
+                limits: Limits::default(),
+            })
+            .unwrap(),
+            Value::I64(17)
+        );
+        // Individual body checks do not waive the composed module's limits.
+        for function in &mut edited.functions {
+            function.body = body.clone();
+        }
+        let error = original
+            .replace_bodies(&edited, &checker, &(0..128).collect())
+            .unwrap_err();
+        assert!(error.to_string().contains("module instruction count"));
+    }
+
+    #[test]
+    fn checked_code_preserves_signed_zero_and_nan_payload_bits() {
+        let source = Source::parse_compact("v1 (pub value () f32 () (ret 0f))").unwrap();
+        let original = Module::compile_borrowed(&source).unwrap();
+        let patterns = [0, 0x8000_0000, 0x7fc0_0001, 0x7fc0_0002, 0x7f80_0001];
+        let bodies: Vec<_> = patterns
+            .iter()
+            .map(|&bits| {
+                vec![Stmt::Return {
+                    value: Expr::F32 { bits },
+                }]
+            })
+            .collect();
+        let mut checker = BodyChecker::new(&source).unwrap();
+        for body in &bodies {
+            checker.check(0, body).unwrap();
+        }
+        for (&bits, body) in patterns.iter().zip(&bodies).rev() {
+            let mut edited = source.clone();
+            edited.functions[0].body = body.clone();
+            let next = original
+                .replace_bodies(&edited, &checker, &BTreeSet::from([0]))
+                .unwrap();
+            assert_eq!(
+                next.run(Invocation {
+                    export: "value",
+                    inputs: &[],
+                    arguments: &[],
+                    limits: Limits::default(),
+                })
+                .unwrap(),
+                Value::F32(bits)
+            );
+            assert_eq!(next.encode(), Module::compile(edited).unwrap().encode());
+        }
+    }
+
+    #[test]
+    fn code_reuse_is_bound_to_the_exact_checked_body_and_declaration() {
+        let source = Source::parse_compact(
+            "v1 (pub signed () i64 () (ret 0)) (pub unsigned () u64 () (ret 0u))",
+        )
+        .unwrap();
+        let original = Module::compile_borrowed(&source).unwrap();
+        let first = vec![Stmt::Return {
+            value: Expr::I64 { value: 5 },
+        }];
+        let second = vec![Stmt::Return {
+            value: Expr::I64 { value: 9 },
+        }];
+        let mut checker = BodyChecker::new(&source).unwrap();
+        checker.check(0, &first).unwrap();
+        assert!(checker.check(1, &first).is_err());
+        checker.check(0, &second).unwrap();
+        let mut edited = source.clone();
+        edited.functions[0].body = first.clone();
+        let next = original
+            .replace_bodies(&edited, &checker, &BTreeSet::from([0]))
+            .unwrap();
+        assert_eq!(
+            next.run(Invocation {
+                export: "signed",
+                inputs: &[],
+                arguments: &[],
+                limits: Limits::default(),
+            })
+            .unwrap(),
+            Value::I64(5)
+        );
     }
 }

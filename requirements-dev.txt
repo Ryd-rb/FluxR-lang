@@ -1,0 +1,3 @@
+# Pinned token-accounting dependencies; the runtime frontend uses the standard library.
+tiktoken==0.14.0
+tokenizers==0.23.3

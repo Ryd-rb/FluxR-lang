@@ -1,0 +1,2 @@
+fluxr 1
+pub calc 2 x uint y uint uint do 0 3 bump x y scale x 3u ret x

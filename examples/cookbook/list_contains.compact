@@ -1,0 +1,1 @@
+v2 (pub run (values:[i64] needle:i64) bool () (while (! (empty values)) ((if (== (last values) needle) ((ret true)) ()) (pop values))) (ret false))

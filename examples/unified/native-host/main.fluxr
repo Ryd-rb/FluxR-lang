@@ -1,0 +1,20 @@
+fluxr 1
+pub increment 1 delta uint uint ret host atomic_add uint 1 uint delta
+rust 991
+use fluxr::runtime::{global, Limits, RuntimeError, Type, Value};
+use std::sync::atomic::{AtomicU64, Ordering};
+static COUNTER: AtomicU64 = AtomicU64::new(0);
+fn main() -> Result<(), RuntimeError> {
+    let runtime = global();
+    runtime.register_host("atomic_add", vec![Type::U64], Type::U64, |arguments| {
+        let Value::U64(delta) = arguments[0] else { unreachable!("typed host admission") };
+        Ok(Value::U64(COUNTER.fetch_add(delta, Ordering::AcqRel) + delta))
+    })?;
+    let first = runtime.call("main.fluxr", "increment", &[], &[Value::U64(5)], Limits::default())?;
+    let helper = runtime.call("math.fluxr", "double", &[], &[Value::I64(21)], Limits::default())?;
+    println!("counter={:?}; helper={:?}; helper_route={}", first.value, helper.value, helper.route);
+    println!("Runtime ready. Press Enter to exit.");
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line).map_err(|error| RuntimeError::new("stdin", error.to_string()))?;
+    Ok(())
+}

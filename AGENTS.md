@@ -1,14 +1,35 @@
-# FluxR
+# FluxR development guidance
 
-- Aim for performance as close to equivalent optimized Rust as possible on every FluxR execution path. Compare identical semantics and representative workloads on the same target, optimization profile and instrumentation setting. Measure host entry points as well as isolated kernels. Report execution separately from compilation, preparation and reload.
-- Where equivalent Rust does not exist, record a reproducible baseline for the current workload. Improve clear bottlenecks and rerun the same benchmark with behavior checks. Apply this to bundled code, injected code, timelines, rules, runtime internals and host adapters.
-- Preserve released source, compiled artifacts and observable behavior. Keep optimization claims scoped to the measured workload and platforms.
-
-- Source token efficiency is a primary FluxR goal. Target at most 10% of the source tokens of equivalent Rust. Compare the same behavior with a named tokenizer and report authored FluxR, Rust host bindings, and task context separately. For AI-facing source and edit bodies, use the smaller measured representation. Avoid JSON wherever it costs more tokens. Preserve released readers and encodings.
-- Add a behavior check for each new language case. Add representative source or edit pairs to `benchmarks/cases.toml` when token cost is relevant, and a matched release benchmark when the case exercises a new execution path or performance risk. Reuse existing benchmarks when they already cover the case.
-
-- At each checkpoint, improve README.md with a concise prose overview of FluxR's strengths, goals, current capabilities and remaining project-wide gaps. Keep feature history and checkpoint evidence in docs/modernization.md.
-
-- Keep the development and standalone release default branches at the same accepted feature level. Port each accepted language, runtime, tooling, and example change to both in the same checkpoint. Run equivalent behavior and compatibility checks in both repositories and preserve their independent Git histories.
-
-- Reconcile outstanding FluxR branches at each checkpoint. Land validated changes on both defaults promptly. Carry any work still off main through succession with its head, owner, blocker and next action.
+- Preserve checked semantics, released source readers, canonical artifact
+  encodings, compatibility dictionary pins and observable runtime behavior.
+  Keep notation versions separate from semantic and artifact versions. Current
+  application source is FluxR 1 and includes the mandatory runtime.
+- Aim for performance close to equivalent optimized Rust. Compare identical
+  behavior on the same target, profile, instrumentation and resource settings.
+  Measure host entry points and kernels separately, and separate execution from
+  compilation, preparation, startup and replacement. Scope claims to measured
+  workloads and platforms; retain a reproducible baseline where no Rust control
+  exists.
+- Target source tokens at most 10% of equivalent Rust. Name the tokenizer and
+  report authored source, Rust bindings, shared libraries, task context, edits,
+  retries and diagnostics separately. Prefer the smaller measured representation
+  for agent-facing source and edit bodies. Preserve every released reader.
+- Add a behavior check for each new language case and use the independent
+  semantic fixtures for changes to evaluation, traps, ownership or metering.
+  Add matched source/edit pairs where token cost matters and a matched release
+  benchmark for a new execution path or material performance risk. Reuse tests
+  and benchmarks that already cover the change.
+- Keep the README and current interface documentation accurate. Update
+  `docs/requirements.json` and `docs/current-status.md` when implementation scope
+  or acceptance changes. Product goals and proposed features must remain
+  distinguishable from implemented behavior and completed validation.
+- Keep generated projects, Cargo targets, compiler caches, temporary files and
+  qualification outputs outside verified source trees. Use the resource
+  coordinator for sustained concurrent qualification; see
+  `docs/resource-safety-v1.md`. Never treat trusted native code or the local
+  verification driver as a hostile-code sandbox.
+- When integrating with development and standalone release repositories, carry
+  accepted language, runtime, tooling and example changes to both and run
+  equivalent behavior and compatibility checks. Preserve each repository's Git
+  history and report any unresolved parity work. A source snapshot alone does
+  not demonstrate synchronization or authorize remote publication.

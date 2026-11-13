@@ -1,0 +1,3 @@
+fluxr 1
+pub run 2 values list int fallback int int do 0 1
+  if empty values 1 ret fallback 1 ret last values

@@ -1,0 +1,1 @@
+v2 (pub run (x:i64 factor:i64 offset:i64) i64 = (+ (* x factor) offset))

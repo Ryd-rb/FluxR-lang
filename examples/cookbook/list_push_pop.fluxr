@@ -1,0 +1,6 @@
+fluxr 1
+pub run 2 values list int value int list int do 0 4
+  push values value
+  push values 7
+  pop values
+  ret values

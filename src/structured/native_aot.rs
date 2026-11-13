@@ -4,7 +4,8 @@ use super::*;
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
 
-type Kernel = fn(&[i64; MAX_LANES], &mut [i64; MAX_LANES], u64, u64) -> u32;
+pub type NativeKernel = fn(&[i64; MAX_LANES], &mut [i64; MAX_LANES], u64, u64) -> u32;
+type Kernel = NativeKernel;
 
 #[cfg(test)]
 mod control_flow {
@@ -15,13 +16,17 @@ mod control_flow {
 
     #[test]
     fn exact_control_flow_can_complete_without_portable_fallback() {
-        let module = Module::compile_compact(include_str!(
-            "../../examples/fixtures/control_flow.fluxr"
-        ))
-        .unwrap();
+        let module =
+            Module::compile_compact(include_str!("../../examples/fixtures/control_flow.fluxr"))
+                .unwrap();
         let aot = prepare(&module).unwrap();
-        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
-        let jit = super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
+        #[cfg(all(
+            feature = "typed-jit",
+            target_arch = "x86_64",
+            any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+        ))]
+        let jit =
+            super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
         for (n, step, fuel, cells, total) in [(0, 0, 6, 13, 7), (4, 2, 60, 18, 6)] {
             let state = Value::Record([Value::I64(7), Value::I64(-11)].into());
             let args = [state, Value::I64(n), Value::I64(step)];
@@ -39,7 +44,11 @@ mod control_flow {
             };
             let expected = Value::Record([Value::I64(total), Value::I64(-11)].into());
             assert_eq!(aot.boundary.run(&call, aot.kernel), Some(expected.clone()));
-            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            #[cfg(all(
+                feature = "typed-jit",
+                target_arch = "x86_64",
+                any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+            ))]
             assert_eq!(jit.run(&call), Some(expected));
         }
     }
@@ -58,7 +67,11 @@ mod loop_exits {
             Module::compile_compact(include_str!("../../examples/fixtures/loop_exits.fluxr"))
                 .unwrap();
         let aot = prepare(&module).unwrap();
-        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        #[cfg(all(
+            feature = "typed-jit",
+            target_arch = "x86_64",
+            any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+        ))]
         let jit =
             super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
         for (n, stop, skip, step, instructions, cells, total) in [
@@ -83,7 +96,11 @@ mod loop_exits {
             };
             let expected = Value::Record([Value::I64(total), Value::I64(-11)].into());
             assert_eq!(aot.boundary.run(&call, aot.kernel), Some(expected.clone()));
-            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            #[cfg(all(
+                feature = "typed-jit",
+                target_arch = "x86_64",
+                any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+            ))]
             assert_eq!(jit.run(&call), Some(expected));
         }
     }
@@ -103,7 +120,11 @@ mod nested_loop_calls {
         ))
         .unwrap();
         let aot = prepare(&module).unwrap();
-        #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+        #[cfg(all(
+            feature = "typed-jit",
+            target_arch = "x86_64",
+            any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+        ))]
         let jit =
             super::super::typed_jit::Native::compile(&module, module.exports["walk"]).unwrap();
         for (scalars, instructions, cells, total) in [
@@ -129,7 +150,11 @@ mod nested_loop_calls {
             };
             let expected = Value::Record([Value::I64(total), Value::I64(-11)].into());
             assert_eq!(aot.boundary.run(&call, aot.kernel), Some(expected.clone()));
-            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            #[cfg(all(
+                feature = "typed-jit",
+                target_arch = "x86_64",
+                any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+            ))]
             assert_eq!(jit.run(&call), Some(expected));
             let shallow = Invocation {
                 limits: Limits {
@@ -139,7 +164,11 @@ mod nested_loop_calls {
                 ..call
             };
             assert_eq!(aot.boundary.run(&shallow, aot.kernel), None);
-            #[cfg(all(feature = "typed-jit", target_os = "windows", target_arch = "x86_64"))]
+            #[cfg(all(
+                feature = "typed-jit",
+                target_arch = "x86_64",
+                any(target_os = "windows", all(target_os = "linux", target_env = "gnu"))
+            ))]
             assert_eq!(jit.run(&shallow), None);
         }
     }
@@ -150,6 +179,43 @@ pub struct PreparedAot<'module> {
     export: &'module str,
     boundary: Boundary,
     kernel: Kernel,
+}
+
+/// An owned binding to one immutable checked revision. The boundary owns its
+/// layouts; it never points into the Arc and does not need self references.
+pub struct OwnedPreparedAot {
+    module: Arc<Module>,
+    export: String,
+    boundary: Boundary,
+    kernel: NativeKernel,
+}
+
+impl OwnedPreparedAot {
+    pub fn run_with(
+        &self,
+        call: Invocation<'_>,
+        workspace: &mut Workspace,
+    ) -> Result<Value, Error> {
+        self.run_with_route(call, workspace).0
+    }
+
+    pub fn run_with_route(
+        &self,
+        call: Invocation<'_>,
+        workspace: &mut Workspace,
+    ) -> (Result<Value, Error>, ExecutionRoute) {
+        if call.export == self.export
+            && let Some(result) = self.boundary.run(&call, self.kernel)
+        {
+            return (Ok(result), ExecutionRoute::AheadOfTime);
+        }
+        // AOT lowering admits only effect-free instructions. A declined native
+        // call can therefore safely replay the checked oracle's trap schedule.
+        (
+            self.module.run_portable_with(call, workspace),
+            ExecutionRoute::Portable,
+        )
+    }
 }
 
 impl PreparedAot<'_> {
@@ -173,6 +239,45 @@ impl Module {
     pub fn emit_native_rust(&self, export: &str) -> Result<String, Error> {
         let plan = self.aot_plan(export)?;
         Ok(emit(&plan, export, self.aot_identity(export)))
+    }
+
+    /// The existing deterministic emitter plus a registration function for the
+    /// process runtime. This leaves the released emitter's bytes unchanged.
+    pub fn emit_native_binding(&self, export: &str) -> Result<String, Error> {
+        let mut out = self
+            .emit_native_rust(export)?
+            .replacen("pub fn prepare(", "#[allow(dead_code)]\npub fn prepare(", 1)
+            .replacen(
+                "fn kernel(",
+                "#[allow(unused_variables, unused_mut)]\nfn kernel(",
+                1,
+            );
+        writeln!(out, "pub fn bind(runtime: &fluxr::runtime::Runtime, name: &str, revision: u64) -> Result<(), fluxr::runtime::RuntimeError> {{").unwrap();
+        writeln!(
+            out,
+            "    runtime.bind_aot(name, revision, {export:?}, {:?}, kernel)",
+            self.aot_identity(export)
+        )
+        .unwrap();
+        writeln!(out, "}}").unwrap();
+        Ok(out)
+    }
+
+    pub fn prepare_owned_aot(
+        self: &Arc<Self>,
+        export: &str,
+        identity: [u8; 32],
+        kernel: NativeKernel,
+    ) -> Result<OwnedPreparedAot, Error> {
+        if self.aot_identity(export) != identity {
+            return Err(error("native AOT module or export identity differs"));
+        }
+        Ok(OwnedPreparedAot {
+            module: Arc::clone(self),
+            export: export.to_owned(),
+            boundary: self.aot_plan(export)?.boundary,
+            kernel,
+        })
     }
 
     /// Bind trusted generated Rust to a checked module for repeated calls.
@@ -331,6 +436,9 @@ fn emit(plan: &Plan, export: &str, identity: [u8; 32]) -> String {
                     }
                     Step::Field(record, field) => format!("[t{record}[{}]]", field + 1),
                     Step::Binary(kind, left, right) => binary(*kind, *left, *right),
+                    Step::UnsignedBinary(kind, left, right) => {
+                        unsigned_binary(*kind, *left, *right)
+                    }
                     Step::Call(index, args) => {
                         let args = args
                             .iter()
@@ -380,4 +488,25 @@ fn binary(kind: Binary, left: usize, right: usize) -> String {
         _ => unreachable!("lowered signed operation"),
     };
     format!("[t{left}[0].checked_{method}(t{right}[0])?]")
+}
+
+fn unsigned_binary(kind: Binary, left: usize, right: usize) -> String {
+    use Binary::*;
+    let method = match kind {
+        Add => "add",
+        Sub => "sub",
+        Mul => "mul",
+        Eq | Lt | Le => {
+            let symbol = match kind {
+                Eq => "==",
+                Lt => "<",
+                _ => "<=",
+            };
+            return format!("[i64::from((t{left}[0] as u64) {symbol} (t{right}[0] as u64))]");
+        }
+        _ => unreachable!("lowered unsigned operation"),
+    };
+    // Keep the released i64 lane ABI: reinterpret operands as unsigned before
+    // the checked operation and preserve every result bit on the way back.
+    format!("[(t{left}[0] as u64).checked_{method}(t{right}[0] as u64)? as i64]")
 }

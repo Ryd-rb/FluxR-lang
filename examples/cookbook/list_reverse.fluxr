@@ -1,0 +1,5 @@
+fluxr 1
+pub run 1 values list int list int do 1 reversed list int 3
+  set reversed list int 0
+  while not empty values 2 push reversed last values pop values
+  ret reversed

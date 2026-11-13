@@ -1,0 +1,1102 @@
+{
+  "tempo": {
+    "beats_per_minute_milli": 120000,
+    "beats_per_bar": 4,
+    "beat_unit": 4
+  },
+  "sample_rate": 24000,
+  "duration_ticks": 30720,
+  "tracks": [
+    {
+      "instrument": 0,
+      "notes": [
+        {
+          "start_tick": 0,
+          "duration_ticks": 1680,
+          "frequency_hz": 110.0,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 1920,
+          "duration_ticks": 1680,
+          "frequency_hz": 110.0,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 3840,
+          "duration_ticks": 1680,
+          "frequency_hz": 87.30706,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 5760,
+          "duration_ticks": 1680,
+          "frequency_hz": 87.30706,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 7680,
+          "duration_ticks": 1680,
+          "frequency_hz": 130.81278,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 9600,
+          "duration_ticks": 1680,
+          "frequency_hz": 130.81278,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 11520,
+          "duration_ticks": 1680,
+          "frequency_hz": 97.99886,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 13440,
+          "duration_ticks": 1680,
+          "frequency_hz": 97.99886,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 15360,
+          "duration_ticks": 1680,
+          "frequency_hz": 110.0,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 17280,
+          "duration_ticks": 1680,
+          "frequency_hz": 110.0,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 19200,
+          "duration_ticks": 1680,
+          "frequency_hz": 87.30706,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 21120,
+          "duration_ticks": 1680,
+          "frequency_hz": 87.30706,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 23040,
+          "duration_ticks": 1680,
+          "frequency_hz": 130.81278,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 24960,
+          "duration_ticks": 1680,
+          "frequency_hz": 130.81278,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 26880,
+          "duration_ticks": 1680,
+          "frequency_hz": 97.99886,
+          "velocity": 0.8
+        },
+        {
+          "start_tick": 28800,
+          "duration_ticks": 1680,
+          "frequency_hz": 97.99886,
+          "velocity": 0.65
+        }
+      ],
+      "gain": 0.32,
+      "pan_start": -0.1,
+      "pan_end": 0.1
+    },
+    {
+      "instrument": 1,
+      "notes": [
+        {
+          "start_tick": 0,
+          "duration_ticks": 384,
+          "frequency_hz": 220.0,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 480,
+          "duration_ticks": 384,
+          "frequency_hz": 330.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 960,
+          "duration_ticks": 384,
+          "frequency_hz": 440.0,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 1440,
+          "duration_ticks": 384,
+          "frequency_hz": 275.0,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 1920,
+          "duration_ticks": 384,
+          "frequency_hz": 330.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 2400,
+          "duration_ticks": 384,
+          "frequency_hz": 440.0,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 2880,
+          "duration_ticks": 384,
+          "frequency_hz": 275.0,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 3360,
+          "duration_ticks": 384,
+          "frequency_hz": 330.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 3840,
+          "duration_ticks": 384,
+          "frequency_hz": 174.61412,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 4320,
+          "duration_ticks": 384,
+          "frequency_hz": 261.92118000000005,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 4800,
+          "duration_ticks": 384,
+          "frequency_hz": 349.22824,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 5280,
+          "duration_ticks": 384,
+          "frequency_hz": 218.26765,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 5760,
+          "duration_ticks": 384,
+          "frequency_hz": 261.92118000000005,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 6240,
+          "duration_ticks": 384,
+          "frequency_hz": 349.22824,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 6720,
+          "duration_ticks": 384,
+          "frequency_hz": 218.26765,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 7200,
+          "duration_ticks": 384,
+          "frequency_hz": 261.92118000000005,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 7680,
+          "duration_ticks": 384,
+          "frequency_hz": 261.62556,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 8160,
+          "duration_ticks": 384,
+          "frequency_hz": 392.43834000000004,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 8640,
+          "duration_ticks": 384,
+          "frequency_hz": 523.25112,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 9120,
+          "duration_ticks": 384,
+          "frequency_hz": 327.03195,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 9600,
+          "duration_ticks": 384,
+          "frequency_hz": 392.43834000000004,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 10080,
+          "duration_ticks": 384,
+          "frequency_hz": 523.25112,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 10560,
+          "duration_ticks": 384,
+          "frequency_hz": 327.03195,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 11040,
+          "duration_ticks": 384,
+          "frequency_hz": 392.43834000000004,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 11520,
+          "duration_ticks": 384,
+          "frequency_hz": 195.99772,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 12000,
+          "duration_ticks": 384,
+          "frequency_hz": 293.99658,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 12480,
+          "duration_ticks": 384,
+          "frequency_hz": 391.99544,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 12960,
+          "duration_ticks": 384,
+          "frequency_hz": 244.99714999999998,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 13440,
+          "duration_ticks": 384,
+          "frequency_hz": 293.99658,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 13920,
+          "duration_ticks": 384,
+          "frequency_hz": 391.99544,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 14400,
+          "duration_ticks": 384,
+          "frequency_hz": 244.99714999999998,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 14880,
+          "duration_ticks": 384,
+          "frequency_hz": 293.99658,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 15360,
+          "duration_ticks": 384,
+          "frequency_hz": 220.0,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 15840,
+          "duration_ticks": 384,
+          "frequency_hz": 330.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 16320,
+          "duration_ticks": 384,
+          "frequency_hz": 440.0,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 16800,
+          "duration_ticks": 384,
+          "frequency_hz": 275.0,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 17280,
+          "duration_ticks": 384,
+          "frequency_hz": 330.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 17760,
+          "duration_ticks": 384,
+          "frequency_hz": 440.0,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 18240,
+          "duration_ticks": 384,
+          "frequency_hz": 275.0,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 18720,
+          "duration_ticks": 384,
+          "frequency_hz": 330.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 19200,
+          "duration_ticks": 384,
+          "frequency_hz": 174.61412,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 19680,
+          "duration_ticks": 384,
+          "frequency_hz": 261.92118000000005,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 20160,
+          "duration_ticks": 384,
+          "frequency_hz": 349.22824,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 20640,
+          "duration_ticks": 384,
+          "frequency_hz": 218.26765,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 21120,
+          "duration_ticks": 384,
+          "frequency_hz": 261.92118000000005,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 21600,
+          "duration_ticks": 384,
+          "frequency_hz": 349.22824,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 22080,
+          "duration_ticks": 384,
+          "frequency_hz": 218.26765,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 22560,
+          "duration_ticks": 384,
+          "frequency_hz": 261.92118000000005,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 23040,
+          "duration_ticks": 384,
+          "frequency_hz": 261.62556,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 23520,
+          "duration_ticks": 384,
+          "frequency_hz": 392.43834000000004,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 24000,
+          "duration_ticks": 384,
+          "frequency_hz": 523.25112,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 24480,
+          "duration_ticks": 384,
+          "frequency_hz": 327.03195,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 24960,
+          "duration_ticks": 384,
+          "frequency_hz": 392.43834000000004,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 25440,
+          "duration_ticks": 384,
+          "frequency_hz": 523.25112,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 25920,
+          "duration_ticks": 384,
+          "frequency_hz": 327.03195,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 26400,
+          "duration_ticks": 384,
+          "frequency_hz": 392.43834000000004,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 26880,
+          "duration_ticks": 384,
+          "frequency_hz": 195.99772,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 27360,
+          "duration_ticks": 384,
+          "frequency_hz": 293.99658,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 27840,
+          "duration_ticks": 384,
+          "frequency_hz": 391.99544,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 28320,
+          "duration_ticks": 384,
+          "frequency_hz": 244.99714999999998,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 28800,
+          "duration_ticks": 384,
+          "frequency_hz": 293.99658,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 29280,
+          "duration_ticks": 384,
+          "frequency_hz": 391.99544,
+          "velocity": 0.6
+        },
+        {
+          "start_tick": 29760,
+          "duration_ticks": 384,
+          "frequency_hz": 244.99714999999998,
+          "velocity": 0.5
+        },
+        {
+          "start_tick": 30240,
+          "duration_ticks": 384,
+          "frequency_hz": 293.99658,
+          "velocity": 0.55
+        }
+      ],
+      "gain": 0.22,
+      "pan_start": -0.65,
+      "pan_end": 0.55
+    },
+    {
+      "instrument": 2,
+      "notes": [
+        {
+          "start_tick": 0,
+          "duration_ticks": 768,
+          "frequency_hz": 440.0,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 1080,
+          "duration_ticks": 768,
+          "frequency_hz": 550.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 1920,
+          "duration_ticks": 768,
+          "frequency_hz": 660.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 3000,
+          "duration_ticks": 768,
+          "frequency_hz": 550.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 3840,
+          "duration_ticks": 768,
+          "frequency_hz": 523.8423600000001,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 4920,
+          "duration_ticks": 768,
+          "frequency_hz": 436.5353,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 5760,
+          "duration_ticks": 768,
+          "frequency_hz": 392.88177,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 6840,
+          "duration_ticks": 768,
+          "frequency_hz": 349.22824,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 7680,
+          "duration_ticks": 768,
+          "frequency_hz": 523.25112,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 8760,
+          "duration_ticks": 768,
+          "frequency_hz": 654.0639,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 9600,
+          "duration_ticks": 768,
+          "frequency_hz": 784.8766800000001,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 10680,
+          "duration_ticks": 768,
+          "frequency_hz": 654.0639,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 11520,
+          "duration_ticks": 768,
+          "frequency_hz": 587.99316,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 12600,
+          "duration_ticks": 768,
+          "frequency_hz": 489.99429999999995,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 13440,
+          "duration_ticks": 768,
+          "frequency_hz": 440.99487,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 14520,
+          "duration_ticks": 768,
+          "frequency_hz": 391.99544,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 15360,
+          "duration_ticks": 768,
+          "frequency_hz": 440.0,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 16440,
+          "duration_ticks": 768,
+          "frequency_hz": 550.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 17280,
+          "duration_ticks": 768,
+          "frequency_hz": 660.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 18360,
+          "duration_ticks": 768,
+          "frequency_hz": 550.0,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 19200,
+          "duration_ticks": 768,
+          "frequency_hz": 523.8423600000001,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 20280,
+          "duration_ticks": 768,
+          "frequency_hz": 436.5353,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 21120,
+          "duration_ticks": 768,
+          "frequency_hz": 392.88177,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 22200,
+          "duration_ticks": 768,
+          "frequency_hz": 349.22824,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 23040,
+          "duration_ticks": 768,
+          "frequency_hz": 523.25112,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 24120,
+          "duration_ticks": 768,
+          "frequency_hz": 654.0639,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 24960,
+          "duration_ticks": 768,
+          "frequency_hz": 784.8766800000001,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 26040,
+          "duration_ticks": 768,
+          "frequency_hz": 654.0639,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 26880,
+          "duration_ticks": 768,
+          "frequency_hz": 587.99316,
+          "velocity": 0.65
+        },
+        {
+          "start_tick": 27960,
+          "duration_ticks": 768,
+          "frequency_hz": 489.99429999999995,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 28800,
+          "duration_ticks": 768,
+          "frequency_hz": 440.99487,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 29880,
+          "duration_ticks": 768,
+          "frequency_hz": 391.99544,
+          "velocity": 0.55
+        }
+      ],
+      "gain": 0.26,
+      "pan_start": 0.7,
+      "pan_end": -0.45
+    },
+    {
+      "instrument": 3,
+      "notes": [
+        {
+          "start_tick": 0,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 480,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 960,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 1440,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 1920,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 2400,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 2880,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 3360,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 3840,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 4320,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 4800,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 5280,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 5760,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 6240,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 6720,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 7200,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 7680,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 8160,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 8640,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 9120,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 9600,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 10080,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 10560,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 11040,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 11520,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 12000,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 12480,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 12960,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 13440,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 13920,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 14400,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 14880,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 15360,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 15840,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 16320,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 16800,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 17280,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 17760,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 18240,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 18720,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 19200,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 19680,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 20160,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 20640,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 21120,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 21600,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 22080,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 22560,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 23040,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 23520,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 24000,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 24480,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 24960,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 25440,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 25920,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 26400,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 26880,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 27360,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 27840,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 28320,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 28800,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 29280,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        },
+        {
+          "start_tick": 29760,
+          "duration_ticks": 163,
+          "frequency_hz": 5300,
+          "velocity": 0.35
+        },
+        {
+          "start_tick": 30240,
+          "duration_ticks": 163,
+          "frequency_hz": 7000,
+          "velocity": 0.55
+        }
+      ],
+      "gain": 0.12,
+      "pan_start": 0.15,
+      "pan_end": -0.15
+    }
+  ],
+  "delay_ticks": 720,
+  "delay_feedback": 0.27,
+  "lowpass": 0.64
+}

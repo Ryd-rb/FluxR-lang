@@ -1,0 +1,1 @@
+v2 (pub run (values:[i64] value:i64) [i64] () (push values value) (push values 7) (pop values) (ret values))

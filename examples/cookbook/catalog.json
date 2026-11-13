@@ -1,0 +1,482 @@
+{
+  "format": "fluxr-cookbook-v1",
+  "cases": [
+    {
+      "name": "unit",
+      "topics": [
+        "unit",
+        "zero_arguments"
+      ],
+      "fluxr": "unit.fluxr",
+      "rust": "unit.rs",
+      "compact": "unit.compact"
+    },
+    {
+      "name": "checked_affine",
+      "topics": [
+        "i64",
+        "checked_arithmetic",
+        "overflow"
+      ],
+      "fluxr": "checked_affine.fluxr",
+      "rust": "checked_affine.rs",
+      "compact": "checked_affine.compact"
+    },
+    {
+      "name": "unsigned_affine",
+      "topics": [
+        "u64",
+        "checked_arithmetic",
+        "overflow"
+      ],
+      "fluxr": "unsigned_affine.fluxr",
+      "rust": "unsigned_affine.rs",
+      "compact": "unsigned_affine.compact"
+    },
+    {
+      "name": "clamp",
+      "topics": [
+        "if",
+        "comparisons",
+        "early_return"
+      ],
+      "fluxr": "clamp.fluxr",
+      "rust": "clamp.rs",
+      "compact": "clamp.compact"
+    },
+    {
+      "name": "guarded_division",
+      "topics": [
+        "bool",
+        "short_circuit",
+        "division",
+        "traps"
+      ],
+      "fluxr": "guarded_division.fluxr",
+      "rust": "guarded_division.rs",
+      "compact": "guarded_division.compact"
+    },
+    {
+      "name": "gcd",
+      "topics": [
+        "u64",
+        "euclidean_algorithm",
+        "while",
+        "rem"
+      ],
+      "fluxr": "gcd.fluxr",
+      "rust": "gcd.rs",
+      "compact": "gcd.compact"
+    },
+    {
+      "name": "factorial",
+      "topics": [
+        "u64",
+        "while",
+        "checked_mul"
+      ],
+      "fluxr": "factorial.fluxr",
+      "rust": "factorial.rs",
+      "compact": "factorial.compact"
+    },
+    {
+      "name": "fibonacci",
+      "topics": [
+        "i64",
+        "recurrence",
+        "locals",
+        "overflow"
+      ],
+      "fluxr": "fibonacci.fluxr",
+      "rust": "fibonacci.rs",
+      "compact": "fibonacci.compact"
+    },
+    {
+      "name": "power",
+      "topics": [
+        "i64",
+        "bounded_exponent",
+        "checked_mul"
+      ],
+      "fluxr": "power.fluxr",
+      "rust": "power.rs",
+      "compact": "power.compact"
+    },
+    {
+      "name": "triangular",
+      "topics": [
+        "i64",
+        "while",
+        "compact_steps"
+      ],
+      "fluxr": "triangular.fluxr",
+      "rust": "triangular.rs",
+      "compact": "triangular.compact"
+    },
+    {
+      "name": "loop_exits",
+      "topics": [
+        "break",
+        "continue",
+        "while",
+        "control_order"
+      ],
+      "fluxr": "loop_exits.fluxr",
+      "rust": "loop_exits.rs",
+      "compact": "loop_exits.compact"
+    },
+    {
+      "name": "helper_calls",
+      "topics": [
+        "private_function",
+        "calls",
+        "checked_arithmetic"
+      ],
+      "fluxr": "helper_calls.fluxr",
+      "rust": "helper_calls.rs",
+      "compact": "helper_calls.compact"
+    },
+    {
+      "name": "recursive_sum",
+      "topics": [
+        "recursion",
+        "frames",
+        "base_case"
+      ],
+      "fluxr": "recursive_sum.fluxr",
+      "rust": "recursive_sum.rs",
+      "compact": "recursive_sum.compact"
+    },
+    {
+      "name": "list_sum",
+      "topics": [
+        "list",
+        "copy_on_write",
+        "checked_fold"
+      ],
+      "fluxr": "list_sum.fluxr",
+      "rust": "list_sum.rs",
+      "compact": "list_sum.compact"
+    },
+    {
+      "name": "list_count",
+      "topics": [
+        "list",
+        "empty",
+        "pop",
+        "copy_on_write"
+      ],
+      "fluxr": "list_count.fluxr",
+      "rust": "list_count.rs",
+      "compact": "list_count.compact"
+    },
+    {
+      "name": "list_reverse",
+      "topics": [
+        "list",
+        "allocation",
+        "push",
+        "pop",
+        "ordering"
+      ],
+      "fluxr": "list_reverse.fluxr",
+      "rust": "list_reverse.rs",
+      "compact": "list_reverse.compact"
+    },
+    {
+      "name": "list_contains",
+      "topics": [
+        "list",
+        "search",
+        "early_return",
+        "bool"
+      ],
+      "fluxr": "list_contains.fluxr",
+      "rust": "list_contains.rs",
+      "compact": "list_contains.compact"
+    },
+    {
+      "name": "list_last",
+      "topics": [
+        "list",
+        "guard",
+        "short_circuit"
+      ],
+      "fluxr": "list_last.fluxr",
+      "rust": "list_last.rs",
+      "compact": "list_last.compact"
+    },
+    {
+      "name": "list_push_pop",
+      "topics": [
+        "list",
+        "push",
+        "pop",
+        "copy_on_write",
+        "snapshot"
+      ],
+      "fluxr": "list_push_pop.fluxr",
+      "rust": "list_push_pop.rs",
+      "compact": "list_push_pop.compact"
+    },
+    {
+      "name": "list_index",
+      "topics": [
+        "list",
+        "bounds",
+        "unsigned_index"
+      ],
+      "fluxr": "list_index.fluxr",
+      "rust": "list_index.rs",
+      "compact": "list_index.compact"
+    },
+    {
+      "name": "record_point",
+      "topics": [
+        "record",
+        "construction",
+        "checked_add"
+      ],
+      "fluxr": "record_point.fluxr",
+      "rust": "record_point.rs",
+      "compact": "record_point.compact"
+    },
+    {
+      "name": "record_update",
+      "topics": [
+        "record",
+        "field",
+        "copy_on_write",
+        "checked_add"
+      ],
+      "fluxr": "record_update.fluxr",
+      "rust": "record_update.rs",
+      "compact": "record_update.compact"
+    },
+    {
+      "name": "nested_record",
+      "topics": [
+        "record",
+        "nesting",
+        "projections"
+      ],
+      "fluxr": "nested_record.fluxr",
+      "rust": "nested_record.rs",
+      "compact": "nested_record.compact"
+    },
+    {
+      "name": "method_shift",
+      "topics": [
+        "record",
+        "nominal_method",
+        "checked_add"
+      ],
+      "fluxr": "method_shift.fluxr",
+      "rust": "method_shift.rs",
+      "compact": "method_shift.compact"
+    },
+    {
+      "name": "enum_option",
+      "topics": [
+        "enum",
+        "optional_payload",
+        "guard"
+      ],
+      "fluxr": "enum_option.fluxr",
+      "rust": "enum_option.rs",
+      "compact": "enum_option.compact"
+    },
+    {
+      "name": "enum_map",
+      "topics": [
+        "enum",
+        "construct_payload",
+        "checked_map"
+      ],
+      "fluxr": "enum_map.fluxr",
+      "rust": "enum_map.rs",
+      "compact": "enum_map.compact"
+    },
+    {
+      "name": "float_affine",
+      "topics": [
+        "f32",
+        "strict_binary32",
+        "arithmetic",
+        "nan"
+      ],
+      "fluxr": "float_affine.fluxr",
+      "rust": "float_affine.rs",
+      "compact": "float_affine.compact"
+    },
+    {
+      "name": "float_sqrt",
+      "topics": [
+        "f32",
+        "sqrt",
+        "canonical_nan",
+        "signed_zero"
+      ],
+      "fluxr": "float_sqrt.fluxr",
+      "rust": "float_sqrt.rs",
+      "compact": "float_sqrt.compact"
+    },
+    {
+      "name": "float_to_int",
+      "topics": [
+        "f32",
+        "i64",
+        "saturating_conversion",
+        "nan"
+      ],
+      "fluxr": "float_to_int.fluxr",
+      "rust": "float_to_int.rs",
+      "compact": "float_to_int.compact"
+    },
+    {
+      "name": "int_to_float",
+      "topics": [
+        "i64",
+        "f32",
+        "direct_rounding"
+      ],
+      "fluxr": "int_to_float.fluxr",
+      "rust": "int_to_float.rs",
+      "compact": "int_to_float.compact"
+    },
+    {
+      "name": "uint_to_float",
+      "topics": [
+        "u64",
+        "f32",
+        "direct_rounding"
+      ],
+      "fluxr": "uint_to_float.fluxr",
+      "rust": "uint_to_float.rs",
+      "compact": "uint_to_float.compact"
+    },
+    {
+      "name": "float_minimum",
+      "topics": [
+        "f32",
+        "list",
+        "minidx",
+        "tie",
+        "nan",
+        "signed_zero"
+      ],
+      "fluxr": "float_minimum.fluxr",
+      "rust": "float_minimum.rs",
+      "compact": "float_minimum.compact"
+    },
+    {
+      "name": "input_adjust",
+      "topics": [
+        "inputs",
+        "snapshots",
+        "bool",
+        "checked_arithmetic"
+      ],
+      "fluxr": "input_adjust.fluxr",
+      "rust": "input_adjust.rs",
+      "compact": "input_adjust.compact"
+    },
+    {
+      "name": "five_arguments",
+      "topics": [
+        "i64",
+        "five_arguments",
+        "generic_boundary"
+      ],
+      "fluxr": "five_arguments.fluxr",
+      "rust": "five_arguments.rs",
+      "compact": "five_arguments.compact"
+    },
+    {
+      "name": "uninitialized_order",
+      "topics": [
+        "trap",
+        "uninitialized",
+        "first_error"
+      ],
+      "fluxr": "uninitialized_order.fluxr",
+      "rust": "uninitialized_order.rs",
+      "compact": "uninitialized_order.compact"
+    },
+    {
+      "name": "tagged_payload",
+      "topics": [
+        "enum",
+        "exact_tag",
+        "payload",
+        "trap"
+      ],
+      "fluxr": "tagged_payload.fluxr",
+      "rust": "tagged_payload.rs",
+      "compact": "tagged_payload.compact"
+    },
+    {
+      "name": "unsigned_division",
+      "topics": [
+        "u64",
+        "checked_div",
+        "division_by_zero"
+      ],
+      "fluxr": "unsigned_division.fluxr",
+      "rust": "unsigned_division.rs",
+      "compact": "unsigned_division.compact"
+    },
+    {
+      "name": "enum_list",
+      "topics": [
+        "enum",
+        "list",
+        "short_circuit",
+        "payload"
+      ],
+      "fluxr": "enum_list.fluxr",
+      "rust": "enum_list.rs",
+      "compact": "enum_list.compact"
+    },
+    {
+      "name": "nested_list",
+      "topics": [
+        "list",
+        "nesting",
+        "last",
+        "ownership"
+      ],
+      "fluxr": "nested_list.fluxr",
+      "rust": "nested_list.rs",
+      "compact": "nested_list.compact"
+    },
+    {
+      "name": "float_absolute",
+      "topics": [
+        "f32",
+        "abs",
+        "raw_bits",
+        "nan_payload"
+      ],
+      "fluxr": "float_absolute.fluxr",
+      "rust": "float_absolute.rs",
+      "compact": "float_absolute.compact"
+    },
+    {
+      "name": "boolean_logic",
+      "topics": [
+        "bool",
+        "not",
+        "and",
+        "or",
+        "comparison"
+      ],
+      "fluxr": "boolean_logic.fluxr",
+      "rust": "boolean_logic.rs",
+      "compact": "boolean_logic.compact"
+    }
+  ],
+  "shared_support": "support.rs",
+  "suite": "tests.json",
+  "reference_scope": "Ordinary Rust algorithm kernels. Boundary adapters, logical metering and runtime ownership checks are separate shared harness costs."
+}

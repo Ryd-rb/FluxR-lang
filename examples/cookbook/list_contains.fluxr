@@ -1,0 +1,6 @@
+fluxr 1
+pub run 2 values list int needle int bool do 0 2
+  while not empty values 2
+    if eq last values needle 1 ret true 0
+    pop values
+  ret false

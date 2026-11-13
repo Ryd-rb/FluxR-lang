@@ -6,10 +6,18 @@ const SOURCE: &str =
 #[test]
 fn scalar_tier_preserves_checked_math_host_validation_and_metering() {
     let module = Module::compile_compact(SOURCE).unwrap();
-    let native = cfg!(all(
-        feature = "native-jit",
-        target_os = "windows",
-        target_arch = "x86_64"
+    let native = cfg!(any(
+        all(
+            feature = "native-jit",
+            target_os = "windows",
+            target_arch = "x86_64"
+        ),
+        all(
+            feature = "typed-jit",
+            target_os = "linux",
+            target_env = "gnu",
+            target_arch = "x86_64"
+        )
     ));
     assert_eq!(module.prepare_native("calc"), native);
     assert!(!module.prepare_native("missing"));

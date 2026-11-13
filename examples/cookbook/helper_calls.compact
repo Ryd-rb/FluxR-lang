@@ -1,0 +1,1 @@
+v2 (fn square_plus_one (x:i64) i64 = (+ (* x x) 1)) (pub run (x:i64 y:i64) i64 = (+ (call square_plus_one x) (call square_plus_one y)))

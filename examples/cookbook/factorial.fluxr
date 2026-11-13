@@ -1,0 +1,6 @@
+fluxr 1
+pub run 1 n uint uint do 2 product uint factor uint 4
+  set product 1u
+  set factor 2u
+  while le factor n 2 scale product factor bump factor 1u
+  ret product

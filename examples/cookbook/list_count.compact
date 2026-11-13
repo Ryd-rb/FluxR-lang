@@ -1,0 +1,1 @@
+v2 (pub run (values:[i64]) i64 (count:i64) (= count 0) (while (! (empty values)) ((= count (+ count 1)) (pop values))) (ret count))

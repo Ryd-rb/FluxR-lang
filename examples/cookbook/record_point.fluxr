@@ -1,0 +1,3 @@
+fluxr 1
+rec Point 2 x int y int
+pub run 1 x int record Point ret new Point 2 x add x 1

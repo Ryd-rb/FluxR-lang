@@ -1,0 +1,1 @@
+v2 (rec Point x:i64) (fn Point.shift (self:Point delta:i64) i64 = (+ self.x delta)) (pub run (point:Point delta:i64) i64 = (m point shift delta))

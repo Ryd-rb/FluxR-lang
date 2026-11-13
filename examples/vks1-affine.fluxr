@@ -1,0 +1,2 @@
+fa1 v2
+pub kernel 3 x float scale float bias float float ret add mul x scale bias

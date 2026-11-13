@@ -268,6 +268,13 @@ fn expr(out: &mut String, value: &Expr) {
                     write!(out, "call {name}").unwrap();
                     expressions(out, args);
                 }
+                HostCall { name, args, .. } => {
+                    // The released compact reader has no native-service
+                    // operation. Its normal round-trip check refuses this
+                    // projection; current authoring uses unified_text().
+                    write!(out, "host {name}").unwrap();
+                    expressions(out, args);
+                }
                 Method {
                     receiver,
                     name,

@@ -1,0 +1,4 @@
+fluxr 1
+enum Maybe 2 None none Some int
+pub run 2 value enum Maybe delta int enum Maybe do 0 1
+  if is value Some 1 ret wrap Maybe Some add payload value Some delta 1 ret tag Maybe None

@@ -1,0 +1,33 @@
+[measurement]
+schema = "fluxr-unified-update-tokens-v1"
+tiktoken_version = "0.14.0"
+tokenizers = ["o200k_base", "cl100k_base"]
+protocol = "benchmarks/unified-arithmetic-v1/protocol.txt"
+shared_validation_host = "tests/unified_arithmetic_updates.rs"
+validation = "cargo test --locked --test unified_arithmetic_updates"
+scope = "Five exact current-source arithmetic-update pairs covering signed and unsigned subtraction/division/remainder, variable division, binary32 arithmetic and a checked loop. Before arms already use the current decimal and unit-step spellings; earlier shorthand savings are not counted again. Rust controls match arithmetic kernel behavior, with protocol, host and wire costs reported separately. Static counts do not establish the whole-language Rust-token target, live-model success or accepted-development throughput."
+
+[case.signed]
+before = "benchmarks/unified-arithmetic-v1/signed.before.fluxr"
+after = "benchmarks/unified-arithmetic-v1/signed.after.fluxr"
+rust = "benchmarks/unified-arithmetic-v1/signed.rs"
+
+[case.unsigned]
+before = "benchmarks/unified-arithmetic-v1/unsigned.before.fluxr"
+after = "benchmarks/unified-arithmetic-v1/unsigned.after.fluxr"
+rust = "benchmarks/unified-arithmetic-v1/unsigned.rs"
+
+[case.float]
+before = "benchmarks/unified-arithmetic-v1/float.before.fluxr"
+after = "benchmarks/unified-arithmetic-v1/float.after.fluxr"
+rust = "benchmarks/unified-arithmetic-v1/float.rs"
+
+[case.division]
+before = "benchmarks/unified-arithmetic-v1/division.before.fluxr"
+after = "benchmarks/unified-arithmetic-v1/division.after.fluxr"
+rust = "benchmarks/unified-arithmetic-v1/division.rs"
+
+[case.loop]
+before = "benchmarks/unified-arithmetic-v1/loop.before.fluxr"
+after = "benchmarks/unified-arithmetic-v1/loop.after.fluxr"
+rust = "benchmarks/unified-arithmetic-v1/loop.rs"

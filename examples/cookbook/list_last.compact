@@ -1,0 +1,1 @@
+v2 (pub run (values:[i64] fallback:i64) i64 () (if (empty values) ((ret fallback)) ((ret (last values)))))

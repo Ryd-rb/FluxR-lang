@@ -1,0 +1,2 @@
+fluxr 1
+pub calc 2 x float y float float do 0 3 bump x y scale x 0x40400000f ret x

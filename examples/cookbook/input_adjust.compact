@@ -1,0 +1,1 @@
+v2 (inputs enabled:bool base:i64) (pub run (delta:i64) i64 () (if (input enabled) ((ret (+ (input base) delta))) ((ret (- (input base) delta)))))

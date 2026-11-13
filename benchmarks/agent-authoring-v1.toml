@@ -1,0 +1,14 @@
+# AH1 source/edit/context accounting only. This separate catalog cannot alter
+# the exact-byte frozen executable replay admission in benchmarks/cases.toml.
+[authoring]
+profile = "fluxr-ah1-v1"
+base = "examples/fixtures/authoring_before.fa1"
+fill = "examples/fixtures/authoring_fill.fa1"
+context = "Run the admitted release example agent_authoring_demo; count each complete emitted query packet."
+cost_scope = "Count base, edit, query, profile/host setup and repairs separately. No live model trial or 10-percent target claim."
+
+[case.agent_authoring_calc]
+fluxr = "examples/fixtures/authoring_after.fa1"
+rust = "examples/fixtures/authoring_reference.rs"
+rust_item = "fn calc"
+performance = "cargo run --locked --release --example agent_authoring_demo"

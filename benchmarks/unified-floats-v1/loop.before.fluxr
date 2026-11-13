@@ -1,0 +1,2 @@
+fluxr 1
+pub run 2 x float n int float do 1 i int 3 set i 0 while lt i n 3 scale x 0x3fc00000f bump x 0x3e800000f next i ret x

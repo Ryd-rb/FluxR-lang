@@ -1,0 +1,7 @@
+# Experimental token-count-only catalog. This does not change frozen replay
+# admission or authorize arbitrary compiled candidates. This is a scalar library
+# algorithm comparison; full episode and all deployment context remain separate.
+[case.triangle_instrument]
+fluxr = "examples/native/instruments/triangle/program.flux"
+rust = "examples/native/instruments/triangle/reference.rs"
+performance = "python3 tools/qualify_native_domains.py --binary PATH --output OUT (actual FluxR offline rendering; no real-time claim)"

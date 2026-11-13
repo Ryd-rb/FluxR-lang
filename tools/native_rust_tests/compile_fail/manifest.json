@@ -1,0 +1,51 @@
+{
+  "schema": "fluxr-native-compile-fail-oracles-v1",
+  "cases": [
+    {
+      "file": "non_send_rc.rs",
+      "diagnostic": "E0277",
+      "reason": "Rc does not cross an owned thread boundary"
+    },
+    {
+      "file": "borrow_escape.rs",
+      "diagnostic": "E0515",
+      "reason": "reference cannot outlive its local owner"
+    },
+    {
+      "file": "mutable_alias.rs",
+      "diagnostic": "E0499",
+      "reason": "overlapping mutable borrows"
+    },
+    {
+      "file": "invalid_load_ordering.rs",
+      "diagnostic": "invalid_atomic_ordering",
+      "reason": "Release is not a valid load ordering"
+    },
+    {
+      "file": "invalid_cas_failure_ordering.rs",
+      "diagnostic": "invalid_atomic_ordering",
+      "reason": "CAS failure cannot use Release"
+    },
+    {
+      "file": "non_sync_cell.rs",
+      "diagnostic": "E0277",
+      "reason": "Arc does not make Cell Sync"
+    },
+    {
+      "file": "moved_owner.rs",
+      "diagnostic": "E0382",
+      "reason": "moved ownership cannot be reused"
+    },
+    {
+      "file": "main_return_type.rs",
+      "diagnostic": "E0277",
+      "reason": "native main must implement Rust Termination return contract"
+    },
+    {
+      "file": "async_main.rs",
+      "diagnostic": "E0752",
+      "reason": "native binary cannot declare async main without a runtime adapter"
+    }
+  ],
+  "acceptance": "Each compiler invocation must fail nonzero and contain the expected JSON diagnostic code; a missing compiler or unrelated failure is not a passing rejection. Run both native and emitted FluxR forms."
+}

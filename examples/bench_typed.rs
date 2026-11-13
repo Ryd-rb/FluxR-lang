@@ -114,7 +114,7 @@ fn measure_blocks<const N: usize>(
             let expected_hash = values.iter().copied().fold(0, fold);
             let phase = round + part;
             for index in 0..N {
-                let index = if phase / N % 2 == 0 {
+                let index = if (phase / N).is_multiple_of(2) {
                     index
                 } else {
                     N - 1 - index
@@ -139,14 +139,14 @@ fn measure_blocks<const N: usize>(
 
 fn measure_injection<'a>(
     name: &str,
-    bundled: &Module,
-    source: &ModuleSlot,
+    programs: (&Module, &ModuleSlot),
     grants: &[Binding],
     call: impl Fn(usize) -> Invocation<'a>,
     expected: &[i64],
     mut rust_host: impl FnMut(usize) -> i64,
     unpack: fn(Value) -> i64,
 ) -> Result<(), Error> {
+    let (bundled, source) = programs;
     let export = call(0).export;
     let candidate = Module::decode(&bundled.encode())?;
     let native = bundled.prepare_native(export);
@@ -433,8 +433,7 @@ fn volume() -> Result<(), Box<dyn std::error::Error>> {
     );
     measure_injection(
         "volume",
-        &direct,
-        &injected,
+        (&direct, &injected),
         &[],
         call,
         &expected,
@@ -515,8 +514,7 @@ fn counter() -> Result<(), Box<dyn std::error::Error>> {
     );
     measure_injection(
         "counter",
-        &direct,
-        &injected,
+        (&direct, &injected),
         &grant,
         call,
         &expected,
@@ -616,7 +614,10 @@ fn boundary_case(
     let prepared = module.prepare_native(export);
     if cfg!(all(
         feature = "typed-jit",
-        target_os = "windows",
+        any(
+            target_os = "windows",
+            all(target_os = "linux", target_env = "gnu")
+        ),
         target_arch = "x86_64"
     )) {
         assert!(prepared, "{export} failed to prepare");
@@ -675,8 +676,7 @@ fn boundary_case(
         .collect();
     measure_injection(
         export,
-        &module,
-        &source,
+        (&module, &source),
         &[],
         call,
         &expected,
@@ -804,7 +804,10 @@ fn scan() -> Result<(), Box<dyn std::error::Error>> {
         direct.prepare_native("pick"),
         cfg!(all(
             feature = "typed-jit",
-            target_os = "windows",
+            any(
+                target_os = "windows",
+                all(target_os = "linux", target_env = "gnu")
+            ),
             target_arch = "x86_64"
         ))
     );
@@ -863,8 +866,7 @@ fn scan() -> Result<(), Box<dyn std::error::Error>> {
         );
         measure_injection(
             &format!("scan{len}"),
-            &direct,
-            &injected,
+            (&direct, &injected),
             &[],
             call,
             &expected,
@@ -968,8 +970,7 @@ fn decision() -> Result<(), Box<dyn std::error::Error>> {
         );
         measure_injection(
             name,
-            &direct,
-            &injected,
+            (&direct, &injected),
             &[],
             call,
             &expected,
@@ -1199,8 +1200,7 @@ fn recursive_methods_match_bounded_safety_ledger() {
 pub fn native_projection_check() -> u32 {
     #[path = "fixtures/native_projection.rs"]
     mod reference;
-    let module =
-        Module::compile_compact(include_str!("fixtures/native_projection.fluxr")).unwrap();
+    let module = Module::compile_compact(include_str!("fixtures/native_projection.fluxr")).unwrap();
     let module = Module::decode(&module.encode()).unwrap();
     let cases = [i64::MIN, -1, 0, 24, 25, i64::MAX];
     for input in cases {

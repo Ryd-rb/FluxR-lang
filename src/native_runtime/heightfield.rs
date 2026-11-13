@@ -14,28 +14,6 @@ pub(super) struct Heightfield {
     pub detail: Option<Detail>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn contact_uses_the_same_diagonal_as_the_rendered_grid() {
-        let field = Heightfield {
-            origin: vec2(-1.0, -1.0),
-            step: 2.0,
-            width: 2,
-            height: 2,
-            heights: vec![0.0, 1.0, 2.0, 8.0],
-            meshes: Vec::new(),
-            detail: None,
-        };
-        assert_eq!(field.elevation(0.0, 0.0), 4.0);
-        assert_eq!(field.elevation(0.5, -0.5), 2.5);
-        assert_eq!(field.elevation(-0.5, 0.5), 3.0);
-        assert_eq!(field.elevation(1.0, 1.0), 8.0);
-    }
-}
-
 pub(super) struct Detail {
     pub texture: Texture2D,
     pub bands: Vec4,
@@ -204,5 +182,27 @@ impl Heightfield {
         let dx = self.elevation(x + radius, z) - self.elevation(x - radius, z);
         let dz = self.elevation(x, z + radius) - self.elevation(x, z - radius);
         vec3(-dx, 2.0 * radius, -dz).normalize()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn contact_uses_the_same_diagonal_as_the_rendered_grid() {
+        let field = Heightfield {
+            origin: vec2(-1.0, -1.0),
+            step: 2.0,
+            width: 2,
+            height: 2,
+            heights: vec![0.0, 1.0, 2.0, 8.0],
+            meshes: Vec::new(),
+            detail: None,
+        };
+        assert_eq!(field.elevation(0.0, 0.0), 4.0);
+        assert_eq!(field.elevation(0.5, -0.5), 2.5);
+        assert_eq!(field.elevation(-0.5, 0.5), 3.0);
+        assert_eq!(field.elevation(1.0, 1.0), 8.0);
     }
 }

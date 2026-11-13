@@ -1,0 +1,25 @@
+# Static full-string pairs. This additive catalogue does not amend the frozen
+# benchmarks/cases.toml replay corpus or authorize candidate execution.
+[case.jit_scalar]
+fluxr = "examples/fixtures/jit_scalar.fluxr"
+rust = "examples/fixtures/jit_scalar.rs"
+host = "examples/bench_jit.rs"
+performance = "cargo run --locked --release --features typed-jit --example bench_jit"
+
+[case.jit_branch]
+fluxr = "examples/fixtures/host_decision.flux"
+rust = "examples/fixtures/jit_branch.rs"
+host = "examples/bench_jit.rs"
+performance = "cargo run --locked --release --features typed-jit --example bench_jit"
+
+[case.jit_calls]
+fluxr = "examples/fixtures/jit_calls.fluxr"
+rust = "examples/fixtures/jit_calls.rs"
+host = "examples/bench_jit.rs"
+performance = "cargo run --locked --release --features typed-jit --example bench_jit"
+
+[case.jit_loop]
+fluxr = "examples/fixtures/jit_loop.fluxr"
+rust = "examples/fixtures/jit_loop.rs"
+host = "examples/bench_jit.rs"
+performance = "cargo run --locked --release --features typed-jit --example bench_jit"

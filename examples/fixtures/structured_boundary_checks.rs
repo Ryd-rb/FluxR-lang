@@ -4,7 +4,10 @@ const SOURCE: &str = "v2 (rec R x:i64 y:i64) (inputs delta:i64 bias:i64)
     (pub apply (s:R) R () (= s.x (+ s.x (input delta))) (= s.y (- s.y (input bias))) (ret s))";
 const PREPARED: bool = cfg!(all(
     feature = "typed-jit",
-    target_os = "windows",
+    any(
+        target_os = "windows",
+        all(target_os = "linux", target_env = "gnu")
+    ),
     target_arch = "x86_64"
 ));
 

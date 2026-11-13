@@ -1,0 +1,5 @@
+fluxr 1
+pub run 1 values list int int do 1 count int 3
+  set count 0
+  while not empty values 2 next count pop values
+  ret count

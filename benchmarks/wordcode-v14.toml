@@ -1,0 +1,56 @@
+schema = "fluxr-wordcode-v14-catalog-v1"
+scope = "Authored static source and same-semantics scalar execution cases; not frozen replay admission, heldout tasks or live-agent success."
+rust_shared_library = "benchmarks/wordcode-v14/words.rs"
+protocol = "benchmarks/wordcode-v14/protocol.txt"
+
+[[cases]]
+id = "WK14-affine"
+class = "authored_practical_microcase"
+wordcode = "benchmarks/wordcode-v14/affine.wk1"
+expanded_agent = "benchmarks/wordcode-v14/affine.fa1"
+rust_full = "benchmarks/wordcode-v14/affine.rs"
+rust_shared_call = "benchmarks/wordcode-v14/affine.shared.rs"
+arguments = [7, 13, 3]
+expected = 94
+
+[[cases]]
+id = "WK14-polynomial"
+class = "authored_practical_microcase"
+wordcode = "benchmarks/wordcode-v14/polynomial.wk1"
+expanded_agent = "benchmarks/wordcode-v14/polynomial.fa1"
+rust_full = "benchmarks/wordcode-v14/polynomial.rs"
+rust_shared_call = "benchmarks/wordcode-v14/polynomial.shared.rs"
+arguments = [7, 13, 3]
+expected = 78
+
+[[cases]]
+id = "WK14-repeat"
+class = "authored_practical_microcase"
+wordcode = "benchmarks/wordcode-v14/repeat.wk1"
+expanded_agent = "benchmarks/wordcode-v14/repeat.fa1"
+rust_full = "benchmarks/wordcode-v14/repeat.rs"
+rust_shared_call = "benchmarks/wordcode-v14/repeat.shared.rs"
+arguments = [12, 7]
+expected = 19
+
+[[cases]]
+id = "WK14-walk"
+class = "authored_practical_microcase"
+wordcode = "benchmarks/wordcode-v14/walk.wk1"
+expanded_agent = "benchmarks/wordcode-v14/walk.fa1"
+rust_full = "benchmarks/wordcode-v14/walk.rs"
+rust_shared_call = "benchmarks/wordcode-v14/walk.shared.rs"
+arguments = [2, 23, 3]
+expected = 23
+
+[[cases]]
+id = "WK14-forest"
+class = "synthetic_density_stress"
+wordcode = "benchmarks/wordcode-v14/forest.wk1"
+expanded_agent = "benchmarks/wordcode-v14/forest.fa1"
+rust_full = "benchmarks/wordcode-v14/forest.rs"
+rust_shared_call = "benchmarks/wordcode-v14/forest.shared.rs"
+arguments = [1]
+expected = 1
+dictionary = "benchmarks/wordcode-v14/forest.dictionary.json"
+dictionary_sha256 = "7a8f6d3fc3bba39863158591f922dc4b48fbd79fb0150229b5d10793f1a398c6"

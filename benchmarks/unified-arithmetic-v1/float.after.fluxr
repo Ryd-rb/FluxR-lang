@@ -1,0 +1,2 @@
+fluxr 1
+pub calc 2 x float y float float do 0 3 sub x y div x 3f ret x

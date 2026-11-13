@@ -1,0 +1,4 @@
+fluxr 1
+inputs 2 enabled bool base int
+pub run 1 delta int int do 0 1
+  if input enabled 1 ret add input base delta 1 ret sub input base delta

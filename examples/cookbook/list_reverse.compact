@@ -1,0 +1,1 @@
+v2 (pub run (values:[i64]) [i64] (reversed:[i64]) (= reversed (list i64)) (while (! (empty values)) ((push reversed (last values)) (pop values))) (ret reversed))

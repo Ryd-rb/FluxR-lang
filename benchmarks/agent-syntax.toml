@@ -1,0 +1,30 @@
+# FA1 is an optional projection. The benchmark verifies FSM equality before
+# counting every fixture on the complete pinned tokenizer panel.
+[agent_syntax]
+fixtures = [
+  "examples/fixtures/modern_leaf.flux",
+  "examples/fixtures/modern_counter.flux",
+  "examples/fixtures/native_projection.fluxr",
+  "examples/fixtures/control_flow.fluxr",
+  "examples/fixtures/loop_exits.fluxr",
+  "examples/fixtures/list_boundary.fluxr",
+  "examples/fixtures/variant_payload.fluxr",
+  "examples/fixtures/method_call_order.fluxr",
+  "examples/fixtures/recursive_method_safety.fluxr",
+  "examples/fixtures/nested_loop_calls.fluxr",
+  "examples/fixtures/shared_host_admission.fluxr",
+  "examples/fixtures/binary32_boundary.fluxr",
+  "examples/fixtures/host_scan.flux",
+  "examples/fixtures/host_decision.flux",
+]
+
+[case.agent_scalar]
+fluxr = "examples/fixtures/agent_scalar.fa1"
+rust = "examples/fixtures/modern_reference.rs"
+rust_item = "fn leaf"
+performance = "cargo run --locked --release --example bench_agent_source (front end); bench_modern (same execution path)"
+
+[case.agent_projection]
+fluxr = "examples/fixtures/agent_projection.fa1"
+rust = "examples/fixtures/native_projection.rs"
+performance = "cargo run --locked --release --example bench_agent_source (front end); bench_modern (same execution path)"

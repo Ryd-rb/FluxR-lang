@@ -1,0 +1,113 @@
+{
+  "upstream": "https://github.com/arjaythedev/multicore-server-challenge",
+  "revision": "6145e7291a3625c184a58b63b86ed9d1f7304700",
+  "submission": "submissions/rust-epoll-theCatWisel",
+  "mode": "structured",
+  "files": [
+    {
+      "original_path": "Cargo.lock",
+      "original_sha256": "98e2a5429b1f772c2f6c783a63e978fb4b31261ed1feaa7d7f2b05ff02f2225d",
+      "source_path": "Cargo.lock",
+      "source_sha256": "98e2a5429b1f772c2f6c783a63e978fb4b31261ed1feaa7d7f2b05ff02f2225d"
+    },
+    {
+      "original_path": "Cargo.toml",
+      "original_sha256": "c721cd4f42bce417ac06fd633e8fbacca7983140c663c553a2efaaf758e7704f",
+      "source_path": "Cargo.toml",
+      "source_sha256": "c721cd4f42bce417ac06fd633e8fbacca7983140c663c553a2efaaf758e7704f"
+    },
+    {
+      "original_path": "build.rs",
+      "original_sha256": "3f1044695adb38448bcf33f498a19c57d4f8dfb0a74d46ac6d5903a568ecd444",
+      "source_path": "build.fluxr",
+      "source_sha256": "93e3a7366885d77afbea5424e9382ade701783e358536548f34e3abf2b0a60ea",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 16919,
+      "original_rust_bytes": 16919,
+      "fluxr_source_bytes": 16939
+    },
+    {
+      "original_path": "src/auth.rs",
+      "original_sha256": "00afc4d7e311c2c9548f1c67555ac13c2fcea8ac9c5b3368618e2ab8d15e1ce0",
+      "source_path": "src/auth.fluxr",
+      "source_sha256": "c853c8013e73fc7b67f6b5345a81b8a5625d093ac1de88618e5a5a0d5d7dd697",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 56132,
+      "original_rust_bytes": 56132,
+      "fluxr_source_bytes": 56152
+    },
+    {
+      "original_path": "src/codec.rs",
+      "original_sha256": "743f85152df26c2397e6dfad1b89a639cba41ab697edb8263db9fe231311b3ef",
+      "source_path": "src/codec.fluxr",
+      "source_sha256": "11c73034bae25501a16a16eb766b73f94a11acd61324438bd245d075beac9753",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 43387,
+      "original_rust_bytes": 43387,
+      "fluxr_source_bytes": 43407
+    },
+    {
+      "original_path": "src/engine.rs",
+      "original_sha256": "d0d82f86fe73041644a67c18205fc99428c66f82b4257faa5aaddda7692b8092",
+      "source_path": "src/engine.fluxr",
+      "source_sha256": "c0d6baef3ac0368daf9b87b6a25a2c1b89fd74464fe4c19d134f5834918f0634",
+      "structured_functions": 5,
+      "native_rust_payload_bytes": 129692,
+      "original_rust_bytes": 130310,
+      "fluxr_source_bytes": 130584
+    },
+    {
+      "original_path": "src/main.rs",
+      "original_sha256": "094f2f3d803e241f7e439cd49094c7c11122a4f603906be341f5302b2209ffc8",
+      "source_path": "src/main.fluxr",
+      "source_sha256": "8056e1ff24d843d10318e841adef36e4e81e4086381bfd9a997cd10b1e94f453",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 4366,
+      "original_rust_bytes": 4366,
+      "fluxr_source_bytes": 4385
+    },
+    {
+      "original_path": "src/queries.rs",
+      "original_sha256": "a89be4d3dcc3b99d077a6b8afecddc4dfeddb0225bbd0296fd87c7a111efc20d",
+      "source_path": "src/queries.fluxr",
+      "source_sha256": "55e0ecd4c74b2b0e991f9ce993268d1092a87032e5cf92812d7549f202928a97",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 21357,
+      "original_rust_bytes": 21357,
+      "fluxr_source_bytes": 21377
+    },
+    {
+      "original_path": "src/reactor.rs",
+      "original_sha256": "904d3b9c9e325d25c902966d8c9e92c46df8a33093c6755cfe9de299570e3edb",
+      "source_path": "src/reactor.fluxr",
+      "source_sha256": "a8d61e8bd8af089fb2f2908810861b4063331c09b8e5128d95cb625902d7f6cf",
+      "structured_functions": 2,
+      "native_rust_payload_bytes": 46381,
+      "original_rust_bytes": 46721,
+      "fluxr_source_bytes": 46879
+    },
+    {
+      "original_path": "src/router.rs",
+      "original_sha256": "48f76141a19dd21a8a4bde512ea0a01153271bc152abf3cde877b2a2028af9a1",
+      "source_path": "src/router.fluxr",
+      "source_sha256": "cd7b7dbd032fa2998d9ff0a854e12f4fa4a418151ab171096bcf643c861e10e1",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 32614,
+      "original_rust_bytes": 32614,
+      "fluxr_source_bytes": 32634
+    },
+    {
+      "original_path": "src/wire.rs",
+      "original_sha256": "a4d0c2501e9edf1120b55a8a62f46002c643afcaa462ba89af07fa47800ab33f",
+      "source_path": "src/wire.fluxr",
+      "source_sha256": "cc60788d1f061b78e50141e6d26297069c13b5bb49220ebcb720fec9b38fd701",
+      "structured_functions": 0,
+      "native_rust_payload_bytes": 27889,
+      "original_rust_bytes": 27889,
+      "fluxr_source_bytes": 27909
+    }
+  ],
+  "scope": "Attributed reference port and capability fixture; no new leaderboard result or language-eligibility claim",
+  "language_version": 1,
+  "runtime": "unified"
+}

@@ -1,0 +1,3 @@
+fa1 v2
+fn step 1 x int int ret add x 3
+pub calc 1 x int int ret x

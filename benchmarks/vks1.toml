@@ -1,0 +1,8 @@
+schema = "fluxr-vks1-token-case-v1"
+status = "experimental reviewed fixture; outside frozen replay admission"
+task = "Return x times scale plus bias with f32 arithmetic; GPU execution uses explicit approximate profile. Specialize scale and bias at pipeline creation."
+fluxr_fa1 = "fa1 v2\npub kernel 3 x float scale float bias float float ret add mul x scale bias\n"
+fluxr_compact = "v2 (pub kernel (x:f32 scale:f32 bias:f32) f32 () (ret (+ (* x scale) bias)))\n"
+rust = "fn kernel(x: f32, scale: f32, bias: f32) -> f32 { x * scale + bias }\n"
+specialization_context = "VKS1 fixes original parameters 1=2.0f32 and 2=1.0f32. The remaining x column is dynamic. SpecId is the original parameter index; bits and immutable module pin identify the variant. GPU arithmetic is approximate.\n"
+scope = "Authored function pair only; host setup, API context, dictionaries and tool usage are separate costs; no live-model or complete-task superiority claim. Frozen benchmarks/cases.toml stays byte-identical."

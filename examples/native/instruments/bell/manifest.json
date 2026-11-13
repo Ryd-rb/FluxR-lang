@@ -1,0 +1,13 @@
+{
+  "abi": "fluxr-scalar-library-v1",
+  "numeric_profile": "fsm2-finite-f32-portable-v1",
+  "source_sha256": "2b479fdf5c3e812dad25923de2f84590c1053dea896495e1b30e8f9ce66d0c4b",
+  "package": "fluxr.demo.bell",
+  "version": 1,
+  "exports": {
+    "sample": 3
+  },
+  "capabilities": [
+    "compute.cpu"
+  ]
+}

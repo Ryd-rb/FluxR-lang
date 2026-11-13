@@ -1,0 +1,6 @@
+fluxr 1
+native-use std::cell::Cell
+native-use std::sync::Arc
+native-fn main 0 unit 2
+let local call Arc::new 1 call Cell::new 1 int 0
+do method method call std::thread::spawn 1 move 0 method path local set 1 int 1 join 0 unwrap 0

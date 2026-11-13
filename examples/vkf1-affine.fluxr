@@ -1,0 +1,3 @@
+v2
+(pub kernel (x:f32 y:f32) f32 ()
+  (ret (+ (* x 2f) y)))

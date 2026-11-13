@@ -1,0 +1,2 @@
+fluxr 1
+pub run 0 list float ret list float 6 -0f 0x1f -1e-45f 0x7f800000f 0x7fa00001f 0xffc12345f

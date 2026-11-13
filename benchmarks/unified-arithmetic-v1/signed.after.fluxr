@@ -1,0 +1,2 @@
+fluxr 1
+pub calc 2 x int y int int do 0 4 sub x y div x 3 rem x 5 ret x

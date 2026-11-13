@@ -1,0 +1,2 @@
+fluxr 1
+pub reduce 1 n int int do 1 total int 3 set total 100 while lt 0 n 2 sub total n prev n ret total

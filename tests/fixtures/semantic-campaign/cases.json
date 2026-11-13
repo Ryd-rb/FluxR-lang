@@ -1,0 +1,4497 @@
+{
+  "schema": "fluxr-semantic-fixtures-v1",
+  "cases": [
+    {
+      "id": "constant_and_admission_order",
+      "program": {
+        "params": [],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "int",
+              "value": -9223372036854775808
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 2,
+            "cells": 2,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 0,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 2,
+            "cells": 1,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 1,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 0,
+            "frames": 0
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": -9223372036854775808
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": -9223372036854775808
+          }
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module frame limit exceeded"
+        }
+      ]
+    },
+    {
+      "id": "signed_add",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "add",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 0
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -1
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "value": {
+            "i64": -1
+          }
+        },
+        {
+          "value": {
+            "i64": 9223372036854775807
+          }
+        },
+        {
+          "value": {
+            "i64": -9223372036854775808
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        }
+      ]
+    },
+    {
+      "id": "signed_sub",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "sub",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 0
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -7
+            },
+            {
+              "i64": 3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "value": {
+            "i64": -9223372036854775807
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "value": {
+            "i64": -10
+          }
+        }
+      ]
+    },
+    {
+      "id": "signed_mul",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "mul",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 0
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -7
+            },
+            {
+              "i64": 3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": 2
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 3037000499
+            },
+            {
+              "i64": 3037000499
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 3037000500
+            },
+            {
+              "i64": 3037000500
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "value": {
+            "i64": -21
+          }
+        },
+        {
+          "value": {
+            "i64": -9223372036854775808
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "value": {
+            "i64": 9223372030926249001
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        }
+      ]
+    },
+    {
+      "id": "signed_div",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "div",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -7
+            },
+            {
+              "i64": 3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": -3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -7
+            },
+            {
+              "i64": -3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 2
+            },
+            {
+              "i64": 3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": -2
+          }
+        },
+        {
+          "value": {
+            "i64": -2
+          }
+        },
+        {
+          "value": {
+            "i64": 2
+          }
+        },
+        {
+          "value": {
+            "i64": -9223372036854775808
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "value": {
+            "i64": -1
+          }
+        },
+        {
+          "value": {
+            "i64": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "signed_rem",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "rem",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -7
+            },
+            {
+              "i64": 3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": -3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -7
+            },
+            {
+              "i64": -3
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": -1
+          }
+        },
+        {
+          "value": {
+            "i64": 1
+          }
+        },
+        {
+          "value": {
+            "i64": -1
+          }
+        },
+        {
+          "value": {
+            "i64": 0
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "value": {
+            "i64": -1
+          }
+        },
+        {
+          "value": {
+            "i64": 9223372036854775807
+          }
+        }
+      ]
+    },
+    {
+      "id": "signed_eq",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "eq",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 0
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -1
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "signed_lt",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "lt",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "signed_le",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "le",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -9223372036854775808
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "boolean_equality",
+      "program": {
+        "params": [
+          {
+            "name": "left",
+            "type": "bool"
+          },
+          {
+            "name": "right",
+            "type": "bool"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "eq",
+              "left": {
+                "op": "var",
+                "name": "left"
+              },
+              "right": {
+                "op": "var",
+                "name": "right"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "boolean_not",
+      "program": {
+        "params": [
+          {
+            "name": "flag",
+            "type": "bool"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "not",
+              "value": {
+                "op": "var",
+                "name": "flag"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 2,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 4,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 3,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "trap": "module cell budget exhausted"
+        }
+      ]
+    },
+    {
+      "id": "and_skips_arithmetic_trap",
+      "program": {
+        "params": [
+          {
+            "name": "left",
+            "type": "bool"
+          },
+          {
+            "name": "x",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "and",
+              "left": {
+                "op": "var",
+                "name": "left"
+              },
+              "right": {
+                "op": "eq",
+                "left": {
+                  "op": "div",
+                  "left": {
+                    "op": "var",
+                    "name": "x"
+                  },
+                  "right": {
+                    "op": "int",
+                    "value": 0
+                  }
+                },
+                "right": {
+                  "op": "int",
+                  "value": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 6,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 5,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        }
+      ]
+    },
+    {
+      "id": "or_skips_arithmetic_trap",
+      "program": {
+        "params": [
+          {
+            "name": "left",
+            "type": "bool"
+          },
+          {
+            "name": "x",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "or",
+              "left": {
+                "op": "var",
+                "name": "left"
+              },
+              "right": {
+                "op": "eq",
+                "left": {
+                  "op": "div",
+                  "left": {
+                    "op": "var",
+                    "name": "x"
+                  },
+                  "right": {
+                    "op": "int",
+                    "value": 0
+                  }
+                },
+                "right": {
+                  "op": "int",
+                  "value": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 6,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 5,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        }
+      ]
+    },
+    {
+      "id": "and_taken_rhs_forward_jump",
+      "program": {
+        "params": [
+          {
+            "name": "left",
+            "type": "bool"
+          },
+          {
+            "name": "right",
+            "type": "bool"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "and",
+              "left": {
+                "op": "var",
+                "name": "left"
+              },
+              "right": {
+                "op": "var",
+                "name": "right"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "or_taken_rhs_forward_jump",
+      "program": {
+        "params": [
+          {
+            "name": "left",
+            "type": "bool"
+          },
+          {
+            "name": "right",
+            "type": "bool"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "or",
+              "left": {
+                "op": "var",
+                "name": "left"
+              },
+              "right": {
+                "op": "var",
+                "name": "right"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "nested_integer_boolean_expression",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          },
+          {
+            "name": "z",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "and",
+              "left": {
+                "op": "eq",
+                "left": {
+                  "op": "var",
+                  "name": "x"
+                },
+                "right": {
+                  "op": "var",
+                  "name": "y"
+                }
+              },
+              "right": {
+                "op": "not",
+                "value": {
+                  "op": "lt",
+                  "left": {
+                    "op": "var",
+                    "name": "x"
+                  },
+                  "right": {
+                    "op": "var",
+                    "name": "z"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": 7
+            },
+            {
+              "i64": 6
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": 7
+            },
+            {
+              "i64": 8
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": 9
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": 9
+            },
+            {
+              "i64": -9223372036854775808
+            }
+          ],
+          "limits": {
+            "instructions": 6,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": 7
+            },
+            {
+              "i64": 6
+            }
+          ],
+          "limits": {
+            "instructions": 9,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            },
+            {
+              "i64": 7
+            },
+            {
+              "i64": 6
+            }
+          ],
+          "limits": {
+            "instructions": 10,
+            "cells": 8,
+            "frames": 1
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "bool": true
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "bool": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "uninitialized_atom",
+      "program": {
+        "params": [],
+        "locals": [
+          {
+            "name": "u",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "u"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 0,
+            "frames": 0
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module frame limit exceeded"
+        }
+      ]
+    },
+    {
+      "id": "atomic_binary_debit_before_uninitialized",
+      "program": {
+        "params": [],
+        "locals": [
+          {
+            "name": "u",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "add",
+              "left": {
+                "op": "var",
+                "name": "u"
+              },
+              "right": {
+                "op": "int",
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 2,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 3,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        }
+      ]
+    },
+    {
+      "id": "left_uninitialized_beats_right_arithmetic",
+      "program": {
+        "params": [],
+        "locals": [
+          {
+            "name": "u",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "add",
+              "left": {
+                "op": "var",
+                "name": "u"
+              },
+              "right": {
+                "op": "div",
+                "left": {
+                  "op": "int",
+                  "value": 1
+                },
+                "right": {
+                  "op": "int",
+                  "value": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 2,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "read of uninitialized local"
+        }
+      ]
+    },
+    {
+      "id": "left_arithmetic_beats_right_uninitialized",
+      "program": {
+        "params": [],
+        "locals": [
+          {
+            "name": "u",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "add",
+              "left": {
+                "op": "div",
+                "left": {
+                  "op": "int",
+                  "value": 1
+                },
+                "right": {
+                  "op": "int",
+                  "value": 0
+                }
+              },
+              "right": {
+                "op": "var",
+                "name": "u"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 2,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 3,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        }
+      ]
+    },
+    {
+      "id": "earlier_statement_trap_beats_later_read",
+      "program": {
+        "params": [],
+        "locals": [
+          {
+            "name": "a",
+            "type": "int"
+          },
+          {
+            "name": "b",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "set",
+            "name": "a",
+            "value": {
+              "op": "div",
+              "left": {
+                "op": "int",
+                "value": 1
+              },
+              "right": {
+                "op": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "b"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 2,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 3,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 1000,
+            "cells": 2,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        }
+      ]
+    },
+    {
+      "id": "if_writes_both_arms",
+      "program": {
+        "params": [
+          {
+            "name": "choose",
+            "type": "bool"
+          }
+        ],
+        "locals": [
+          {
+            "name": "out",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "if",
+            "condition": {
+              "op": "var",
+              "name": "choose"
+            },
+            "then": [
+              {
+                "op": "set",
+                "name": "out",
+                "value": {
+                  "op": "int",
+                  "value": 11
+                }
+              }
+            ],
+            "else": [
+              {
+                "op": "set",
+                "name": "out",
+                "value": {
+                  "op": "int",
+                  "value": 23
+                }
+              }
+            ]
+          },
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "out"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 6,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 7,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 6,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 7,
+            "cells": 4,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 3,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 0
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 11
+          }
+        },
+        {
+          "value": {
+            "i64": 23
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 11
+          }
+        },
+        {
+          "value": {
+            "i64": 23
+          }
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module frame limit exceeded"
+        }
+      ]
+    },
+    {
+      "id": "untaken_branch_has_no_trap",
+      "program": {
+        "params": [
+          {
+            "name": "choose",
+            "type": "bool"
+          }
+        ],
+        "locals": [
+          {
+            "name": "out",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "if",
+            "condition": {
+              "op": "var",
+              "name": "choose"
+            },
+            "then": [
+              {
+                "op": "set",
+                "name": "out",
+                "value": {
+                  "op": "int",
+                  "value": 7
+                }
+              }
+            ],
+            "else": [
+              {
+                "op": "set",
+                "name": "out",
+                "value": {
+                  "op": "div",
+                  "left": {
+                    "op": "int",
+                    "value": 1
+                  },
+                  "right": {
+                    "op": "int",
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "out"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 6,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 7,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 4,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 7,
+            "cells": 4,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        }
+      ]
+    },
+    {
+      "id": "branch_merge_preserves_uninitialized",
+      "program": {
+        "params": [
+          {
+            "name": "choose",
+            "type": "bool"
+          }
+        ],
+        "locals": [
+          {
+            "name": "out",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "if",
+            "condition": {
+              "op": "var",
+              "name": "choose"
+            },
+            "then": [
+              {
+                "op": "set",
+                "name": "out",
+                "value": {
+                  "op": "int",
+                  "value": 7
+                }
+              }
+            ],
+            "else": []
+          },
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "out"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 6,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 7,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 2,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "trap": "read of uninitialized local"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "read of uninitialized local"
+        }
+      ]
+    },
+    {
+      "id": "nested_branch_jump_schedule",
+      "program": {
+        "params": [
+          {
+            "name": "a",
+            "type": "bool"
+          },
+          {
+            "name": "b",
+            "type": "bool"
+          }
+        ],
+        "locals": [
+          {
+            "name": "out",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "if",
+            "condition": {
+              "op": "var",
+              "name": "a"
+            },
+            "then": [
+              {
+                "op": "if",
+                "condition": {
+                  "op": "var",
+                  "name": "b"
+                },
+                "then": [
+                  {
+                    "op": "set",
+                    "name": "out",
+                    "value": {
+                      "op": "int",
+                      "value": 7
+                    }
+                  }
+                ],
+                "else": [
+                  {
+                    "op": "set",
+                    "name": "out",
+                    "value": {
+                      "op": "int",
+                      "value": 11
+                    }
+                  }
+                ]
+              }
+            ],
+            "else": [
+              {
+                "op": "set",
+                "name": "out",
+                "value": {
+                  "op": "int",
+                  "value": 13
+                }
+              }
+            ]
+          },
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "out"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 9,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 10,
+            "cells": 7,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 8,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "bool": false
+            }
+          ],
+          "limits": {
+            "instructions": 9,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": false
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 6,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "value": {
+            "i64": 11
+          }
+        },
+        {
+          "value": {
+            "i64": 13
+          }
+        },
+        {
+          "value": {
+            "i64": 13
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 11
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 13
+          }
+        }
+      ]
+    },
+    {
+      "id": "assignment_preserves_previous_value",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          }
+        ],
+        "locals": [
+          {
+            "name": "saved",
+            "type": "int"
+          }
+        ],
+        "result": "int",
+        "body": [
+          {
+            "op": "set",
+            "name": "saved",
+            "value": {
+              "op": "var",
+              "name": "x"
+            }
+          },
+          {
+            "op": "set",
+            "name": "x",
+            "value": {
+              "op": "add",
+              "left": {
+                "op": "var",
+                "name": "saved"
+              },
+              "right": {
+                "op": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "op": "return",
+            "value": {
+              "op": "var",
+              "name": "saved"
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": -1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 7,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 7
+            }
+          ],
+          "limits": {
+            "instructions": 8,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 9223372036854775807
+            }
+          ],
+          "limits": {
+            "instructions": 5,
+            "cells": 1000,
+            "frames": 8
+          }
+        }
+      ],
+      "expected": [
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "value": {
+            "i64": -1
+          }
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 7
+          }
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        }
+      ]
+    },
+    {
+      "id": "host_admission_and_first_trap_precedence",
+      "program": {
+        "params": [
+          {
+            "name": "x",
+            "type": "int"
+          },
+          {
+            "name": "y",
+            "type": "int"
+          }
+        ],
+        "locals": [],
+        "result": "int",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "div",
+              "left": {
+                "op": "var",
+                "name": "x"
+              },
+              "right": {
+                "op": "var",
+                "name": "y"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [],
+          "limits": {
+            "instructions": 0,
+            "cells": 0,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 1
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [
+            {
+              "i64": 0
+            }
+          ],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 0,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 0,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 2,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 2,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 4,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 2,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 5,
+            "frames": 1
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 4,
+            "cells": 6,
+            "frames": 1
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "host argument or input count differs from interface"
+        },
+        {
+          "trap": "host argument or input count differs from interface"
+        },
+        {
+          "trap": "host argument or input count differs from interface"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "host value differs from I64"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "host value differs from I64"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module frame limit exceeded"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "invalid or overflowing integer arithmetic"
+        },
+        {
+          "trap": "module instruction budget exhausted"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "value": {
+            "i64": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "boolean_host_tag_is_not_integer",
+      "program": {
+        "params": [
+          {
+            "name": "flag",
+            "type": "bool"
+          }
+        ],
+        "locals": [],
+        "result": "bool",
+        "body": [
+          {
+            "op": "return",
+            "value": {
+              "op": "not",
+              "value": {
+                "op": "var",
+                "name": "flag"
+              }
+            }
+          }
+        ]
+      },
+      "calls": [
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 0
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1000,
+            "frames": 8
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "i64": 1
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 0,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 1000,
+            "cells": 1,
+            "frames": 0
+          }
+        },
+        {
+          "inputs": [],
+          "arguments": [
+            {
+              "bool": true
+            }
+          ],
+          "limits": {
+            "instructions": 3,
+            "cells": 4,
+            "frames": 1
+          }
+        }
+      ],
+      "expected": [
+        {
+          "trap": "host value differs from Bool"
+        },
+        {
+          "trap": "host value differs from Bool"
+        },
+        {
+          "trap": "module cell budget exhausted"
+        },
+        {
+          "trap": "module frame limit exceeded"
+        },
+        {
+          "value": {
+            "bool": false
+          }
+        }
+      ]
+    }
+  ]
+}

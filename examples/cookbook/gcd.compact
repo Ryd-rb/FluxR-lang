@@ -1,0 +1,1 @@
+v2 (pub run (a:u64 b:u64) u64 (remainder:u64) (while (! (== b 0u)) ((= remainder (% a b)) (= a b) (= b remainder))) (ret a))

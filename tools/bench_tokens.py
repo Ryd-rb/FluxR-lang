@@ -19,10 +19,12 @@ def source(path, item=None):
 
 
 def main():
-    cases = tomllib.loads((ROOT / "benchmarks/cases.toml").read_text(encoding="utf-8"))["case"]
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", type=Path, default=ROOT / "benchmarks/cases.toml",
+                        help="token-count-only catalog; does not authorize executable replay")
     parser.add_argument("cases", nargs="*", metavar="case", help="case names; defaults to all")
     args = parser.parse_args()
+    cases = tomllib.loads(args.manifest.read_text(encoding="utf-8"))["case"]
     for name in args.cases:
         if name not in cases:
             parser.error(f"unknown case {name!r}; available: {', '.join(cases)}")

@@ -1,0 +1,27 @@
+[measurement]
+schema = "fluxr-unified-update-tokens-v1"
+tiktoken_version = "0.14.0"
+tokenizers = ["o200k_base", "cl100k_base"]
+protocol = "benchmarks/unified-updates-v1/protocol.txt"
+validation = "cargo test --locked --test unified_updates"
+scope = "Four reviewed static source pairs; no live-model, universal token-ratio or accepted-development-throughput claim. Rust controls match kernel arithmetic, including checked integer failures and canonical binary32 NaNs; VM metering and host/runtime code are outside those controls and counted separately."
+
+[case.signed]
+before = "benchmarks/unified-updates-v1/signed.before.fluxr"
+after = "benchmarks/unified-updates-v1/signed.after.fluxr"
+rust = "benchmarks/unified-updates-v1/signed.rs"
+
+[case.unsigned]
+before = "benchmarks/unified-updates-v1/unsigned.before.fluxr"
+after = "benchmarks/unified-updates-v1/unsigned.after.fluxr"
+rust = "benchmarks/unified-updates-v1/unsigned.rs"
+
+[case.float]
+before = "benchmarks/unified-updates-v1/float.before.fluxr"
+after = "benchmarks/unified-updates-v1/float.after.fluxr"
+rust = "benchmarks/unified-updates-v1/float.rs"
+
+[case.loop]
+before = "benchmarks/unified-updates-v1/loop.before.fluxr"
+after = "benchmarks/unified-updates-v1/loop.after.fluxr"
+rust = "benchmarks/unified-updates-v1/loop.rs"

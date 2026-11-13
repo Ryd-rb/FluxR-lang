@@ -1,0 +1,2 @@
+fluxr 1
+pub run 3 x int factor int offset int int ret add mul x factor offset

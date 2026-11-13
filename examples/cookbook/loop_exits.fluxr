@@ -1,0 +1,9 @@
+fluxr 1
+pub run 1 n int int do 1 total int 3
+  set total 0
+  while lt 0 n 4
+    prev n
+    if eq n 2 1 continue 0
+    if eq n 0 1 break 0
+    bump total n
+  ret total

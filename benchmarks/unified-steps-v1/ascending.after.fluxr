@@ -1,0 +1,2 @@
+fluxr 1
+pub sum 1 n int int do 2 i int total int 4 set i 0 set total 0 while lt i n 2 bump total i next i ret total

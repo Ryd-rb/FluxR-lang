@@ -1,0 +1,2 @@
+fa1 v2
+pub calc 3 x int n int s int int do 0 2 while lt x n 1 set x add x s ret x

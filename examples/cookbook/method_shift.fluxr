@@ -1,0 +1,4 @@
+fluxr 1
+rec Point 1 x int
+method Point shift 2 self record Point delta int int ret add field self x delta
+pub run 2 point record Point delta int int ret m point shift 1 delta

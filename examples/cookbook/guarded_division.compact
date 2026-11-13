@@ -1,0 +1,1 @@
+v2 (pub run (numerator:i64 denominator:i64) bool = (&& (! (== denominator 0)) (< 0 (/ numerator denominator))))

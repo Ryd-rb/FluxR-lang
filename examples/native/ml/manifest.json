@@ -1,0 +1,20 @@
+{
+  "abi": "fluxr-scalar-library-v1",
+  "numeric_profile": "fsm2-finite-f32-portable-v1",
+  "source_sha256": "ae732265226d70eb929ad9b0c758abe53780acc128e179078e9b31dd0608a7cc",
+  "package": "fluxr.demo.ml",
+  "version": 1,
+  "exports": {
+    "predict": 5,
+    "loss": 6,
+    "gradient": 7,
+    "step": 8,
+    "affine": 3,
+    "stump": 4,
+    "cluster": 3,
+    "kernel": 3
+  },
+  "capabilities": [
+    "compute.cpu"
+  ]
+}

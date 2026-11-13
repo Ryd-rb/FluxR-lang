@@ -6,7 +6,10 @@ use std::sync::Arc;
 pub(crate) const SOURCE: &str = include_str!("nested_loop_calls.fluxr");
 const PREPARED: bool = cfg!(all(
     feature = "typed-jit",
-    target_os = "windows",
+    any(
+        target_os = "windows",
+        all(target_os = "linux", target_env = "gnu")
+    ),
     target_arch = "x86_64"
 ));
 const ARITY: &str = "host argument or input count differs from interface";

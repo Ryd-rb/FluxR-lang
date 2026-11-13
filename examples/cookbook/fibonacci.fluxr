@@ -1,0 +1,6 @@
+fluxr 1
+pub run 1 n int int do 3 a int b int next_value int 4
+  set a 0
+  set b 1
+  while lt 0 n 4 set next_value add a b set a b set b next_value prev n
+  ret a

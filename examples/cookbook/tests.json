@@ -1,0 +1,1046 @@
+{
+  "format": "fluxr-tests-v1",
+  "tests": [
+    {
+      "name": "unit::example",
+      "source": "unit.fluxr",
+      "export": "run",
+      "arguments": [],
+      "inputs": [],
+      "expect": {
+        "value": "unit"
+      }
+    },
+    {
+      "name": "checked_affine::example",
+      "source": "checked_affine.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 7
+        },
+        {
+          "i64": 3
+        },
+        {
+          "i64": 2
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 23
+        }
+      }
+    },
+    {
+      "name": "unsigned_affine::example",
+      "source": "unsigned_affine.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "u64": 7
+        },
+        {
+          "u64": 3
+        },
+        {
+          "u64": 2
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "u64": 23
+        }
+      }
+    },
+    {
+      "name": "clamp::example",
+      "source": "clamp.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 9
+        },
+        {
+          "i64": -5
+        },
+        {
+          "i64": 5
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 5
+        }
+      }
+    },
+    {
+      "name": "guarded_division::example",
+      "source": "guarded_division.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 12
+        },
+        {
+          "i64": 0
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "bool": false
+        }
+      }
+    },
+    {
+      "name": "gcd::example",
+      "source": "gcd.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "u64": 48
+        },
+        {
+          "u64": 18
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "u64": 6
+        }
+      }
+    },
+    {
+      "name": "factorial::example",
+      "source": "factorial.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "u64": 6
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "u64": 720
+        }
+      }
+    },
+    {
+      "name": "fibonacci::example",
+      "source": "fibonacci.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 10
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 55
+        }
+      }
+    },
+    {
+      "name": "power::example",
+      "source": "power.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 3
+        },
+        {
+          "u64": 5
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 243
+        }
+      }
+    },
+    {
+      "name": "triangular::example",
+      "source": "triangular.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 10
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 55
+        }
+      }
+    },
+    {
+      "name": "loop_exits::example",
+      "source": "loop_exits.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 6
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 13
+        }
+      }
+    },
+    {
+      "name": "helper_calls::example",
+      "source": "helper_calls.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 3
+        },
+        {
+          "i64": 4
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 27
+        }
+      }
+    },
+    {
+      "name": "recursive_sum::example",
+      "source": "recursive_sum.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 8
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 36
+        }
+      }
+    },
+    {
+      "name": "list_sum::example",
+      "source": "list_sum.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 2
+            },
+            {
+              "i64": 3
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 6
+        }
+      }
+    },
+    {
+      "name": "list_count::example",
+      "source": "list_count.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 8
+            },
+            {
+              "i64": 8
+            },
+            {
+              "i64": 1
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 3
+        }
+      }
+    },
+    {
+      "name": "list_reverse::example",
+      "source": "list_reverse.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 2
+            },
+            {
+              "i64": 3
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "list": [
+            {
+              "i64": 3
+            },
+            {
+              "i64": 2
+            },
+            {
+              "i64": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "list_contains::example",
+      "source": "list_contains.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 2
+            },
+            {
+              "i64": 3
+            }
+          ]
+        },
+        {
+          "i64": 2
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "bool": true
+        }
+      }
+    },
+    {
+      "name": "list_last::example",
+      "source": "list_last.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": []
+        },
+        {
+          "i64": 42
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 42
+        }
+      }
+    },
+    {
+      "name": "list_push_pop::example",
+      "source": "list_push_pop.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 2
+            }
+          ]
+        },
+        {
+          "i64": 3
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "list": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 2
+            },
+            {
+              "i64": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "list_index::example",
+      "source": "list_index.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 5
+            },
+            {
+              "i64": 8
+            }
+          ]
+        },
+        {
+          "u64": 1
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 8
+        }
+      }
+    },
+    {
+      "name": "record_point::example",
+      "source": "record_point.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 4
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "record": [
+            {
+              "i64": 4
+            },
+            {
+              "i64": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "record_update::example",
+      "source": "record_update.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "record": [
+            {
+              "i64": 3
+            },
+            {
+              "i64": 4
+            }
+          ]
+        },
+        {
+          "i64": 2
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "record": [
+            {
+              "i64": 5
+            },
+            {
+              "i64": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "nested_record::example",
+      "source": "nested_record.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "record": [
+            {
+              "record": [
+                {
+                  "i64": 3
+                },
+                {
+                  "i64": 4
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 7
+        }
+      }
+    },
+    {
+      "name": "method_shift::example",
+      "source": "method_shift.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "record": [
+            {
+              "i64": 4
+            }
+          ]
+        },
+        {
+          "i64": 5
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 9
+        }
+      }
+    },
+    {
+      "name": "enum_option::example",
+      "source": "enum_option.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "variant": [
+            0,
+            null
+          ]
+        },
+        {
+          "i64": 7
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 7
+        }
+      }
+    },
+    {
+      "name": "enum_map::example",
+      "source": "enum_map.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "variant": [
+            1,
+            {
+              "i64": 5
+            }
+          ]
+        },
+        {
+          "i64": 2
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "variant": [
+            1,
+            {
+              "i64": 7
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "float_affine::example",
+      "source": "float_affine.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "f32": 1073741824
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "f32": 1074790400
+        }
+      }
+    },
+    {
+      "name": "float_sqrt::example",
+      "source": "float_sqrt.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "f32": 1082130432
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "f32": 1073741824
+        }
+      }
+    },
+    {
+      "name": "float_to_int::example",
+      "source": "float_to_int.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "f32": 2143289345
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 0
+        }
+      }
+    },
+    {
+      "name": "int_to_float::example",
+      "source": "int_to_float.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 16777217
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "f32": 1266679808
+        }
+      }
+    },
+    {
+      "name": "uint_to_float::example",
+      "source": "uint_to_float.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "u64": 42
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "f32": 1109917696
+        }
+      }
+    },
+    {
+      "name": "float_minimum::example",
+      "source": "float_minimum.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "f32": 1065353216
+            },
+            {
+              "f32": 3212836864
+            },
+            {
+              "f32": 3212836864
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "u64": 1
+        }
+      }
+    },
+    {
+      "name": "input_adjust::example",
+      "source": "input_adjust.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 3
+        }
+      ],
+      "inputs": [
+        {
+          "bool": true
+        },
+        {
+          "i64": 10
+        }
+      ],
+      "expect": {
+        "value": {
+          "i64": 13
+        }
+      }
+    },
+    {
+      "name": "five_arguments::example",
+      "source": "five_arguments.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 1
+        },
+        {
+          "i64": 2
+        },
+        {
+          "i64": 3
+        },
+        {
+          "i64": 4
+        },
+        {
+          "i64": 5
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 15
+        }
+      }
+    },
+    {
+      "name": "uninitialized_order::example",
+      "source": "uninitialized_order.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 0
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "error": "read of uninitialized local"
+      }
+    },
+    {
+      "name": "tagged_payload::example",
+      "source": "tagged_payload.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "variant": [
+            1,
+            {
+              "i64": 9
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 9
+        }
+      }
+    },
+    {
+      "name": "unsigned_division::example",
+      "source": "unsigned_division.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "u64": 20
+        },
+        {
+          "u64": 3
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "u64": 6
+        }
+      }
+    },
+    {
+      "name": "enum_list::example",
+      "source": "enum_list.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "variant": [
+            1,
+            {
+              "list": []
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "bool": true
+        }
+      }
+    },
+    {
+      "name": "nested_list::example",
+      "source": "nested_list.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "list": [
+                {
+                  "i64": 1
+                }
+              ]
+            },
+            {
+              "list": [
+                {
+                  "i64": 2
+                },
+                {
+                  "i64": 3
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "i64": 3
+        }
+      }
+    },
+    {
+      "name": "float_absolute::example",
+      "source": "float_absolute.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "f32": 2147483648
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "f32": 0
+        }
+      }
+    },
+    {
+      "name": "boolean_logic::example",
+      "source": "boolean_logic.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "bool": true
+        },
+        {
+          "bool": false
+        },
+        {
+          "i64": 10
+        }
+      ],
+      "inputs": [],
+      "expect": {
+        "value": {
+          "bool": true
+        }
+      }
+    },
+    {
+      "name": "checked_affine::overflow",
+      "source": "checked_affine.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 9223372036854775807
+        },
+        {
+          "i64": 2
+        },
+        {
+          "i64": 0
+        }
+      ],
+      "expect": {
+        "error": "invalid or overflowing integer arithmetic"
+      }
+    },
+    {
+      "name": "unsigned_division::zero",
+      "source": "unsigned_division.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "u64": 1
+        },
+        {
+          "u64": 0
+        }
+      ],
+      "expect": {
+        "error": "invalid or overflowing integer arithmetic"
+      }
+    },
+    {
+      "name": "list_index::bounds",
+      "source": "list_index.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": [
+            {
+              "i64": 1
+            }
+          ]
+        },
+        {
+          "u64": 1
+        }
+      ],
+      "expect": {
+        "error": "list index out of bounds"
+      }
+    },
+    {
+      "name": "nested_list::empty",
+      "source": "nested_list.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "list": []
+        }
+      ],
+      "expect": {
+        "error": "last from empty list"
+      }
+    },
+    {
+      "name": "tagged_payload::wrong_tag",
+      "source": "tagged_payload.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "variant": [
+            2,
+            {
+              "i64": 8
+            }
+          ]
+        }
+      ],
+      "expect": {
+        "error": "enum payload does not match variant"
+      }
+    },
+    {
+      "name": "triangular::fuel",
+      "source": "triangular.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 8
+        }
+      ],
+      "limits": {
+        "instructions": 1,
+        "cells": 16384,
+        "frames": 64
+      },
+      "expect": {
+        "error": "module instruction budget exhausted"
+      }
+    },
+    {
+      "name": "record_update::cells",
+      "source": "record_update.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "record": [
+            {
+              "i64": 1
+            },
+            {
+              "i64": 2
+            }
+          ]
+        },
+        {
+          "i64": 3
+        }
+      ],
+      "limits": {
+        "instructions": 50000,
+        "cells": 0,
+        "frames": 64
+      },
+      "expect": {
+        "error": "module cell budget exhausted"
+      }
+    },
+    {
+      "name": "recursive_sum::frames",
+      "source": "recursive_sum.fluxr",
+      "export": "run",
+      "arguments": [
+        {
+          "i64": 8
+        }
+      ],
+      "limits": {
+        "instructions": 50000,
+        "cells": 16384,
+        "frames": 1
+      },
+      "expect": {
+        "error": "module frame limit exceeded"
+      }
+    }
+  ]
+}

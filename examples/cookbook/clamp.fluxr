@@ -1,0 +1,5 @@
+fluxr 1
+pub run 3 x int low int high int int do 0 3
+  if lt x low 1 ret low 0
+  if lt high x 1 ret high 0
+  ret x

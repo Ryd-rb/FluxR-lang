@@ -1,0 +1,1 @@
+v2 (pub run (base:i64 exponent:u64) i64 (product:i64) (= product 1) (while (< 0u exponent) ((= product (* product base)) (= exponent (- exponent 1u)))) (ret product))

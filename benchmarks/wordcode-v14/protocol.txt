@@ -1,0 +1,11 @@
+WK1 core uses checked FA1 module declarations after `wk1 core`.
+up x = add x 1; down x = sub x 1; twice x = mul x 2; square x = mul x x; cube x = mul mul x x x.
+step x y z = add mul x y z; sum x y z = add add x y z; ratio x y z = div add x y z.
+zero x = eq x 0; positive x = lt 0 x; negative x = lt x 0; between lo x hi = and le lo x lt x hi.
+four x = mul mul x 2 2; blend x y z = add mul x y z (binary32); root x = sqrt abs x (binary32).
+Repeated recipe arguments must be scalar atoms; bind non-atomic expressions once first. Other operands keep left-to-right checked evaluation.
+next x = set x add x 1; bump x amount = set x add x amount; scale x factor = set x mul x factor.
+walk x bound stride = while lt x bound 1 set x add x stride. Bound/stride must be scalar atoms; normal VM fuel bounds nonprogress.
+repeat n COUNT STMT... evaluates n once into a fresh private signed counter; while positive, decrement then execute the body. Nonpositive n runs zero iterations. Continue advances the counter. Break exits the loop.
+`local WORD` escapes a local name colliding with a word. The wk_private_ prefix is reserved. Normal module type/effect/resource checks apply after expansion.
+Custom dictionaries use `wk1 SHA256`; the exact host-selected typed DAG must match. No implicit dictionary lookup, download, training, JIT or authority follows from a word or hash.

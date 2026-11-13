@@ -1,0 +1,2 @@
+fluxr 1
+pub run 2 numerator int denominator int bool ret and not eq denominator 0 lt 0 div numerator denominator

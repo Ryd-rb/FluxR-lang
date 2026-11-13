@@ -1,0 +1,75 @@
+{
+  "format": "fluxr-project-v1",
+  "rustflags": [
+    "-C",
+    "target-cpu=native"
+  ],
+  "files": [
+    {
+      "source": "Cargo.lock",
+      "output": "Cargo.lock",
+      "mode": "copy",
+      "executable": false
+    },
+    {
+      "source": "Cargo.toml",
+      "output": "Cargo.toml",
+      "mode": "copy",
+      "executable": false
+    },
+    {
+      "source": "build.fluxr",
+      "output": "build.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/auth.fluxr",
+      "output": "src/auth.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/codec.fluxr",
+      "output": "src/codec.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/engine.fluxr",
+      "output": "src/engine.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/main.fluxr",
+      "output": "src/main.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/queries.fluxr",
+      "output": "src/queries.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/reactor.fluxr",
+      "output": "src/reactor.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/router.fluxr",
+      "output": "src/router.rs",
+      "mode": "source",
+      "executable": false
+    },
+    {
+      "source": "src/wire.fluxr",
+      "output": "src/wire.rs",
+      "mode": "source",
+      "executable": false
+    }
+  ]
+}

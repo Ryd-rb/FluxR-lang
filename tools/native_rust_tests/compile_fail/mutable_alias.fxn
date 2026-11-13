@@ -1,0 +1,6 @@
+fluxr 1
+native-fn main 0 unit 4
+var value i32 int 1
+let first mutref path value
+let second mutref path value
+set deref path first bin add deref path first deref path second

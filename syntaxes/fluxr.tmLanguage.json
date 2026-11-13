@@ -4,6 +4,13 @@
   "fileTypes": ["fluxr"],
   "patterns": [
     {
+      "name": "meta.module.current.fluxr",
+      "begin": "\\A(fluxr 1)$",
+      "beginCaptures": { "1": { "name": "keyword.other.version.fluxr" } },
+      "end": "(?!)",
+      "patterns": [{ "include": "#current" }]
+    },
+    {
       "name": "meta.rule.fluxr",
       "begin": "^\\s*(r\\+?0*4)(?=\\s)",
       "beginCaptures": { "1": { "name": "keyword.other.version.fluxr" } },
@@ -74,6 +81,82 @@
     { "match": "^\\s*[a-p]\\s*$", "name": "variable.parameter.fluxr" }
   ],
   "repository": {
+    "current": {
+      "comment": "FluxR 1 tokens use ASCII whitespace boundaries. This is lexical coloring, not counted-prefix parsing or UTF-8 byte-span delimitation; see docs/highlighting.md.",
+      "patterns": [
+        {
+          "name": "string.quoted.double.fluxr invalid.illegal.unterminated-string.fluxr",
+          "begin": "(?<![^ \\t\\r\\n\\x0b\\x0c])(\")(?=(?:[^\"\\\\\\n]|\\\\[^\\n])*\\\\?$)",
+          "beginCaptures": { "1": { "name": "punctuation.definition.string.begin.fluxr" } },
+          "end": "$",
+          "patterns": [{ "include": "#current-string-content" }]
+        },
+        {
+          "name": "string.quoted.double.fluxr",
+          "begin": "(?<![^ \\t\\r\\n\\x0b\\x0c])(\")",
+          "beginCaptures": { "1": { "name": "punctuation.definition.string.begin.fluxr" } },
+          "end": "(\")([^ \\t\\r\\n\\x0b\\x0c]*)|$",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.fluxr" },
+            "2": { "name": "invalid.illegal.quoted-token.fluxr" }
+          },
+          "patterns": [{ "include": "#current-string-content" }]
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:inputs|rec|enum|fn|pub|method|native-use|native-fn|native-pubfn|native-asyncfn|native-pubasyncfn|rust)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "keyword.declaration.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:true|false|unit|none)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "constant.language.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:bool|int|uint|float|record|list)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "storage.type.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:do|ret|if|while|break|continue|for|return|tail|if-stmt)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "keyword.control.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:bump|scale|next|prev|add|sub|mul|div|rem|eq|lt|le|and|or|not)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "keyword.operator.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:set|put|push|pop|local|input|new|field|tag|wrap|is|payload|empty|last|at|minidx|call|host|m|abs|tof|i64tof|ftoi64|sqrt|let|var|let-type|path|str|macro|ref|mutref|deref|neg|try|await|unsafe|async|async-move|cast|index|array|tuple|bin|block|move|closure)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "support.function.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:0x[0-9a-fA-F]+|-?[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)f(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "constant.numeric.float.fluxr"
+        },
+        {
+          "match": "(?<![^ \\t\\r\\n\\x0b\\x0c])(?:[0-9]+u|-?[0-9]+)(?=[ \\t\\r\\n\\x0b\\x0c]|$)",
+          "name": "constant.numeric.integer.fluxr"
+        }
+      ]
+    },
+    "current-string-content": {
+      "patterns": [
+        {
+          "match": "\\\\u[dD][89aAbB][0-9a-fA-F]{2}\\\\u[dD][c-fC-F][0-9a-fA-F]{2}",
+          "name": "constant.character.escape.fluxr"
+        },
+        {
+          "match": "\\\\u[dD][89a-fA-F][0-9a-fA-F]{2}",
+          "name": "invalid.illegal.escape.fluxr"
+        },
+        {
+          "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4})",
+          "name": "constant.character.escape.fluxr"
+        },
+        {
+          "match": "\\\\(?:u[0-9a-fA-F]{0,3}|[^\\n])?",
+          "name": "invalid.illegal.escape.fluxr"
+        },
+        { "match": "[\\x00-\\x1f]", "name": "invalid.illegal.control-character.fluxr" }
+      ]
+    },
     "rule": {
       "patterns": [
         { "match": "(?<!\\S)i\\+?[0-9]+(?=[\\s#]|$)", "name": "variable.parameter.fluxr" },

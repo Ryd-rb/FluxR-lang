@@ -1,0 +1,13 @@
+{
+  "abi": "fluxr-scalar-library-v1",
+  "numeric_profile": "fsm2-finite-f32-portable-v1",
+  "source_sha256": "8af7bd83c0760e1313ff0edbc1ef3154b242ffaefbb9ac32e2dc4991c6e4a971",
+  "package": "fluxr.demo.triangle",
+  "version": 1,
+  "exports": {
+    "sample": 3
+  },
+  "capabilities": [
+    "compute.cpu"
+  ]
+}

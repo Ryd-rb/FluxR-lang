@@ -1,0 +1,5 @@
+fluxr 1
+native-use std::rc::Rc
+native-fn main 0 unit 2
+let local call Rc::new 1 int 42
+do method method call std::thread::spawn 1 move 0 call drop 1 path local join 0 unwrap 0

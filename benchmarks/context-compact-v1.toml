@@ -1,0 +1,38 @@
+[measurement]
+schema = "fluxr-ac1-token-measurement-v1"
+profile = "fluxr-ac1-v1"
+tiktoken_version = "0.14.0"
+tokenizers = ["o200k_base", "cl100k_base"]
+equivalent_rust_max_ratio = 0.1
+protocol = "benchmarks/context-compact-v1/protocol.txt"
+observation_schema = "fluxr-ac1-context-observations-v1"
+example = "agent_context_demo"
+population = "Four fixed reviewed development fixtures known to authors; not held-out tasks, live-model episodes or model-competence evaluation. Three separate synthetic signature-locality cases are excluded from source-target ratios."
+
+[case.scalar]
+base = "benchmarks/context-compact-v1/scalar_before.fa1"
+fluxr = "benchmarks/context-compact-v1/scalar_after.fa1"
+fill = "benchmarks/context-compact-v1/scalar_fill.fa1"
+rust = "benchmarks/context-compact-v1/scalar_reference.rs"
+functionality = "Checked i64 multiplication, addition and remainder; full exported FluxR function versus complete checked Rust function."
+
+[case.trap_order]
+base = "benchmarks/context-compact-v1/trap_order_before.fa1"
+fluxr = "benchmarks/context-compact-v1/trap_order_after.fa1"
+fill = "benchmarks/context-compact-v1/trap_order_fill.fa1"
+rust = "benchmarks/context-compact-v1/trap_order_reference.rs"
+functionality = "Checked addition followed by checked division. The common arithmetic failure diagnostic alone cannot identify the first of two arithmetic traps; independent differing-error oracles must establish first-trap order."
+
+[case.helper]
+base = "benchmarks/context-compact-v1/helper_before.fa1"
+fluxr = "benchmarks/context-compact-v1/helper_after.fa1"
+fill = "benchmarks/context-compact-v1/helper_fill.fa1"
+rust = "benchmarks/context-compact-v1/helper_reference.rs"
+functionality = "Checked multiplication and a shared checked-add helper, charging both complete functions in both languages."
+
+[case.cow]
+base = "benchmarks/context-compact-v1/cow_before.fa1"
+fluxr = "benchmarks/context-compact-v1/cow_after.fa1"
+fill = "benchmarks/context-compact-v1/cow_fill.fa1"
+rust = "benchmarks/context-compact-v1/cow_reference.rs"
+functionality = "Remove last element from a shared immutable list using copy on write; fail on empty input and preserve the original shared value. Rust includes Arc ownership and make_mut."

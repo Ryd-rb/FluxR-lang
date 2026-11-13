@@ -1,0 +1,1 @@
+v2 (pub run (values:[i64]) i64 (total:i64) (= total 0) (while (! (empty values)) ((= total (+ total (last values))) (pop values))) (ret total))

@@ -1,0 +1,1 @@
+v2 (enum Maybe None Some:i64) (pub run (value:#Maybe delta:i64) #Maybe () (if (is value Some) ((ret (tag Maybe.Some (+ (payload value Some) delta)))) ((ret (tag Maybe.None)))))

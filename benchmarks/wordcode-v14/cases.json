@@ -1,0 +1,57 @@
+{
+  "schema": "fluxr-wordcode-v14-cases-v1",
+  "scope": "Authored static cases, not heldout or live-agent episodes. Rust success/error arithmetic baselines exclude shared VM budget machinery; compare exact VM budget/first-trap to expanded FA1 separately. Loop Rust execution is only admitted on bounded terminating fixture domains.",
+  "cases": [
+    {
+      "name": "affine",
+      "arguments": [
+        7,
+        13,
+        3
+      ],
+      "expected": 94,
+      "class": "authored_practical_microcase"
+    },
+    {
+      "name": "polynomial",
+      "arguments": [
+        7,
+        13,
+        3
+      ],
+      "expected": 78,
+      "class": "authored_practical_microcase"
+    },
+    {
+      "name": "repeat",
+      "arguments": [
+        12,
+        7
+      ],
+      "expected": 19,
+      "class": "authored_practical_microcase"
+    },
+    {
+      "name": "walk",
+      "arguments": [
+        2,
+        23,
+        3
+      ],
+      "expected": 23,
+      "class": "authored_practical_microcase"
+    },
+    {
+      "name": "forest",
+      "arguments": [
+        1
+      ],
+      "expected": 1,
+      "class": "synthetic_density_stress",
+      "dictionary": "benchmarks/wordcode-v14/forest.dictionary.json",
+      "dictionary_sha256": "7a8f6d3fc3bba39863158591f922dc4b48fbd79fb0150229b5d10793f1a398c6",
+      "expanded_checked_multiplications": 255,
+      "qualification": "checked_pow has equivalent returned arithmetic values/overflow on tested domains; exact per-operation VM fuel remains FluxR/FA1-only differential."
+    }
+  ]
+}

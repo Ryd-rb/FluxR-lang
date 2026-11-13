@@ -1,0 +1,9 @@
+Use the retained AH1 whole-body ticket to fill one typed body.
+Return fa1 body N followed by exactly N statements, with prefix expressions.
+ret returns a value; add mul div rem are checked integer operations.
+call NAME N supplies N expressions; pop removes the last list element.
+AC1 is a compact context profile; the host retains the complete revision-bound ticket.
+The full draft digest identifies that binding but grants no authority.
+selected and unselected counts expose explicit signature selection; truncated reports output omission.
+Unknown effects and resources remain unknown; full compilation still decides admission.
+Do not invent tickets, capabilities or omitted definitions. Requery stale context before repair.

@@ -1,0 +1,4 @@
+fluxr 1
+rec Point 2 x int y int
+rec Envelope 1 point record Point
+pub run 1 value record Envelope int ret add field field value point x field field value point y

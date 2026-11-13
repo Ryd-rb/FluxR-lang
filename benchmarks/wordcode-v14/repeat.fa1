@@ -1,0 +1,2 @@
+fa1 v2
+pub calc 2 n int x int int do 1 wk_private_0 int 3 set wk_private_0 n while lt 0 wk_private_0 2 set wk_private_0 sub wk_private_0 1 set x add x 1 ret x
