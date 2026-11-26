@@ -69,6 +69,12 @@ background/native-text/hint transaction for empty and nonempty values. Hidden
 contracts retain text, selection and caret across focus, click, first-character
 typing, clearing and IME policy; CDB verifies balanced paint/DC scopes.
 System/high-contrast painting remains native. Live visual acceptance is separate.
+Non-scroll geometry transactions now invalidate changed native clients/frames
+and exposed old/new parents after deferred moves, including fixed composer
+controls and reparenting. An isolated non-input desktop contract verifies real
+dirty regions and native paint/erase delivery across short-height transitions,
+preserves draft state and leaves stationary controls clean during pure scroll.
+The private desktop is never activated or switched; no user UI is driven.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

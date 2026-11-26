@@ -353,8 +353,9 @@ must drain it. Invalid initial frames return errors; invalid subsequent frames
 emit an error event. OS allocation failures can leave a partially reconciled
 tree and should be treated as a host failure by the application.
 
-Validation is limited to typed frame checks and explicitly hidden,
-in-process native lifecycle and paint-message contracts. They check content,
+Validation is limited to typed frame checks and in-process native lifecycle
+and paint-message contracts, using hidden windows or a test-only private,
+never-activated non-input desktop for real dirty-region checks. They check content,
 UTF16 offsets, stale edits, HWND/selection retention, coalescing, dark/legacy
 layout, native wrapping, nested viewport/Tab/color/command/drop routing,
 large-content origin changes, explicit scroll-away intent, deterministic motion
@@ -397,3 +398,15 @@ typing, clearing, clicks, disabled state, IME policy, text/selection/caret
 invariance and scoped DC font/background-mode/origin/clip state. CDB traces the
 full-client pass in empty and nonempty cases; this does not replace live visual
 or hardware IME qualification.
+
+Non-scroll layout transactions explicitly invalidate moved/resized native
+clients and frames, captions, and exposed old/new parent surfaces after
+NOREDRAW/NOCOPYBITS placement. This includes pinned composer/rail controls and
+transitions to/from the transcript host. Dark painting avoids erase; system and
+high-contrast controls retain native erase delivery. Pure transcript scrolling
+keeps its viewport-only fast path. A bounded 900→400→180→900-DIP height contract
+uses a private non-input desktop (never switched or activated) because hidden
+roots do not retain native child update regions. It checks actual dirty regions,
+WM_PAINT delivery, native erase policy, retained draft state and an undirtied
+fixed shell during scroll. It closes its windows/thread/desktop and neither
+drives user UI nor reads images.

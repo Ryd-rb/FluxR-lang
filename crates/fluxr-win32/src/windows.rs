@@ -1452,6 +1452,7 @@ impl State {
                 .max(residual + height)
                 .clamp(1, CANVAS_SPAN);
             let mut moves = Vec::new();
+            let mut old_parents = Vec::new();
             let mut dirty = self.scene_dirty || rebase;
             self.scene_dirty = false;
             let viewport_box = (left, top, width, height);
@@ -1514,6 +1515,7 @@ impl State {
                 }
                 let parent = if w.fixed { self.hwnd } else { self.content };
                 if GetParent(w.hwnd) != parent {
+                    old_parents.push(GetParent(w.hwnd));
                     let focused = GetFocus() == w.hwnd;
                     let text_control =
                         matches!(w.spec.kind, Kind::Input | Kind::Multiline | Kind::Detail);
@@ -1617,6 +1619,33 @@ impl State {
             dirty |= !moves.is_empty();
             move_windows(&moves);
             self.native_tab_order();
+            if !scroll_only {
+                // NOREDRAW/NOCOPYBITS leaves moved fixed siblings without a
+                // paint region; root invalidation cannot cross CLIPCHILDREN.
+                // Rebuild changed clients/frames and exposed parent surfaces
+                // after the placement transaction, never during pure scroll.
+                let erase = if self.background.active.get() {
+                    RDW_NOERASE
+                } else {
+                    RDW_ERASE
+                };
+                for &(hwnd, ..) in &moves {
+                    RedrawWindow(
+                        hwnd,
+                        null(),
+                        0,
+                        RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN | erase,
+                    );
+                    old_parents.push(GetParent(hwnd));
+                }
+                old_parents.sort_unstable();
+                old_parents.dedup();
+                for parent in old_parents {
+                    if parent != 0 {
+                        RedrawWindow(parent, null(), 0, RDW_INVALIDATE | erase);
+                    }
+                }
+            }
             SetScrollPos(self.hwnd, SB_VERT, self.scroll, 1);
             if dirty {
                 RedrawWindow(
@@ -2746,6 +2775,126 @@ pub(super) fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn isolated_resize_repaints_moved_clients_without_scroll_shell_churn() {
+        thread_local! {static PAINTS: std::cell::RefCell<HashMap<HWND,u32>>=std::cell::RefCell::new(HashMap::new());}
+        unsafe extern "system" fn count_paint(
+            hwnd: HWND,
+            msg: u32,
+            wp: usize,
+            lp: isize,
+            _id: usize,
+            _data: usize,
+        ) -> isize {
+            if msg == WM_PAINT {
+                PAINTS.with(|p| *p.borrow_mut().entry(hwnd).or_default() += 1);
+            }
+            unsafe { DefSubclassProc(hwnd, msg, wp, lp) }
+        }
+        // Hidden-root descendants retain no native update regions. A private
+        // non-input desktop permits native dirty-region/paint checks without
+        // switching desktops, input, capture or user-desktop windows.
+        unsafe extern "system" {
+            fn CreateDesktopW(
+                name: *const u16,
+                device: *const u16,
+                mode: *const std::ffi::c_void,
+                flags: u32,
+                access: u32,
+                security: *const std::ffi::c_void,
+            ) -> isize;
+            fn SetThreadDesktop(desktop: isize) -> i32;
+            fn CloseDesktop(desktop: isize) -> i32;
+            fn OutputDebugStringW(message: *const u16);
+        }
+        let name = wide(&format!(
+            "FluxR.PaintContract.{}.{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let desktop = unsafe { CreateDesktopW(name.as_ptr(), null(), null(), 0, 0x83, null()) };
+        assert_ne!(desktop, 0, "isolated desktop: {}", unsafe {
+            GetLastError()
+        });
+        let result = std::thread::spawn(move || unsafe {
+            assert_ne!(SetThreadDesktop(desktop), 0);
+            let (tx, rx) = std::sync::mpsc::channel();
+            let mut s = window("Isolated resize paint", tx, Arc::new(Mutex::new(Pending::default()))).unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1280), s.scale(900), 0);
+            s.apply(parse(json!({"theme":"dark","layout":"conversation","conversation":"resize","controls":[
+                {"id":"title","kind":"heading","area":"header","role":"title","label":"Project"},
+                {"id":"rail","kind":"button","side":true,"role":"selected","label":"Chat"},
+                {"id":"answer","kind":"detail","role":"incoming","value":"A bounded native transcript with Unicode café 🙂. ".repeat(60)},
+                {"id":"draft","kind":"multiline","area":"composer","caption":false,"label":"Message","lines":2,"value":"retained draft"},
+                {"id":"topic","kind":"button","area":"composer","role":"quiet","label":"New topic","row":"commands"},
+                {"id":"attach","kind":"button","area":"composer","role":"quiet","label":"Attach","row":"commands"},
+                {"id":"send","kind":"button","area":"composer","role":"primary","label":"Send","row":"commands"}
+            ]})).unwrap()).unwrap();
+            for w in s.widgets.values() {
+                assert_ne!(SetWindowSubclass(w.hwnd, Some(count_paint), 994, 0), 0);
+            }
+            ShowWindow(s.hwnd, SW_SHOWNOACTIVATE);
+            assert_ne!(IsWindowVisible(s.hwnd), 0);
+            let draft = s.widgets["draft"].hwnd;
+            SendMessageW(draft, EM_SETSEL, 2, 6);
+            for height in [400, 180, 900] {
+                RedrawWindow(s.hwnd, null(), 0, RDW_VALIDATE | RDW_ALLCHILDREN | RDW_NOERASE | RDW_NOFRAME);
+                OutputDebugStringW(wide(&format!("RESIZE {height}")).as_ptr());
+                PAINTS.with(|p| p.borrow_mut().clear());
+                MoveWindow(s.hwnd, 0, 0, s.scale(1280), s.scale(height), 0);
+                assert_eq!(s.composer_fixed, height != 180);
+                if !s.composer_fixed {
+                    s.reveal(s.widgets["send"].hwnd);
+                }
+                assert_ne!(GetUpdateRect(s.hwnd, std::ptr::null_mut(), 0), 0, "exposed shell surface");
+                for id in ["topic", "attach", "send"] {
+                    let w = &s.widgets[id];
+                    let dirty = GetUpdateRect(w.hwnd, std::ptr::null_mut(), 0);
+                    eprintln!("resize_repaint height={height} id={id} hwnd={:x} fixed={} parent={:x} dirty={dirty}",w.hwnd,w.fixed,GetParent(w.hwnd));
+                    assert_ne!(dirty, 0, "moved {id} needs native repaint at {height}");
+                }
+                // A composited host can paint its siblings while servicing the
+                // first update; check all regions before consuming any of them.
+                for id in ["topic", "attach", "send"] {
+                    let w=&s.widgets[id];
+                    UpdateWindow(w.hwnd);
+                    assert!(PAINTS.with(|p| p.borrow().get(&w.hwnd).copied().unwrap_or(0)) > 0, "native WM_PAINT for {id}");
+                    assert_eq!(GetUpdateRect(w.hwnd, std::ptr::null_mut(), 0), 0);
+                }
+                assert_eq!(s.widgets["draft"].hwnd, draft);
+                assert_eq!(text(draft), "retained draft");
+                let (mut start,mut end)=(0u32,0u32);
+                SendMessageW(draft, EM_GETSEL, &mut start as *mut _ as usize, &mut end as *mut _ as isize);
+                assert_eq!((start,end),(2,6));
+                assert!(rx.try_recv().is_err());
+            }
+            RedrawWindow(s.hwnd, null(), 0, RDW_VALIDATE | RDW_ALLCHILDREN | RDW_NOERASE | RDW_NOFRAME);
+            s.scroll_direct(0);
+            for id in ["title","rail","draft","topic","attach","send"] {
+                assert_eq!(GetUpdateRect(s.widgets[id].hwnd, std::ptr::null_mut(), 0), 0, "scroll dirtied shell {id}");
+            }
+            // Ordinary native controls retain their erase-dependent paint path.
+            for system in [false,true] {
+                if system {s.theme=Theme::System;}
+                s.refresh_theme(!system,false);
+                RedrawWindow(s.hwnd, null(), 0, RDW_VALIDATE | RDW_ALLCHILDREN | RDW_NOERASE | RDW_NOFRAME);
+                MoveWindow(s.hwnd, 0, 0, s.scale(1280), s.scale(if system {900} else {400}), 0);
+                for id in ["topic","attach","send"] {
+                    assert_ne!(GetUpdateRect(s.widgets[id].hwnd, std::ptr::null_mut(), 0),0);
+                }
+                dark::MESSAGES.with(|m| m.set([0;4]));
+                for id in ["topic","attach","send"] {UpdateWindow(s.widgets[id].hwnd);}
+                assert!(dark::MESSAGES.with(Cell::get)[1]>0,"native erase requested for system/high contrast");
+            }
+            destroy(s);
+        }).join();
+        // The private thread and its windows are gone before closing the desktop.
+        assert_ne!(unsafe { CloseDesktop(desktop) }, 0);
+        result.unwrap();
+    }
     #[test]
     fn hidden_edit_paint_transaction_preserves_text_caret_ime_and_caller_dc_state() {
         unsafe fn select(hwnd: HWND) -> (u32, u32) {
