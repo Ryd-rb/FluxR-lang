@@ -4,6 +4,7 @@ pub mod authoring;
 mod compact;
 mod compact_print;
 mod compile;
+mod entry_modules;
 #[cfg(all(
     feature = "typed-jit",
     target_os = "linux",

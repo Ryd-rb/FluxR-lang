@@ -5,6 +5,7 @@
     "project_format": "fluxr-project-v1",
     "runtime": "mandatory Rust-implemented FluxR runtime",
     "checked_utf8_literals": "Current-source utf8 JSON-string notation lowers to bounded ordinary list uint byte constants. Rust and Python readers, portable metering, canonical artifacts and legacy compatibility are covered by tests/unified_utf8.rs and tests/test_unified_utf8.py; no new string runtime type or completed qualification scope.",
+    "checked_entry_bundles": "SourceDocument::compile_entry_modules links reachable argument-only free functions across checked source documents. Each entry retains independent VM limits and host requirements. See tests/entry_modules.rs.",
     "legacy_codecs": [
       "FA1",
       "compact",

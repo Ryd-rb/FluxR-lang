@@ -8,6 +8,8 @@ FluxR 1 is the single current source language, with the exact header `fluxr 1` a
 
 Checked execution and trusted Rust interoperability coexist in the same source format. Rust owns native borrowing, lifetimes, layout, unsafe effects, atomic orderings and panic behavior. Checked code reaches only typed native services granted by its application. The runtime does not compile newly injected arbitrary Rust or add new crate dependencies at run time; those changes require rebuilding the application.
 
+The Rust embedding API can link checked free functions across source documents with `SourceDocument::compile_entry_modules`. Each public entry receives its own compiled module and transitive host signature set. The bundle profile accepts explicit arguments, limits aggregate source and symbol counts, and compiles the reachable bodies under the ordinary VM limits.
+
 ## Source and contract map
 
 The table identifies available implementation areas and the documents that define their scope. It is an integration map, not a completed acceptance ledger.
