@@ -82,6 +82,8 @@ The table identifies available implementation areas and the documents that defin
 
 ## Open acceptance boundaries
 
+Current checked source supports raw multiline byte strings with `@text` and grouped accumulator calls with `@build`. Both lower to existing checked expressions. Paired programs, bytecode equality, Unicode and limit cases are covered in the unified-source reader tests.
+
 Current checked source accepts bounded `utf8 "JSON string"` byte-list literals.
 They lower to the existing `list uint` AST with unchanged canonical artifacts
 and per-call metering. The Rust reader, Python project frontend and canonical

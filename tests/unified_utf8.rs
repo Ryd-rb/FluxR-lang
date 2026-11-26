@@ -51,6 +51,57 @@ fn retained_token_pair_matches_rust_byte_kernel() {
 }
 
 #[test]
+fn builders_and_raw_text_preserve_portable_artifacts_and_execution() {
+    let original = SourceDocument::parse(include_str!(
+        "../benchmarks/unified-build-v1/controls.before.fluxr"
+    ))
+    .unwrap();
+    let compact = SourceDocument::parse(include_str!(
+        "../benchmarks/unified-build-v1/controls.after.fluxr"
+    ))
+    .unwrap();
+    assert_eq!(compact.source, original.source);
+    let module = compact.compile().unwrap();
+    assert_eq!(module.encode(), original.compile().unwrap().encode());
+    let value = module
+        .run_portable_with(
+            Invocation {
+                export: "code",
+                inputs: &[],
+                arguments: &[],
+                limits: Limits::default(),
+            },
+            &mut Workspace::default(),
+        )
+        .unwrap();
+    assert_eq!(value, Value::I64(314));
+    let literal = "café\n\\path\"#suffix";
+    let raw = format!("@text r##\"{literal}\"##");
+    assert_eq!(
+        SourceDocument::parse(&source(&raw)).unwrap().source,
+        SourceDocument::parse(&source(&expanded(literal.as_bytes())))
+            .unwrap()
+            .source
+    );
+    for malformed in [
+        "@text abc",
+        "@text r#########\"x\"#########",
+        "@text r#\"x\"",
+        "@text r\"\"tail",
+        "@build f 0 1 0",
+        "@build f 1 0 0",
+        "@build f 1 2 0 1",
+    ] {
+        assert!(
+            SourceDocument::parse(&source(malformed)).is_err(),
+            "{malformed}"
+        );
+    }
+    let unknown = SourceDocument::parse("fluxr 1\npub x 0 int ret @build missing 1 1 0 2").unwrap();
+    assert!(unknown.compile().is_err());
+}
+
+#[test]
 fn literals_match_independent_utf8_bytes_and_released_list_artifacts() {
     for (literal, expected) in [
         (r#"utf8 """#, vec![]),

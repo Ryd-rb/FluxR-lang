@@ -386,6 +386,45 @@ class SourceParser(Parser):
             self.checked_name()
             self.checked_type()
 
+    def checked_raw_text(self):
+        self.space()
+        delimiter = re.match(rb'r(#{0,8})"', self.source[self.pos:self.pos + 10])
+        if delimiter is None:
+            self.fail("@text requires a raw string")
+        start = self.pos + delimiter.end()
+        end_token = b'"' + delimiter.group(1)
+        end = self.source.find(end_token, start, start + 32768 + len(end_token))
+        if end < 0:
+            self.fail("unterminated or oversized raw text")
+        raw = self.source[start:end]
+        try:
+            raw.decode("utf-8")
+        except UnicodeDecodeError:
+            self.fail("invalid UTF-8 in raw text")
+        self.pos = end + len(end_token)
+        if self.pos < len(self.source) and self.source[self.pos] not in WHITESPACE:
+            self.fail("raw text must end at whitespace")
+        return raw
+
+    def checked_build(self):
+        self.checked_name()
+        width = self.checked_count(255)
+        groups = self.checked_count(96)
+        if not width or not groups:
+            self.fail("@build requires a positive width and group count")
+        original_depth = self.depth
+        try:
+            for _ in range(groups - 1):
+                self.enter()
+            self.checked_expr()
+            for group in range(groups, 0, -1):
+                for _ in range(width):
+                    self.checked_expr()
+                if group > 1:
+                    self.depth -= 1
+        finally:
+            self.depth = original_depth
+
     def checked_expr(self):
         self.enter()
         try:
@@ -407,11 +446,16 @@ class SourceParser(Parser):
             elif op == "list":
                 self.checked_type()
                 for _ in range(self.checked_count()): self.checked_expr()
-            elif op == "utf8":
-                self.space()
-                if self.pos >= len(self.source) or self.source[self.pos] != 34:
-                    self.fail("utf8 requires a JSON string literal")
-                literal = self.token().encode("utf-8")
+            elif op == "@build":
+                self.checked_build()
+            elif op in {"utf8", "@text"}:
+                if op == "@text":
+                    literal = self.checked_raw_text()
+                else:
+                    self.space()
+                    if self.pos >= len(self.source) or self.source[self.pos] != 34:
+                        self.fail("utf8 requires a JSON string literal")
+                    literal = self.token().encode("utf-8")
                 if len(literal) > 32768:
                     self.fail("utf8 literal exceeds list item limit")
                 # Match expanded element-expression work and depth. The Rust

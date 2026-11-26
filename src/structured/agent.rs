@@ -632,20 +632,82 @@ impl<'a> Parser<'a> {
         self.node(0)?;
         let literal: String = serde_json::from_str(&self.text[start..end])
             .map_err(|_| error("invalid utf8 JSON string literal"))?;
+        self.words = unified_words(&self.text[end..]);
+        self.byte_list(literal.as_bytes(), depth)
+    }
+
+    fn raw_literal(&mut self, depth: usize) -> Result<Expr> {
+        let first = self
+            .words
+            .clone()
+            .next()
+            .ok_or_else(|| error("missing raw text"))?;
+        let start = first.as_ptr() as usize - self.text.as_ptr() as usize;
+        let text = &self.text[start..];
+        let Some(after_r) = text.strip_prefix('r') else {
+            return Err(error("@text requires a raw string"));
+        };
+        let hashes = after_r.bytes().take_while(|b| *b == b'#').count();
+        if hashes > 8 || after_r.as_bytes().get(hashes) != Some(&b'"') {
+            return Err(error("invalid raw text delimiter"));
+        }
+        let content = &after_r[hashes + 1..];
+        let delimiter = format!("\"{}", "#".repeat(hashes));
+        let length = content
+            .find(&delimiter)
+            .ok_or_else(|| error("unterminated raw text"))?;
+        let rest = &content[length + delimiter.len()..];
+        if rest
+            .as_bytes()
+            .first()
+            .is_some_and(|b| !super::unified_source::space_byte(*b))
+        {
+            return Err(error("raw text must end at whitespace"));
+        }
+        self.node(0)?;
+        self.words = unified_words(rest);
+        self.byte_list(&content.as_bytes()[..length], depth)
+    }
+
+    fn byte_list(&mut self, literal: &[u8], depth: usize) -> Result<Expr> {
         if literal.len() > MAX_ITEMS {
             return Err(error("utf8 literal exceeds list item limit"));
         }
         let mut items = Vec::new();
-        for byte in literal.bytes() {
+        for &byte in literal {
             self.node(depth + 1)?;
             items.push(Expr::U64 { value: byte as u64 });
         }
-        self.words = unified_words(&self.text[end..]);
         Ok(Expr::List {
             element: Type::U64,
             items,
         })
     }
+    // Each group lowers to an ordinary call whose first argument is the previous result.
+    fn build_calls(&mut self, depth: usize) -> Result<Expr> {
+        let name = self.name()?;
+        let width = self.count(MAX_BINDINGS - 1)?;
+        let groups = self.count(MAX_DEPTH)?;
+        if width == 0 || groups == 0 {
+            return Err(error("@build requires a positive width and group count"));
+        }
+        for nested in 1..groups {
+            self.node(depth + nested)?;
+        }
+        let mut value = self.expr(depth + groups)?;
+        for group in (1..=groups).rev() {
+            let mut args = vec![value];
+            for _ in 0..width {
+                args.push(self.expr(depth + group)?);
+            }
+            value = Expr::Call {
+                name: name.clone(),
+                args,
+            };
+        }
+        Ok(value)
+    }
+
     fn expr(&mut self, depth: usize) -> Result<Expr> {
         self.node(depth)?;
         let token = self.word()?;
@@ -716,6 +778,8 @@ impl<'a> Parser<'a> {
                 items: self.expressions(depth + 1)?,
             },
             "utf8" if self.unified => self.utf8_literal(depth)?,
+            "@text" if self.unified => self.raw_literal(depth)?,
+            "@build" if self.unified => self.build_calls(depth)?,
             "empty" => Expr::Empty {
                 list: self.boxed(depth + 1)?,
             },
@@ -1422,6 +1486,8 @@ mod tests {
     fn unified_utf8_charges_expanded_nodes_at_identical_depths() {
         for (short, long) in [
             (r#"utf8 """#, "list uint 0"),
+            ("@build f 2 2 0 1 2 3 4", "call f 3 call f 3 0 1 2 3 4"),
+            (r##"@text r#"AB"#"##, "list uint 2 65u 66u"),
             (r#"utf8 "\u00e9A""#, "list uint 3 195u 169u 65u"),
         ] {
             for nodes in [

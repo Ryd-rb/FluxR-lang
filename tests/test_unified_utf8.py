@@ -20,6 +20,17 @@ class Utf8Frontend(unittest.TestCase):
         self.assertEqual(document.checked, checked.encode())
         self.assertEqual(len(document.native_spans), 1)
 
+    def test_build_and_raw_text_match_checked_work(self):
+        def nodes(expression):
+            parser = FRONTEND.SourceParser(('fluxr 1\npub x 0 int ret ' + expression).encode())
+            parser.document()
+            return parser.nodes
+        self.assertEqual(nodes('@build f 2 3 0 1 2 3 4 5 6'), nodes('call f 3 call f 3 call f 3 0 1 2 3 4 5 6'))
+        self.assertEqual(nodes('@text r##"é\n"#"##'), nodes('list uint 5 195u 169u 10u 34u 35u'))
+        for bad in ['@build f 0 1 0', '@build f 1 0 0', '@build f 1 2 0 1', '@text r#"unclosed"', '@text r""suffix', '@text r#########"a"#########', '@text r"' + 'x' * 32769 + '"']:
+            with self.subTest(bad=bad[:40]), self.assertRaises(FRONTEND.NativeError):
+                nodes(bad)
+
     def test_rejects_invalid_strings_and_nonstring(self):
         for expression in ['utf8', 'utf8 bare', 'utf8 "bad\\x00"', 'utf8 "\\ud800"', 'utf8 "unterminated', 'utf8 "one"tail', 'utf8 "raw\nnewline"']:
             with self.subTest(expression=expression), self.assertRaises(FRONTEND.NativeError):

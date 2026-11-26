@@ -46,6 +46,10 @@ service ABI until their schemas are explicitly bound.
 
 ## Checked UTF-8 byte literals
 
+Use `@text r#"..."#` to write multi-line UTF-8 text without escaping quotes or backslashes. Zero to eight matching hash signs delimit the string. Line endings and whitespace inside the delimiters are part of its value. The result has type `list uint` and the same limits and execution cost as the explicit UTF-8 byte list.
+
+Use `@build function width groups seed operands…` to apply a checked function to an accumulator and a fixed number of new operands per group. For example, `@build append 1 3 empty_list a b c` expands to `call append 2 call append 2 call append 2 empty_list a b c`. A width of two supports key/value builders. The width and group count must be positive. Arguments retain their evaluation order and the expanded calls are subject to the usual type, depth and node checks. The canonical printer may print the expanded calls.
+
 Current source accepts `utf8` followed by one JSON string literal:
 
 ```text

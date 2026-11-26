@@ -1,0 +1,4 @@
+fluxr 1
+fn extend 3 acc int place int digit int int ret add mul acc place digit
+pub code 0 int ret call extend 3 call extend 3 call extend 3 0 10 3 10 1 10 4
+pub descriptor 0 list uint ret utf8 "{\"id\":\"message\",\"kind\":\"multiline\"}"
