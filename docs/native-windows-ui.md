@@ -14,6 +14,78 @@ The function runs on the calling UI thread and returns when the user closes the
 window or a frame contains `"close": true`. Call once per dedicated UI thread.
 Non-Windows targets return an unsupported-platform error. The host changes only
 the calling thread's DPI context and restores it on exit.
+`validate_frame(&serde_json::Value)` checks the same ABI without creating a
+window, including on non-Windows hosts.
+
+## Optional dark presentation
+
+`theme:"dark"` opts into graphite client and rail surfaces, quiet panel borders,
+warm white text, slate metadata and teal action/active-navigation treatments.
+Omitting theme or using `theme:"system"` retains native system painting and the
+existing side-column behavior. High-contrast Windows settings take precedence
+over dark painting and title-bar treatment, including changes while running.
+The renderer does not change process-wide or user theme settings.
+
+`layout:"workspace"` explicitly selects the default workspace arrangement.
+Dark workspace content is bounded to 960 logical pixels by default, with a
+248-pixel rail when `side:true` controls exist and the client is at least 760
+logical pixels wide. A sidebar that fits the viewport remains fixed while the
+main content scrolls; a taller sidebar scrolls with content so every control
+remains reachable. Narrow dark workspaces stack content and arrange contiguous
+side navigation buttons into compact wrapping rows. Legacy system frames keep
+their original side-column threshold and system painting.
+
+`layout:"welcome"` creates a centered form bounded to 560 logical pixels.
+At regular dark widths, a subtle panel encloses it with 32-pixel internal room;
+below 720 logical pixels the panel boundary disappears and the content adapts
+to available width. The form centers vertically when it fits, and starts at a
+comfortable top inset with ordinary viewport scrolling when it does not.
+`max_width` overrides either content bound (320..1600 logical pixels). Initial
+window dimensions scale with DPI and are bounded to the desktop work area.
+
+Controls accept these optional semantic `role` values:
+
+| Role | Dark presentation |
+| --- | --- |
+| `brand` | Wordmark typography and a generic first-letter accent tile |
+| `caption` | Small metadata or section caption |
+| `title` | Prominent page title |
+| `muted` | Secondary text |
+| `primary` | Strong teal action |
+| `nav` | Quiet, left-aligned navigation |
+| `selected` | Active navigation surface and accent indicator |
+| `quiet` | Low-emphasis action |
+| `body` | Readable selectable prose; a detail control becomes borderless |
+
+Omitted role is neutral. Typography is implemented with native Segoe UI fonts
+and scales with monitor DPI. Standard native button, checkbox, edit, list and
+combobox classes retain their input/selection, keyboard, IME and accessibility
+implementation. Dark painting adds hover, pressed, disabled and focus cues;
+`expanded:true|false` optionally draws a disclosure chevron on a button without
+changing its accessible label. It does not add an accessibility expand/collapse
+pattern to a standard button. Edit selections and scrollbars continue to use
+the system's supported native theme behavior; scrollbar appearance varies by
+Windows version. The supported dark DWM title-bar request is best effort on
+older Windows. No undocumented app/process-wide dark-mode hooks are used.
+
+For compact actions, set `width` on each control (32..1600 logical pixels).
+Consecutive controls with the same `row` are arranged together; `row_align` on
+the first control is `start` (default), `center`, or `end`. Explicit widths are
+bounded by the available viewport. Dark ordinary/quiet buttons otherwise use
+bounded intrinsic widths; standalone primary and navigation buttons can fill
+the available column. Other unspecified widths share remaining row space.
+Rows wrap at narrow widths so actions cannot escape the client horizontally.
+
+```json
+{"theme":"dark","layout":"welcome","controls":[
+  {"id":"brand","kind":"label","label":"Atlas","role":"brand"},
+  {"id":"title","kind":"heading","label":"Open your workspace","role":"title"},
+  {"id":"folder","kind":"input","label":"Folder","value":""},
+  {"id":"open","kind":"button","label":"Open","role":"primary","width":160,
+   "row":"actions","row_align":"center"},
+  {"id":"help","kind":"button","label":"Learn more","role":"quiet","width":140,"row":"actions"}
+]}
+```
 
 Frames are complete desired trees:
 
@@ -44,7 +116,8 @@ behavior. No screen-reader or visual qualification is claimed.
 Labels are literal: static captions disable prefix processing and button/check
 labels escape Win32 accelerator ampersands. Empty choice arrays are accepted.
 
-Adjacent controls sharing a non-null `row` occupy equal horizontal cells.
+In legacy system frames, controls sharing a non-null `row` normally share
+available width; explicit widths and compact wrapping are also supported.
 Other controls use the available width. At widths above 600 logical pixels,
 `side:true` places controls in a left column; smaller windows stack everything.
 The outer viewport has a native vertical scrollbar and mouse-wheel scrolling;

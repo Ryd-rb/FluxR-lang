@@ -18,6 +18,12 @@ selection/IME editing, keyboard focus, scrolling, local file-drop events and
 serial/ack protection for edits. See [native-windows-ui.md](native-windows-ui.md).
 One-shot UTF16 caret/selection requests retain their original acknowledgment
 across frame coalescing and yield to newer local interactions.
+An opt-in dark presentation adds native typography roles, coherent control
+surfaces, a centered welcome panel, adaptive rows and a bounded workspace with
+a fixed rail when its contents fit. System painting and side columns remain
+available; high contrast overrides dark painting. Hidden geometry, state and
+theme-transition contracts are covered without images or desktop automation.
+Visual, assistive-technology and Windows-version qualification remains open.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

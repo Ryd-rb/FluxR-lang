@@ -9,7 +9,7 @@ struct Choice {
     label: String,
     value: String,
 }
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 enum Kind {
     Label,
@@ -22,6 +22,42 @@ enum Kind {
     Detail,
     Multi,
     List,
+}
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Role {
+    #[default]
+    Neutral,
+    Brand,
+    Caption,
+    Title,
+    Muted,
+    Primary,
+    Nav,
+    Selected,
+    Quiet,
+    Body,
+}
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Align {
+    #[default]
+    Start,
+    Center,
+    End,
+}
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Theme {
+    #[default]
+    System,
+    Dark,
+}
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Layout {
+    Welcome,
+    Workspace,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 struct Control {
@@ -43,6 +79,14 @@ struct Control {
     side: bool,
     #[serde(default = "one")]
     zoom: f64,
+    #[serde(default)]
+    role: Role,
+    #[serde(default)]
+    width: Option<u32>,
+    #[serde(default)]
+    row_align: Align,
+    #[serde(default)]
+    expanded: Option<bool>,
 }
 fn yes() -> bool {
     true
@@ -58,6 +102,12 @@ struct Selection {
 }
 #[derive(Debug, Deserialize)]
 struct Frame {
+    #[serde(default)]
+    theme: Theme,
+    #[serde(default)]
+    layout: Option<Layout>,
+    #[serde(default)]
+    max_width: Option<u32>,
     #[serde(default)]
     title: Option<String>,
     #[serde(default)]
@@ -82,6 +132,9 @@ fn parse(value: Value) -> Result<Frame> {
     if frame.selection.as_ref().is_some_and(|s| s.start > s.end) {
         bail!("selection start must not exceed end")
     }
+    if frame.max_width.is_some_and(|w| !(320..=1600).contains(&w)) {
+        bail!("max_width must be between 320 and 1600")
+    }
     let mut ids = std::collections::HashSet::new();
     for c in &frame.controls {
         if c.id.is_empty() || !ids.insert(&c.id) {
@@ -92,6 +145,9 @@ fn parse(value: Value) -> Result<Frame> {
         }
         if c.lines.is_some_and(|n| !(1..=1000).contains(&n)) {
             bail!("lines must be between 1 and 1000")
+        }
+        if c.width.is_some_and(|w| !(32..=1600).contains(&w)) {
+            bail!("control width must be between 32 and 1600")
         }
         let valid = match c.kind {
             Kind::Check => c.value.is_null() || c.value.is_boolean(),
@@ -137,12 +193,21 @@ pub fn run(
 #[cfg(windows)]
 mod windows;
 
+/// Validate the presentation ABI without creating a native window (on any OS).
+pub fn validate_frame(frame: &Value) -> Result<()> {
+    parse(frame.clone()).map(|_| ())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
     #[test]
     fn validates_typed_keyed_contract() {
+        assert!(parse(json!({"theme":"dark","layout":"workspace","controls":[{"id":"a","kind":"detail","role":"body"}]})).is_ok());
+        assert!(parse(json!({"theme":"dark","layout":"welcome","max_width":560,"controls":[{"id":"a","kind":"button","role":"primary","width":160,"row_align":"end","expanded":false}]})).is_ok());
+        assert!(parse(json!({"theme":"unknown"})).is_err());
+        assert!(parse(json!({"controls":[{"id":"a","kind":"button","width":0}]})).is_err());
         assert!(parse(json!({"controls":[{"id":"x","kind":"multi","value":["a"]}]})).is_ok());
         assert!(
             parse(json!({"controls":[{"id":"x","kind":"input"},{"id":"x","kind":"button"}]}))

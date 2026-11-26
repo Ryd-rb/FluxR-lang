@@ -17,10 +17,12 @@ use windows_sys::Win32::{
     System::LibraryLoader::*,
     UI::{Controls::*, HiDpi::*, Input::KeyboardAndMouse::*, Shell::*, WindowsAndMessaging::*},
 };
+mod dark;
 
 const FRAME: u32 = WM_APP + 17;
 // SS_NOPREFIX is a STATIC style: labels are literal text, not mnemonics.
 const STATIC_LITERAL: u32 = 0x80;
+type Placement = (String, i32, i32, i32, i32, i32);
 thread_local! { static UPDATING: Cell<bool> = const { Cell::new(false) }; }
 struct UpdateGuard(bool);
 impl UpdateGuard {
@@ -52,6 +54,9 @@ struct Widget {
     hwnd: HWND,
     caption: HWND,
     font: HFONT,
+    caption_font: HFONT,
+    surface: Box<dark::Surface>,
+    caption_surface: Option<Box<dark::Surface>>,
     spec: Control,
     serial: u64,
     rect: (i32, i32, i32, i32),
@@ -65,6 +70,9 @@ impl Drop for Widget {
                 DestroyWindow(self.caption);
             }
             DeleteObject(self.font);
+            if self.caption_font != 0 {
+                DeleteObject(self.caption_font);
+            }
         }
     }
 }
@@ -116,6 +124,12 @@ struct State {
     content_height: i32,
     dpi: u32,
     previous_dpi: DPI_AWARENESS_CONTEXT,
+    palette: std::rc::Rc<dark::Palette>,
+    background: Box<dark::Surface>,
+    theme: Theme,
+    layout_mode: Option<Layout>,
+    max_width: Option<u32>,
+    fixed_rail: bool,
 }
 impl State {
     fn scale(&self, n: i32) -> i32 {
@@ -210,9 +224,26 @@ impl State {
                 0
             };
             let font = self.font(&spec);
+            let mut caption_spec = spec.clone();
+            caption_spec.role = Role::Caption;
+            let caption_font = if caption != 0 {
+                self.font(&caption_spec)
+            } else {
+                0
+            };
+            let surface = dark::Surface::attach(hwnd, Some(spec.kind), self.palette.clone());
+            let caption_surface = if caption != 0 {
+                Some(dark::Surface::attach(
+                    caption,
+                    Some(Kind::Label),
+                    self.palette.clone(),
+                ))
+            } else {
+                None
+            };
             SendMessageW(hwnd, WM_SETFONT, font as usize, 1);
             if caption != 0 {
-                SendMessageW(caption, WM_SETFONT, font as usize, 1);
+                SendMessageW(caption, WM_SETFONT, caption_font as usize, 1);
             }
             if matches!(spec.kind, Kind::Input | Kind::Multiline | Kind::Detail) {
                 SendMessageW(hwnd, EM_SETLIMITTEXT, 16 * 1024 * 1024, 0);
@@ -221,6 +252,9 @@ impl State {
                 hwnd,
                 caption,
                 font,
+                caption_font,
+                surface,
+                caption_surface,
                 spec: spec.clone(),
                 serial: 0,
                 rect: (0, 0, 0, 0),
@@ -232,14 +266,42 @@ impl State {
     }
     fn font(&self, c: &Control) -> HFONT {
         unsafe {
-            let size = (self.scale(if c.kind == Kind::Heading { 20 } else { 16 }) as f64 * c.zoom)
-                .round() as i32;
+            let modern = self.theme == Theme::Dark;
+            let logical = if modern {
+                match c.role {
+                    Role::Title => 34,
+                    Role::Brand => 22,
+                    Role::Caption => 12,
+                    Role::Muted => 14,
+                    Role::Body => 16,
+                    _ => {
+                        if c.kind == Kind::Heading {
+                            21
+                        } else {
+                            15
+                        }
+                    }
+                }
+            } else if c.kind == Kind::Heading {
+                20
+            } else {
+                16
+            };
+            let size = (self.scale(logical) as f64 * c.zoom).round() as i32;
             CreateFontW(
                 -size,
                 0,
                 0,
                 0,
-                if c.kind == Kind::Heading { 600 } else { 400 },
+                if matches!(
+                    c.role,
+                    Role::Brand | Role::Title | Role::Primary | Role::Selected
+                ) || c.kind == Kind::Heading
+                {
+                    600
+                } else {
+                    400
+                },
                 0,
                 0,
                 0,
@@ -254,6 +316,19 @@ impl State {
     }
     fn update(&self, w: &mut Widget, mut c: Control, first: bool, ack: u64) {
         unsafe {
+            if w.surface.expanded.replace(c.expanded) != c.expanded {
+                InvalidateRect(w.hwnd, null(), 0);
+            }
+            w.surface
+                .configure(self.background.active.get(), c.role, c.side, self.dpi);
+            if let Some(caption) = &w.caption_surface {
+                caption.configure(
+                    self.background.active.get(),
+                    Role::Caption,
+                    c.side,
+                    self.dpi,
+                );
+            }
             let protected = w.serial > ack;
             if protected {
                 c.value = w.spec.value.clone();
@@ -390,11 +465,16 @@ impl State {
                     0,
                 );
             }
-            if c.zoom != w.spec.zoom {
+            if c.zoom != w.spec.zoom || c.role != w.spec.role {
                 let font = self.font(&c);
                 SendMessageW(w.hwnd, WM_SETFONT, font as usize, 1);
                 if w.caption != 0 {
-                    SendMessageW(w.caption, WM_SETFONT, font as usize, 1);
+                    let mut spec = c.clone();
+                    spec.role = Role::Caption;
+                    let caption_font = self.font(&spec);
+                    SendMessageW(w.caption, WM_SETFONT, caption_font as usize, 1);
+                    DeleteObject(w.caption_font);
+                    w.caption_font = caption_font;
                 }
                 DeleteObject(w.font);
                 w.font = font;
@@ -417,6 +497,11 @@ impl State {
             {
                 set_text(self.hwnd, &title);
             }
+            let theme_changed = self.theme != f.theme;
+            self.theme = f.theme;
+            self.layout_mode = f.layout;
+            self.max_width = f.max_width;
+            self.refresh_theme(dark::high_contrast(), theme_changed);
             self.default = f.default;
             let old_focus = GetFocus();
             let focus_id = self
@@ -516,104 +601,396 @@ impl State {
             Ok(())
         }
     }
-    fn layout(&mut self) {
+    fn refresh_theme(&mut self, high_contrast: bool, rebuild_fonts: bool) {
         unsafe {
             let _guard = UpdateGuard::enter();
-            let mut client = std::mem::zeroed::<RECT>();
+            let active = dark::enabled(self.theme, high_contrast);
+            self.background
+                .configure(active, Role::Neutral, false, self.dpi);
+            dark::title_bar(self.hwnd, active);
+            for w in self.widgets.values_mut() {
+                w.surface
+                    .configure(active, w.spec.role, w.spec.side, self.dpi);
+                if let Some(caption) = &w.caption_surface {
+                    caption.configure(active, Role::Caption, w.spec.side, self.dpi);
+                }
+            }
+            if rebuild_fonts {
+                let ids = self.order.clone();
+                for id in ids {
+                    let spec = self.widgets[&id].spec.clone();
+                    let font = self.font(&spec);
+                    let mut caption_spec = spec.clone();
+                    caption_spec.role = Role::Caption;
+                    let caption_font = if self.widgets[&id].caption != 0 {
+                        self.font(&caption_spec)
+                    } else {
+                        0
+                    };
+                    let w = self.widgets.get_mut(&id).unwrap();
+                    SendMessageW(w.hwnd, WM_SETFONT, font as usize, 1);
+                    DeleteObject(w.font);
+                    w.font = font;
+                    if w.caption != 0 {
+                        SendMessageW(w.caption, WM_SETFONT, caption_font as usize, 1);
+                        DeleteObject(w.caption_font);
+                        w.caption_font = caption_font;
+                    }
+                }
+            }
+        }
+    }
+    fn text_width(&self, w: &Widget) -> i32 {
+        unsafe {
+            let dc = GetDC(w.hwnd);
+            let old = SelectObject(dc, w.font);
+            let value = wide(&w.spec.label);
+            let mut size: SIZE = std::mem::zeroed();
+            GetTextExtentPoint32W(
+                dc,
+                value.as_ptr(),
+                value.len().saturating_sub(1) as i32,
+                &mut size,
+            );
+            SelectObject(dc, old);
+            ReleaseDC(w.hwnd, dc);
+            size.cx
+        }
+    }
+    fn column(
+        &self,
+        ids: &[String],
+        left: i32,
+        top: i32,
+        width: i32,
+        gap: i32,
+        modern: bool,
+    ) -> (Vec<Placement>, i32) {
+        let mut out = Vec::new();
+        let mut y = top;
+        let mut first = 0;
+        while first < ids.len() {
+            let mut group_end = first + 1;
+            if let Some(row) = self.widgets[&ids[first]].spec.row.as_ref() {
+                while group_end < ids.len()
+                    && self.widgets[&ids[group_end]].spec.row.as_ref() == Some(row)
+                {
+                    group_end += 1;
+                }
+            }
+            if group_end == first + 1
+                && self.widgets[&ids[first]].spec.row.is_none()
+                && modern
+                && self.layout_mode != Some(Layout::Welcome)
+                && self.background.rail_width.get() == 0
+            {
+                let compact_nav = |id: &String| {
+                    let c = &self.widgets[id].spec;
+                    c.side
+                        && c.kind == Kind::Button
+                        && matches!(c.role, Role::Nav | Role::Selected)
+                        && c.row.is_none()
+                };
+                if compact_nav(&ids[first]) {
+                    while group_end < ids.len() && compact_nav(&ids[group_end]) {
+                        group_end += 1;
+                    }
+                }
+            }
+            let mut begin = first;
+            while begin < group_end {
+                let mut widths = Vec::new();
+                let mut end = begin;
+                let mut used = 0;
+                while end < group_end {
+                    let w = &self.widgets[&ids[end]];
+                    let c = &w.spec;
+                    let compact = modern
+                        && c.kind == Kind::Button
+                        && !matches!(c.role, Role::Nav | Role::Selected)
+                        && !(c.role == Role::Primary && group_end - first == 1);
+                    let explicit = c.width.map(|n| self.scale(n as i32));
+                    let fixed = explicit.or_else(|| {
+                        compact.then(|| {
+                            (self.text_width(w)
+                                + self.scale(if c.expanded.is_some() { 54 } else { 34 }))
+                            .clamp(self.scale(84), self.scale(360))
+                        })
+                    });
+                    let minimum = fixed
+                        .unwrap_or_else(|| {
+                            self.scale(if c.kind == Kind::Button && !(modern && c.side) {
+                                92
+                            } else {
+                                144
+                            })
+                        })
+                        .min(width)
+                        .max(1);
+                    let needed = minimum + if end > begin { gap } else { 0 };
+                    if end > begin && used + needed > width {
+                        break;
+                    }
+                    used += needed;
+                    widths.push((minimum, fixed.is_none()));
+                    end += 1;
+                }
+                let flex = widths.iter().filter(|(_, f)| *f).count() as i32;
+                let remainder = (width - used).max(0);
+                let each = if flex > 0 { remainder / flex } else { 0 };
+                let align = self.widgets[&ids[first]].spec.row_align;
+                let mut x = left
+                    + if flex > 0 {
+                        0
+                    } else {
+                        match align {
+                            Align::Start => 0,
+                            Align::Center => remainder / 2,
+                            Align::End => remainder,
+                        }
+                    };
+                let mut row_height = 0;
+                let mut row_gap = gap;
+                for (index, (minimum, grow)) in widths.into_iter().enumerate() {
+                    let id = &ids[begin + index];
+                    let c = &self.widgets[id].spec;
+                    let cw = minimum + if grow { each } else { 0 };
+                    let line = (self.scale(if modern && c.role == Role::Body {
+                        25
+                    } else {
+                        22
+                    }) as f64
+                        * c.zoom)
+                        .round() as i32;
+                    let height = match c.kind {
+                        Kind::Multiline | Kind::Detail => {
+                            line * c.lines.unwrap_or(5) as i32
+                                + if modern && c.role == Role::Body {
+                                    0
+                                } else {
+                                    self.scale(10)
+                                }
+                        }
+                        Kind::Multi | Kind::List => {
+                            line * c.lines.unwrap_or(6) as i32 + self.scale(8)
+                        }
+                        Kind::Heading | Kind::Label => {
+                            let base = if modern {
+                                match c.role {
+                                    Role::Title => 46,
+                                    Role::Brand => 42,
+                                    Role::Caption => 20,
+                                    Role::Muted => 23,
+                                    _ => {
+                                        if c.kind == Kind::Heading {
+                                            30
+                                        } else {
+                                            24
+                                        }
+                                    }
+                                }
+                            } else if c.kind == Kind::Heading {
+                                36
+                            } else {
+                                30
+                            };
+                            let lines = if c.role == Role::Brand {
+                                1
+                            } else {
+                                ((self.text_width(&self.widgets[id]) + cw - 1) / cw.max(1))
+                                    .clamp(1, 4)
+                            };
+                            self.scale(base) * lines
+                        }
+                        Kind::Button => self.scale(if modern {
+                            if c.role == Role::Primary {
+                                44
+                            } else if c.role == Role::Quiet {
+                                36
+                            } else {
+                                40
+                            }
+                        } else {
+                            30
+                        }),
+                        _ => {
+                            if modern {
+                                self.scale(40)
+                            } else {
+                                line + self.scale(8)
+                            }
+                        }
+                    };
+                    let caption = if self.widgets[id].caption != 0 {
+                        self.scale(if modern { 26 } else { 22 })
+                    } else {
+                        0
+                    };
+                    row_height = row_height.max(height + caption);
+                    if modern {
+                        row_gap = row_gap.max(self.scale(match c.role {
+                            Role::Brand => 28,
+                            Role::Title => 18,
+                            Role::Caption => 4,
+                            _ => 12,
+                        }));
+                    }
+                    out.push((id.clone(), x, y, cw, height, caption));
+                    x += cw + gap;
+                }
+                y += row_height + row_gap;
+                begin = end;
+            }
+            first = group_end;
+        }
+        (out, y)
+    }
+    fn layout(&mut self) {
+        self.layout_pass(true);
+    }
+    fn layout_pass(&mut self, reconcile_scrollbar: bool) {
+        unsafe {
+            let _guard = UpdateGuard::enter();
+            let mut client: RECT = std::mem::zeroed();
             GetClientRect(self.hwnd, &mut client);
-            let pad = self.scale(16);
-            let gap = self.scale(8);
-            let width = (client.right - pad * 2).max(self.scale(100));
-            let side =
-                self.order.iter().any(|id| self.widgets[id].spec.side) && width > self.scale(600);
-            let side_width = self.scale(250).min(width / 3);
-            let mut bottom = pad;
-            for column in 0..if side { 2 } else { 1 } {
-                let ids: Vec<_> = self
+            let modern = self.theme == Theme::Dark;
+            let welcome = self.layout_mode == Some(Layout::Welcome);
+            let pad = self
+                .scale(if modern || welcome { 32 } else { 16 })
+                .min((client.right / 6).max(self.scale(8)));
+            let gap = self.scale(if modern { 12 } else { 8 });
+            let rail = !welcome
+                && self.order.iter().any(|id| self.widgets[id].spec.side)
+                && client.right >= self.scale(if modern { 760 } else { 600 });
+            let rail_width = if rail {
+                if modern {
+                    self.scale(248)
+                } else {
+                    self.scale(250).min((client.right - pad * 2) / 3)
+                }
+            } else {
+                0
+            };
+            let painted_rail = if modern { rail_width } else { 0 };
+            let previous_rail = self.background.rail_width.replace(painted_rail);
+            let content_left = rail_width + pad + if rail && !modern { gap } else { 0 };
+            let available = (client.right - content_left - pad).max(1);
+            let cap = if modern || welcome {
+                self.scale(self.max_width.unwrap_or(if welcome { 560 } else { 960 }) as i32)
+            } else {
+                available
+            };
+            let content_width = available.min(cap).max(1);
+            let left = content_left + (available - content_width) / 2;
+            let main_ids: Vec<_> = self
+                .order
+                .iter()
+                .filter(|id| !rail || !self.widgets[*id].spec.side)
+                .cloned()
+                .collect();
+            let (mut placements, mut bottom) =
+                self.column(&main_ids, left, pad, content_width, gap, modern);
+            if welcome {
+                bottom = placements
+                    .iter()
+                    .map(|(_, _, y, _, h, caption)| y + h + caption)
+                    .max()
+                    .unwrap_or(pad);
+                let height = bottom + pad;
+                let offset = ((client.bottom - height) / 2).max(0);
+                for (_, _, y, _, _, _) in &mut placements {
+                    *y += offset;
+                }
+                bottom += offset;
+            }
+            if rail {
+                let rail_ids: Vec<_> = self
                     .order
                     .iter()
-                    .filter(|id| !side || self.widgets[*id].spec.side == (column == 0))
+                    .filter(|id| self.widgets[*id].spec.side)
                     .cloned()
                     .collect();
-                let x = if side && column == 1 {
-                    pad + side_width + gap
-                } else {
-                    pad
-                };
-                let col_width = if !side {
-                    width
-                } else if column == 0 {
-                    side_width
-                } else {
-                    width - side_width - gap
-                };
-                let mut i = 0;
-                let mut y = pad;
-                while i < ids.len() {
-                    let first = i;
-                    i += 1;
-                    if let Some(row) = self.widgets[&ids[first]].spec.row.as_ref() {
-                        while i < ids.len() && self.widgets[&ids[i]].spec.row.as_ref() == Some(row)
-                        {
-                            i += 1;
-                        }
-                    }
-                    let n = (i - first) as i32;
-                    let cell = ((col_width - gap * (n - 1)) / n).max(1);
-                    let mut row_height = 0;
-                    for (j, id) in ids[first..i].iter().enumerate() {
-                        let c = &self.widgets[id].spec;
-                        let line = (self.scale(22) as f64 * c.zoom).round() as i32;
-                        let height = match c.kind {
-                            Kind::Multiline | Kind::Detail => {
-                                line * c.lines.unwrap_or(5).max(1) as i32 + gap
-                            }
-                            Kind::Multi | Kind::List => {
-                                line * c.lines.unwrap_or(6).max(1) as i32 + gap
-                            }
-                            Kind::Heading => self.scale(36),
-                            _ => line + gap,
-                        };
-                        let caption = if self.widgets[id].caption != 0 {
-                            line
-                        } else {
-                            0
-                        };
-                        row_height = row_height.max(height + caption);
-                        let native_height = if c.kind == Kind::Select {
-                            height + self.scale(220)
-                        } else {
-                            height
-                        };
-                        let w = self.widgets.get_mut(id).unwrap();
-                        let px = x + j as i32 * (cell + gap);
-                        w.rect = (px, y + caption, cell, height);
-                        let placement = (px, y - self.scroll, cell, native_height, caption);
-                        if w.placed != Some(placement) {
-                            if w.caption != 0 {
-                                MoveWindow(w.caption, px, y - self.scroll, cell, caption, 1);
-                            }
-                            MoveWindow(
-                                w.hwnd,
-                                px,
-                                y + caption - self.scroll,
-                                cell,
-                                native_height,
-                                1,
-                            );
-                            w.placed = Some(placement);
-                        }
-                    }
-                    y += row_height + gap;
-                }
-                bottom = bottom.max(y);
+                let railpad = if modern { self.scale(20) } else { pad };
+                let (mut items, rail_bottom) = self.column(
+                    &rail_ids,
+                    railpad,
+                    if modern { self.scale(28) } else { pad },
+                    if modern {
+                        (rail_width - railpad * 2).max(1)
+                    } else {
+                        rail_width
+                    },
+                    self.scale(6),
+                    modern,
+                );
+                placements.append(&mut items);
+                bottom = bottom.max(rail_bottom);
+                self.fixed_rail = modern && rail_bottom + pad <= client.bottom;
+            } else {
+                self.fixed_rail = false;
             }
             self.content_height = bottom + pad;
-            let limit = (self.content_height - client.bottom).max(0);
-            if self.scroll > limit {
-                self.scroll = limit;
-                self.layout();
-                return;
+            self.scroll = self
+                .scroll
+                .clamp(0, (self.content_height - client.bottom).max(0));
+            let panel = modern && welcome && client.right >= self.scale(720);
+            let panel_rect = if panel {
+                let top = placements
+                    .iter()
+                    .map(|(_, _, y, _, _, _)| *y)
+                    .min()
+                    .unwrap_or(pad)
+                    - pad
+                    - self.scroll;
+                Some((
+                    left - pad,
+                    top,
+                    left + content_width + pad,
+                    bottom + pad - self.scroll,
+                ))
+            } else {
+                None
+            };
+            let previous_panel = self.background.panel_rect.replace(panel_rect);
+            let combo_extra = self.scale(220);
+            for (id, x, y, width, height, caption) in placements {
+                let w = self.widgets.get_mut(&id).unwrap();
+                let side_surface = modern && rail && w.spec.side;
+                if w.surface.side.replace(side_surface) != side_surface {
+                    InvalidateRect(w.hwnd, null(), 1);
+                }
+                if w.surface.panel.replace(panel) != panel {
+                    InvalidateRect(w.hwnd, null(), 1);
+                }
+                if let Some(caption) = &w.caption_surface
+                    && caption.panel.replace(panel) != panel
+                {
+                    InvalidateRect(w.caption, null(), 1);
+                }
+                if let Some(caption) = &w.caption_surface
+                    && caption.side.replace(side_surface) != side_surface
+                {
+                    InvalidateRect(w.caption, null(), 1);
+                }
+                w.rect = (x, y + caption, width, height);
+                let native_height = if w.spec.kind == Kind::Select {
+                    height + combo_extra
+                } else {
+                    height
+                };
+                let scroll = if self.fixed_rail && w.spec.side {
+                    0
+                } else {
+                    self.scroll
+                };
+                let placement = (x, y - scroll, width, native_height, caption);
+                if w.placed != Some(placement) {
+                    if w.caption != 0 {
+                        MoveWindow(w.caption, x, y - scroll, width, caption, 1);
+                    }
+                    MoveWindow(w.hwnd, x, y + caption - scroll, width, native_height, 1);
+                    w.placed = Some(placement);
+                }
             }
             let info = SCROLLINFO {
                 cbSize: std::mem::size_of::<SCROLLINFO>() as u32,
@@ -625,6 +1002,16 @@ impl State {
                 nTrackPos: 0,
             };
             SetScrollInfo(self.hwnd, SB_VERT, &info, 1);
+            if previous_rail != painted_rail || previous_panel != panel_rect {
+                InvalidateRect(self.hwnd, null(), 1);
+            }
+            if reconcile_scrollbar {
+                let mut after: RECT = std::mem::zeroed();
+                GetClientRect(self.hwnd, &mut after);
+                if after.right != client.right || after.bottom != client.bottom {
+                    self.layout_pass(false);
+                }
+            }
         }
     }
     fn reveal(&mut self, hwnd: HWND) {
@@ -632,6 +1019,9 @@ impl State {
             let Some(w) = self.widgets.values().find(|w| w.hwnd == hwnd) else {
                 return;
             };
+            if self.fixed_rail && w.spec.side {
+                return;
+            }
             let mut r = std::mem::zeroed::<RECT>();
             GetClientRect(self.hwnd, &mut r);
             let (_, y, _, h) = w.rect;
@@ -771,42 +1161,7 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
         }
         WM_DPICHANGED => {
             s.dpi = (wp & 0xffff) as u32;
-            for w in s.widgets.values_mut() {
-                let size = ((if w.spec.kind == Kind::Heading {
-                    20.0
-                } else {
-                    16.0
-                }) * s.dpi as f64
-                    / 96.0
-                    * w.spec.zoom)
-                    .round() as i32;
-                let font = CreateFontW(
-                    -size,
-                    0,
-                    0,
-                    0,
-                    if w.spec.kind == Kind::Heading {
-                        600
-                    } else {
-                        400
-                    },
-                    0,
-                    0,
-                    0,
-                    DEFAULT_CHARSET as u32,
-                    0,
-                    0,
-                    CLEARTYPE_QUALITY as u32,
-                    0,
-                    wide("Segoe UI").as_ptr(),
-                );
-                SendMessageW(w.hwnd, WM_SETFONT, font as usize, 1);
-                if w.caption != 0 {
-                    SendMessageW(w.caption, WM_SETFONT, font as usize, 1);
-                }
-                DeleteObject(w.font);
-                w.font = font;
-            }
+            s.refresh_theme(dark::high_contrast(), true);
             let r = &*(lp as *const RECT);
             SetWindowPos(
                 hwnd,
@@ -819,6 +1174,12 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
             );
             s.layout();
             0
+        }
+        WM_SETTINGCHANGE | WM_SYSCOLORCHANGE | WM_THEMECHANGED => {
+            s.refresh_theme(dark::high_contrast(), false);
+            s.layout();
+            InvalidateRect(hwnd, null(), 1);
+            DefWindowProcW(hwnd, msg, wp, lp)
         }
         WM_DROPFILES => {
             let drop = wp as isize;
@@ -858,6 +1219,16 @@ fn window(
             ..std::mem::zeroed()
         };
         RegisterClassW(&class);
+        let initial_dpi = GetDpiForSystem().max(96) as i32;
+        let mut work_area: RECT = std::mem::zeroed();
+        let has_work_area =
+            SystemParametersInfoW(SPI_GETWORKAREA, 0, &mut work_area as *mut _ as *mut _, 0) != 0;
+        let mut initial_width = 1100 * initial_dpi / 96;
+        let mut initial_height = 800 * initial_dpi / 96;
+        if has_work_area {
+            initial_width = initial_width.min((work_area.right - work_area.left) * 9 / 10);
+            initial_height = initial_height.min((work_area.bottom - work_area.top) * 9 / 10);
+        }
         let hwnd = CreateWindowExW(
             WS_EX_CONTROLPARENT | WS_EX_ACCEPTFILES,
             name.as_ptr(),
@@ -865,8 +1236,8 @@ fn window(
             WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_CLIPCHILDREN,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            1100,
-            800,
+            initial_width,
+            initial_height,
             0,
             0,
             instance,
@@ -879,6 +1250,8 @@ fn window(
             }
             bail!("native window creation failed: {}", error)
         }
+        let palette = dark::Palette::new();
+        let background = dark::Surface::attach(hwnd, None, palette.clone());
         let mut s = Box::new(State {
             hwnd,
             widgets: HashMap::new(),
@@ -891,6 +1264,12 @@ fn window(
             content_height: 0,
             dpi: GetDpiForWindow(hwnd).max(96),
             previous_dpi,
+            palette,
+            background,
+            theme: Theme::System,
+            layout_mode: None,
+            max_width: None,
+            fixed_rail: false,
         });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, &mut *s as *mut State as isize);
         Ok(s)
@@ -1006,6 +1385,172 @@ pub(super) fn run(
 mod tests {
     use super::*;
     use std::time::Instant;
+    #[test]
+    fn hidden_legacy_side_columns_and_compact_dark_navigation_remain_reachable() {
+        unsafe {
+            let (tx, _rx) = std::sync::mpsc::channel();
+            let mut s = window(
+                "hidden side layout",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            s.apply(parse(json!({"controls":[{"id":"side","kind":"button","label":"Project","side":true},{"id":"main","kind":"button","label":"Content"}]})).unwrap()).unwrap();
+            assert!(!s.background.active.get());
+            assert_eq!(s.background.rail_width.get(), 0);
+            assert!(s.widgets["main"].rect.0 > s.widgets["side"].rect.0 + s.widgets["side"].rect.2);
+            assert_eq!(s.widgets["main"].rect.1, s.widgets["side"].rect.1);
+            MoveWindow(s.hwnd, 0, 0, s.scale(500), s.scale(400), 0);
+            s.layout();
+            assert_eq!(s.widgets["main"].rect.0, s.widgets["side"].rect.0);
+            assert!(s.widgets["main"].rect.1 > s.widgets["side"].rect.1);
+            let controls:Vec<_>=(0..12).map(|i|json!({"id":format!("nav-{i}"),"kind":"button","label":format!("Project {i}"),"role":"nav","side":true})).collect();
+            s.apply(
+                parse(json!({"theme":"dark","layout":"workspace","controls":controls})).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(s.widgets["nav-0"].rect.1, s.widgets["nav-1"].rect.1);
+            let mut client: RECT = std::mem::zeroed();
+            GetClientRect(s.hwnd, &mut client);
+            for w in s.widgets.values() {
+                assert!(w.rect.0 >= 0 && w.rect.0 + w.rect.2 <= client.right);
+            }
+            MoveWindow(s.hwnd, 0, 0, s.scale(1000), s.scale(400), 0);
+            s.layout();
+            assert!(!s.fixed_rail);
+            s.scroll = 200;
+            s.layout();
+            assert!(s.widgets["nav-0"].placed.unwrap().1 < s.widgets["nav-0"].rect.1);
+            destroy(s);
+        }
+    }
+    #[test]
+    fn hidden_dark_welcome_and_workspace_preserve_native_contracts_at_compact_sizes() {
+        unsafe {
+            let (tx, _rx) = std::sync::mpsc::channel();
+            let mut s = window(
+                "hidden dark lifecycle",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(900), 0);
+            let mut frame = json!({"theme":"dark","layout":"welcome","controls":[
+                {"id":"brand","kind":"label","label":"Atlas","role":"brand"},
+                {"id":"title","kind":"heading","label":"Keep your work in focus","role":"title"},
+                {"id":"intro","kind":"label","label":"A quiet place for your projects.","role":"muted"},
+                {"id":"folder","kind":"input","label":"Workspace folder","value":"C:\\Café"},
+                {"id":"open","kind":"button","label":"Open workspace","role":"primary","width":180,"row":"actions","row_align":"center"},
+                {"id":"help","kind":"button","label":"Learn more","role":"quiet","width":140,"row":"actions"}
+            ]});
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(IsWindowVisible(s.hwnd), 0);
+            let input = s.widgets["folder"].hwnd;
+            assert_eq!(text(input), "C:\\Café");
+            SendMessageW(input, EM_SETSEL, 3, 5);
+            let mut client: RECT = std::mem::zeroed();
+            GetClientRect(s.hwnd, &mut client);
+            let (x, y, w, _) = s.widgets["brand"].rect;
+            assert!(y > s.scale(64));
+            assert!(w <= s.scale(560));
+            assert!((client.right - w) / 2 - x <= 2);
+            assert!(s.background.panel_rect.get().is_some());
+            assert_eq!(s.widgets["open"].rect.2, s.scale(180));
+            assert!(s.widgets["open"].rect.0 > s.widgets["folder"].rect.0);
+            // Resizing a hidden native parent exercises actual child geometry, without desktop interaction.
+            MoveWindow(s.hwnd, 0, 0, s.scale(370), s.scale(280), 0);
+            s.layout();
+            GetClientRect(s.hwnd, &mut client);
+            assert!(s.content_height > client.bottom);
+            assert!(s.background.panel_rect.get().is_none());
+            assert!(s.widgets["help"].rect.1 > s.widgets["open"].rect.1);
+            for w in s.widgets.values() {
+                assert!(
+                    w.rect.0 >= 0 && w.rect.0 + w.rect.2 <= client.right,
+                    "Control escaped compact viewport: {:?}",
+                    w.rect
+                );
+            }
+            // Open-project transition retains keyed native field contents and selection.
+            frame["layout"] = json!("workspace");
+            frame["controls"].as_array_mut().unwrap().insert(0,json!({"id":"nav","kind":"button","label":"Current project","role":"selected","side":true,"expanded":true}));
+            frame["controls"].as_array_mut().unwrap().push(json!({"id":"body","kind":"detail","role":"body","value":"Readable selectable prose.","lines":3}));
+            frame["controls"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"id":"check","kind":"check","label":"Watch changes","value":true}));
+            frame["controls"].as_array_mut().unwrap().push(json!({"id":"combo","kind":"select","label":"Mode","choices":[{"label":"Native","value":"n"}],"value":"n"}));
+            frame["controls"].as_array_mut().unwrap().push(json!({"id":"list","kind":"list","choices":[{"label":"One","value":"1"}],"value":"1"}));
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(900), 0);
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.widgets["folder"].hwnd, input);
+            assert!(s.background.rail_width.get() > 0);
+            assert!(s.widgets["folder"].rect.0 > s.background.rail_width.get());
+            let mut lo = 0u32;
+            let mut hi = 0u32;
+            SendMessageW(
+                input,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (3, 5));
+            assert_eq!(
+                GetWindowLongW(s.widgets["body"].hwnd, GWL_STYLE) as u32 & WS_BORDER,
+                0
+            );
+            assert_ne!(
+                GetWindowLongW(s.widgets["check"].hwnd, GWL_STYLE) & BS_AUTOCHECKBOX,
+                0
+            );
+            assert_eq!(
+                SendMessageW(s.widgets["check"].hwnd, BM_GETCHECK, 0, 0),
+                BST_CHECKED as isize
+            );
+            assert_eq!(SendMessageW(s.widgets["combo"].hwnd, CB_GETCURSEL, 0, 0), 0);
+            assert_eq!(SendMessageW(s.widgets["list"].hwnd, LB_GETCURSEL, 0, 0), 0);
+            let body = frame["controls"]
+                .as_array_mut()
+                .unwrap()
+                .iter_mut()
+                .find(|c| c["id"] == "body")
+                .unwrap();
+            body["lines"] = json!(50);
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert!(s.fixed_rail);
+            let nav = s.widgets["nav"].hwnd;
+            let nav_y = s.widgets["nav"].placed.unwrap().1;
+            s.scroll = 200;
+            s.layout();
+            assert_eq!(s.widgets["nav"].placed.unwrap().1, nav_y);
+            s.reveal(nav);
+            assert_eq!(s.scroll, 200);
+            // High contrast is simulated only at the renderer policy boundary; no user setting changes.
+            s.refresh_theme(true, false);
+            assert!(!s.background.active.get());
+            assert!(!s.widgets["folder"].surface.active.get());
+            assert_eq!(s.widgets["folder"].hwnd, input);
+            SendMessageW(
+                input,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (3, 5));
+            assert_ne!(
+                GetWindowLongW(s.widgets["body"].hwnd, GWL_STYLE) as u32 & WS_BORDER,
+                0
+            );
+            frame["theme"] = json!("system");
+            s.apply(parse(frame).unwrap()).unwrap();
+            assert!(!s.background.active.get());
+            assert_eq!(text(input), "C:\\Café");
+            assert!(!dark::enabled(Theme::Dark, true));
+            assert!(!dark::enabled(Theme::System, false));
+            destroy(s);
+            assert_eq!(IsWindow(input), 0);
+        }
+    }
     #[test]
     fn coalescing_retains_one_shot_intent_without_acknowledgment_laundering() {
         let mut pending = Pending::default();
