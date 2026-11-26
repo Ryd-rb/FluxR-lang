@@ -52,7 +52,9 @@ client border despite cleared public style flags. Borderless construction plus
 mutable ordinary window outlines removes that native DrawFrame path, including
 after theme/role and compact composer transitions. Hidden tests preserve the
 same HWNDs, field contents, focus and selections; final live visual acceptance
-remains separate. Conversation content now defaults to a 744-pixel reading width.
+remains separate. Conversation content now defaults to a 744-DIP reading width. Workspace and
+conversation headings can stay fixed. Named sections group related controls, and
+segmented tab rows expose native checked state and wrap in narrow windows.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 
