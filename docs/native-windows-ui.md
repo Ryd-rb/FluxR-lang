@@ -144,6 +144,15 @@ send, and native IME composition notifications plus the current IMM composition
 buffer prevent Return from submitting while text is being composed. Without
 `composer`, multiline Enter retains its previous behavior. Actual IME and
 assistive-technology qualification remains separate from the bounded contracts.
+If the designated composer has a nonempty unacknowledged local edit while the
+default button still has a disabled presentation, Enter can emit a single
+ordered click intent with `pending_edit:<edit serial>`. The preceding change
+event is already in the same outgoing channel. This avoids swallowing the
+first-keystroke/Enter sequence while the controller updates readiness; the
+controller must still enforce its authoritative submission conditions. This
+fallback is limited to one intent per edit serial and never enables the native
+button or permits disabled mouse activation. Empty/acknowledged drafts, IME
+composition and repeated keys do not use the fallback.
 
 An optional single `kind:"heading",area:"header"` control pins the conversation
 identity above the transcript. `role:"title"` uses compact 20-pixel typography,

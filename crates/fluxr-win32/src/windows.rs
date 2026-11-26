@@ -285,6 +285,8 @@ struct State {
     motion: Motion,
     motion_clock: std::time::Instant,
     timer_active: bool,
+    acknowledged: u64,
+    last_keyboard_intent: u64,
 }
 impl State {
     fn scale(&self, n: i32) -> i32 {
@@ -696,6 +698,7 @@ impl State {
                 set_text(self.hwnd, &title);
             }
             let theme_changed = self.theme != f.theme;
+            self.acknowledged = self.acknowledged.max(f.ack.min(self.serial));
             let surviving: std::collections::HashSet<_> =
                 f.controls.iter().map(|c| c.id.as_str()).collect();
             let same_conversation = self.conversation == f.conversation;
@@ -1928,6 +1931,41 @@ impl State {
             self.stop_motion();
         }
     }
+    fn pending_keyboard_activation(&mut self, button: HWND, focus: HWND) {
+        unsafe {
+            let Some(default_id) = self.default.as_ref() else {
+                return;
+            };
+            if !self.widgets.get(default_id).is_some_and(|w| {
+                w.hwnd == button && w.spec.kind == Kind::Button && IsWindowEnabled(button) == 0
+            }) {
+                return;
+            }
+            let Some(composer_id) = self.composer.as_ref() else {
+                return;
+            };
+            let Some(w) = self.widgets.get(composer_id) else {
+                return;
+            };
+            if w.hwnd != focus
+                || w.spec.kind != Kind::Multiline
+                || IsWindowEnabled(focus) == 0
+                || w.serial <= self.acknowledged
+                || w.serial <= self.last_keyboard_intent
+                || text(focus).trim().is_empty()
+                || composing(w)
+            {
+                return;
+            }
+            let edit = w.serial;
+            self.last_keyboard_intent = edit;
+            self.serial += 1;
+            let _ = self.outgoing.send(
+                json!({"type":"click","id":default_id,"serial":self.serial,"pending_edit":edit}),
+            );
+            self.stop_motion();
+        }
+    }
 }
 
 unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> isize {
@@ -2285,6 +2323,8 @@ fn window(
             motion: Motion::default(),
             motion_clock: std::time::Instant::now(),
             timer_active: false,
+            acknowledged: 0,
+            last_keyboard_intent: 0,
         });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, &mut *s as *mut State as isize);
         Ok(s)
@@ -2390,6 +2430,8 @@ pub(super) fn run(
                     if let Some(button) = button {
                         if !repeat && IsWindowEnabled(button) != 0 {
                             SendMessageW(button, BM_CLICK, 0, 0);
+                        } else if shortcut && designated {
+                            s.pending_keyboard_activation(button, focus);
                         }
                         continue;
                     }
@@ -2416,6 +2458,59 @@ pub(super) fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn composer_first_keystroke_can_submit_before_readiness_ack_without_mouse_bypass() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Pending composer intent",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            let mut frame = json!({"theme":"dark","layout":"conversation","composer":"draft","default":"send","controls":[
+                {"id":"draft","kind":"multiline","area":"composer","value":"","caption":false,"label":"Message","lines":2},
+                {"id":"send","kind":"button","area":"composer","enabled":false,"label":"Send"}
+            ]});
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            let draft = s.widgets["draft"].hwnd;
+            let send = s.widgets["send"].hwnd;
+            s.pending_keyboard_activation(send, draft);
+            assert!(rx.try_recv().is_err());
+            set_text(draft, "x");
+            s.command(draft, EN_CHANGE);
+            let change = rx.try_recv().unwrap();
+            assert_eq!(change["value"], "x");
+            s.command(send, BN_CLICKED);
+            assert!(rx.try_recv().is_err());
+            s.pending_keyboard_activation(send, draft);
+            let click = rx.try_recv().unwrap();
+            assert_eq!(click["type"], "click");
+            assert_eq!(click["id"], "send");
+            assert_eq!(click["pending_edit"], change["serial"]);
+            assert!(click["serial"].as_u64().unwrap() > change["serial"].as_u64().unwrap());
+            assert_eq!(IsWindowEnabled(send), 0);
+            s.pending_keyboard_activation(send, draft);
+            assert!(rx.try_recv().is_err());
+            frame["ack"] = click["serial"].clone();
+            frame["controls"][0]["value"] = json!("x");
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            s.pending_keyboard_activation(send, draft);
+            assert!(rx.try_recv().is_err());
+            set_text(draft, "   ");
+            s.command(draft, EN_CHANGE);
+            let blank = rx.try_recv().unwrap();
+            s.pending_keyboard_activation(send, draft);
+            assert!(rx.try_recv().is_err());
+            frame["ack"] = blank["serial"].clone();
+            frame["controls"][0]["value"] = json!("   ");
+            frame["controls"][1]["enabled"] = json!(true);
+            s.apply(parse(frame).unwrap()).unwrap();
+            s.command(send, BN_CLICKED);
+            assert_eq!(rx.try_recv().unwrap()["type"], "click");
+            destroy(s);
+        }
+    }
     #[test]
     fn hidden_chat_components_preserve_native_prose_cues_header_and_compact_editing() {
         let (tx, rx) = std::sync::mpsc::channel();

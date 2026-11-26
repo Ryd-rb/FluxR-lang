@@ -43,7 +43,9 @@ content-sized right-aligned outgoing bubbles, a compact overflow-aware native
 composer, empty-value hints and an optional fixed conversation heading. Hidden
 contracts query the actual MSAA name with a hidden caption, retain selections
 and focus through compact fallback, route wheels over prose and reject disabled
-actions. These deterministic state/geometry checks do not establish live visual
+mouse actions. A designated composer's first local edit can precede an ordered
+keyboard submission intent while presentation readiness remains unacknowledged;
+the controller retains authoritative readiness checks. These deterministic state/geometry checks do not establish live visual
 or screen-reader acceptance.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
