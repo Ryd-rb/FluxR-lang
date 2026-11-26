@@ -12,6 +12,13 @@ The Rust embedding API can link checked free functions across source documents w
 
 ## Source and contract map
 
+The optional standalone `fluxr-win32` crate supplies a keyed JSON-driven native
+Windows control host, with system controls, DPI/resize layout, docking, native
+selection/IME editing, keyboard focus, scrolling, local file-drop events and
+serial/ack protection for edits. See [native-windows-ui.md](native-windows-ui.md).
+Its bounded hidden lifecycle and schema checks do not close a full task or
+qualification scope; visuals and assistive-technology behavior remain unqualified.
+
 The table identifies available implementation areas and the documents that define their scope. It is an integration map, not a completed acceptance ledger.
 
 | Area | Main contract and source entry | Qualification boundary |

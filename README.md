@@ -59,6 +59,10 @@ execution budgets and canonical artifacts.
 
 ## Native interoperability and live updates
 
+Windows applications can opt into the standalone
+[`fluxr-win32` native control host](docs/native-windows-ui.md), which connects
+keyed JSON frames and native events through Rust channels without JavaScript.
+
 A source document can contain checked declarations, explicit native declarations
 and length-delimited Rust items. Native code can use Rust crates, ownership,
 threads, atomics, networking and databases. It retains Rust's semantics and trust

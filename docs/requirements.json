@@ -1,5 +1,12 @@
 {
   "format": "fluxr-implementation-requirements-v1",
+  "optional_native_windows_host": {
+    "crate": "crates/fluxr-win32",
+    "contract": "docs/native-windows-ui.md",
+    "status": "implemented bounded host slice",
+    "validation": "Typed frame contract and explicitly hidden non-image native lifecycle tests: content, UTF16 caret, serial/ack protection, handle reuse, selection, layout, scrolling and destruction. No desktop automation, screenshot/image test, screen-reader or broad platform qualification.",
+    "qualification_completion": false
+  },
   "source_language": {
     "header": "fluxr 1",
     "project_format": "fluxr-project-v1",
