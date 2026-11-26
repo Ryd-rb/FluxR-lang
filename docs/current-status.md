@@ -64,6 +64,11 @@ input paths, owner removal and scoped message transport. CDB reproduces the
 old compatibility selection and verifies viewport movement without it. Composer
 DC background and its panel brush now use the same surface. Hardware touch and
 final live visual qualification remain separate from these bounded checks.
+Dark editable fields now paint their complete client surface in one scoped
+background/native-text/hint transaction for empty and nonempty values. Hidden
+contracts retain text, selection and caret across focus, click, first-character
+typing, clearing and IME policy; CDB verifies balanced paint/DC scopes.
+System/high-contrast painting remains native. Live visual acceptance is separate.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

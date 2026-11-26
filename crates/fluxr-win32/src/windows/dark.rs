@@ -7,6 +7,8 @@ use windows_sys::Win32::{Graphics::Dwm::DwmSetWindowAttribute, UI::Accessibility
 thread_local! {pub(super) static MESSAGES:Cell<[u64;4]>=const{Cell::new([0;4])};}
 #[cfg(test)]
 thread_local! {pub(super) static EDIT_SIZES:Cell<u64>=const{Cell::new(0)};}
+#[cfg(test)]
+thread_local! {pub(super) static EDIT_PASSES:Cell<[u64;3]>=const{Cell::new([0;3])};}
 
 const fn rgb(r: u32, g: u32, b: u32) -> u32 {
     r | (g << 8) | (b << 16)
@@ -368,6 +370,69 @@ impl Surface {
             DT_LEFT | DT_WORDBREAK | DT_NOPREFIX,
         );
         SelectObject(dc, old);
+    }
+    unsafe fn edit_client(&self, dc: HDC) {
+        let saved = SaveDC(dc);
+        let mut rect: RECT = std::mem::zeroed();
+        GetClientRect(self.hwnd, &mut rect);
+        FillRect(dc, &rect, self.brush());
+        self.colors(dc);
+        #[cfg(test)]
+        EDIT_PASSES.with(|p| {
+            let mut n = p.get();
+            n[0] += 1;
+            n[1] += 1;
+            p.set(n)
+        });
+        // Keep native text, selection, scrolling and IME rendering, but supply
+        // a defined full-client backdrop and scoped DC state for every value.
+        let native = SaveDC(dc);
+        DefSubclassProc(self.hwnd, WM_PRINTCLIENT, dc as usize, PRF_CLIENT as isize);
+        if native != 0 {
+            RestoreDC(dc, native);
+        }
+        if self.show_placeholder() {
+            #[cfg(test)]
+            EDIT_PASSES.with(|p| {
+                let mut n = p.get();
+                n[2] += 1;
+                p.set(n)
+            });
+            self.placeholder(dc);
+        }
+        if saved != 0 {
+            RestoreDC(dc, saved);
+        }
+    }
+    unsafe fn edit_window(&self, dc: HDC, flags: i32) {
+        let saved = SaveDC(dc);
+        self.colors(dc);
+        let mut window: RECT = std::mem::zeroed();
+        GetWindowRect(self.hwnd, &mut window);
+        let mut origin = POINT { x: 0, y: 0 };
+        ClientToScreen(self.hwnd, &mut origin);
+        let (x, y) = (origin.x - window.left, origin.y - window.top);
+        let (left, top) = (window.left, window.top);
+        OffsetRect(&mut window, -left, -top);
+        if flags & PRF_NONCLIENT != 0 {
+            FillRect(dc, &window, self.brush());
+        }
+        DefSubclassProc(
+            self.hwnd,
+            WM_PRINT,
+            dc as usize,
+            (flags & !PRF_CLIENT & !PRF_ERASEBKGND) as isize,
+        );
+        OffsetViewportOrgEx(dc, x, y, std::ptr::null_mut());
+        self.edit_client(dc);
+        if saved != 0 {
+            RestoreDC(dc, saved);
+        }
+        if flags & PRF_NONCLIENT != 0
+            && GetWindowLongW(self.hwnd, GWL_STYLE) as u32 & WS_BORDER != 0
+        {
+            edit_outline_rect(self, dc);
+        }
     }
     pub(super) unsafe fn composer_overflow(&self) {
         if !self.active.get() || !self.composer.get() || self.kind != Some(Kind::Multiline) {
@@ -1038,12 +1103,41 @@ unsafe extern "system" fn subclass(
         s.composer_overflow();
         return result;
     }
+    let dark_edit = s.active.get() && matches!(s.kind, Some(Kind::Input | Kind::Multiline));
+    if dark_edit && msg == WM_ERASEBKGND {
+        return 1;
+    }
+    if dark_edit && msg == WM_PAINT {
+        let mut ps: PAINTSTRUCT = std::mem::zeroed();
+        let dc = BeginPaint(hwnd, &mut ps);
+        if dc != 0 {
+            s.edit_client(dc);
+        }
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+    if dark_edit && msg == WM_PRINTCLIENT {
+        if wp != 0 {
+            s.edit_client(wp as HDC);
+        }
+        return 0;
+    }
+    if dark_edit && msg == WM_PRINT && lp as i32 & PRF_CLIENT != 0 {
+        if wp != 0 {
+            s.edit_window(wp as HDC, lp as i32);
+        }
+        return 0;
+    }
     if msg == WM_PAINT && s.show_placeholder() {
         let result = DefSubclassProc(hwnd, msg, wp, lp);
         let dc = GetDC(hwnd);
+        let saved = SaveDC(dc);
         HideCaret(hwnd);
         s.placeholder(dc);
         ShowCaret(hwnd);
+        if saved != 0 {
+            RestoreDC(dc, saved);
+        }
         ReleaseDC(hwnd, dc);
         return result;
     }

@@ -2747,6 +2747,181 @@ pub(super) fn run(
 mod tests {
     use super::*;
     #[test]
+    fn hidden_edit_paint_transaction_preserves_text_caret_ime_and_caller_dc_state() {
+        unsafe fn select(hwnd: HWND) -> (u32, u32) {
+            let (mut a, mut b) = (0u32, 0u32);
+            SendMessageW(
+                hwnd,
+                EM_GETSEL,
+                &mut a as *mut _ as usize,
+                &mut b as *mut _ as isize,
+            );
+            (a, b)
+        }
+        unsafe fn paint(hwnd: HWND, hint: bool) {
+            let before = text(hwnd);
+            let selection = select(hwnd);
+            let mut caret: POINT = std::mem::zeroed();
+            let had_caret = GetCaretPos(&mut caret) != 0;
+            dark::EDIT_PASSES.with(|p| p.set([0; 3]));
+            InvalidateRect(hwnd, null(), 1);
+            SendMessageW(hwnd, WM_PAINT, 0, 0);
+            assert_eq!(dark::EDIT_PASSES.with(Cell::get), [1, 1, u64::from(hint)]);
+            assert_eq!(text(hwnd), before);
+            assert_eq!(select(hwnd), selection);
+            if had_caret {
+                let mut after: POINT = std::mem::zeroed();
+                assert_ne!(GetCaretPos(&mut after), 0);
+                assert_eq!((after.x, after.y), (caret.x, caret.y));
+            }
+            let dc = CreateCompatibleDC(0);
+            SetBkMode(dc, OPAQUE as i32);
+            SetViewportOrgEx(dc, 3, 4, std::ptr::null_mut());
+            let font = GetCurrentObject(dc, OBJ_FONT as u32);
+            let mut clip: RECT = std::mem::zeroed();
+            GetClipBox(dc, &mut clip);
+            for msg in [WM_PRINTCLIENT, WM_PRINT] {
+                dark::EDIT_PASSES.with(|p| p.set([0; 3]));
+                SendMessageW(
+                    hwnd,
+                    msg,
+                    dc as usize,
+                    (PRF_CLIENT | PRF_NONCLIENT) as isize,
+                );
+                assert_eq!(dark::EDIT_PASSES.with(Cell::get), [1, 1, u64::from(hint)]);
+                assert_eq!(GetCurrentObject(dc, OBJ_FONT as u32), font);
+                assert_eq!(GetBkMode(dc), OPAQUE as i32);
+                let mut origin: POINT = std::mem::zeroed();
+                GetViewportOrgEx(dc, &mut origin);
+                assert_eq!((origin.x, origin.y), (3, 4));
+                let mut after: RECT = std::mem::zeroed();
+                GetClipBox(dc, &mut after);
+                assert_eq!(
+                    (after.left, after.top, after.right, after.bottom),
+                    (clip.left, clip.top, clip.right, clip.bottom)
+                );
+                assert_eq!(text(hwnd), before);
+                assert_eq!(select(hwnd), selection);
+            }
+            DeleteDC(dc);
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Hidden edit paint contract",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            s.apply(parse(json!({"theme":"dark","layout":"conversation","controls":[
+                {"id":"body","kind":"detail","role":"incoming","value":"Answer"},
+                {"id":"draft","kind":"multiline","area":"composer","label":"Message","caption":false,"placeholder":"Write a message…","lines":2,"value":""},
+                {"id":"input","kind":"input","area":"composer","label":"Search","placeholder":"Find…","value":""}
+            ]})).unwrap()).unwrap();
+            let draft = s.widgets["draft"].hwnd;
+            let input = s.widgets["input"].hwnd;
+            SetFocus(draft);
+            paint(draft, true);
+            assert_eq!(GetFocus(), draft);
+            // Native first-character editing and clearing, not a custom text model.
+            SendMessageW(draft, WM_CHAR, 'A' as usize, 0);
+            assert_eq!(text(draft), "A");
+            paint(draft, false);
+            let first = rx.try_recv().unwrap();
+            assert_eq!(first["value"], "A");
+            SendMessageW(draft, EM_SETSEL, 0, -1);
+            SendMessageW(draft, WM_CLEAR, 0, 0);
+            assert_eq!(text(draft), "");
+            paint(draft, true);
+            assert_eq!(rx.try_recv().unwrap()["value"], "");
+            let serial = s.serial;
+            s.widgets["draft"].surface.ime.set(true);
+            paint(draft, false);
+            s.widgets["draft"].surface.ime.set(false);
+            EnableWindow(draft, 0);
+            paint(draft, true);
+            EnableWindow(draft, 1);
+            SetFocus(input);
+            paint(input, true);
+            paint(draft, true);
+            assert_eq!(s.serial, serial);
+            SendMessageW(
+                input,
+                WM_SETTEXT,
+                0,
+                wide("A Unicode café query 🙂").as_ptr() as isize,
+            );
+            assert_eq!(rx.try_recv().unwrap()["value"], "A Unicode café query 🙂");
+            let serial = s.serial;
+            SendMessageW(input, EM_SETSEL, 2, 7);
+            paint(input, false);
+            let mut p = POINT { x: 12, y: 12 };
+            let lp = ((p.x as u16 as u32) | ((p.y as u16 as u32) << 16)) as isize;
+            SendMessageW(draft, WM_LBUTTONDOWN, 1, lp);
+            SendMessageW(draft, WM_LBUTTONUP, 0, lp);
+            paint(draft, true);
+            assert_eq!(s.serial, serial);
+            assert!(rx.try_recv().is_err());
+            s.refresh_theme(true, false);
+            dark::EDIT_PASSES.with(|p| p.set([0; 3]));
+            SendMessageW(draft, WM_PAINT, 0, 0);
+            assert_eq!(dark::EDIT_PASSES.with(Cell::get), [0; 3]);
+            assert_eq!(text(draft), "");
+            GetCaretPos(&mut p);
+            destroy(s);
+        }
+    }
+    #[test]
+    fn hidden_focused_composer_paint_message_probe() {
+        unsafe extern "system" {
+            fn OutputDebugStringW(message: *const u16);
+        }
+        let (tx, _rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Composer paint probe",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            s.apply(parse(json!({"theme":"dark","layout":"conversation","composer":"draft","controls":[
+                {"id":"body","kind":"detail","role":"incoming","value":"A retained answer."},
+                {"id":"draft","kind":"multiline","area":"composer","caption":false,"label":"Message","placeholder":"Write a message…","lines":2,"value":""},
+                {"id":"other","kind":"input","area":"composer","label":"Other","value":"Field"}
+            ]})).unwrap()).unwrap();
+            let draft = s.widgets["draft"].hwnd;
+            let paint = |stage: &str| {
+                eprintln!(
+                    "composer_paint_probe {stage} hwnd={draft:x} text={:?}",
+                    text(draft)
+                );
+                OutputDebugStringW(wide(&format!("PHASE {stage}-paint")).as_ptr());
+                InvalidateRect(draft, null(), 1);
+                SendMessageW(draft, WM_PAINT, 0, 0);
+                let dc = CreateCompatibleDC(0);
+                OutputDebugStringW(wide(&format!("PHASE {stage}-printclient")).as_ptr());
+                SendMessageW(draft, WM_PRINTCLIENT, dc as usize, PRF_CLIENT as isize);
+                DeleteDC(dc);
+            };
+            SetFocus(draft);
+            paint("focused-empty");
+            set_text(draft, "Café 🙂");
+            SendMessageW(draft, EM_SETSEL, 2, 4);
+            paint("focused-nonempty");
+            set_text(draft, "");
+            paint("focused-cleared");
+            s.widgets["draft"].surface.ime.set(true);
+            paint("ime-policy");
+            s.widgets["draft"].surface.ime.set(false);
+            SetFocus(s.widgets["other"].hwnd);
+            paint("unfocused-empty");
+            s.refresh_theme(true, false);
+            paint("high-contrast-policy");
+            OutputDebugStringW(wide("PHASE composer-paint-finished").as_ptr());
+            destroy(s);
+        }
+    }
+    #[test]
     fn hidden_touch_pan_routes_children_background_and_cancellation_without_edit_selection() {
         use windows_sys::Win32::UI::Input::Pointer::*;
         unsafe fn pointer(

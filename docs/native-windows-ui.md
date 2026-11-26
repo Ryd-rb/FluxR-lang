@@ -386,3 +386,14 @@ time with deterministic monotonicity, endpoint and reversal contracts.
 Hidden windows produce no ordinary spontaneous paint stream, so these are
 mechanism/state guarantees and debugger evidence, not live visual acceptance
 or a frame-time benchmark.
+
+Dark editable fields use one scoped full-client paint transaction for every
+value: fill the complete client background, ask the native EDIT to render text,
+selection and IME through WM_PRINTCLIENT, then render an empty-value hint when
+applicable. BeginPaint/EndPaint owns the update region; WM_PRINTCLIENT and
+WM_PRINT preserve the caller DC state. System/high-contrast fields retain native
+painting. Hidden contracts cover focused empty/nonempty fields, first-character
+typing, clearing, clicks, disabled state, IME policy, text/selection/caret
+invariance and scoped DC font/background-mode/origin/clip state. CDB traces the
+full-client pass in empty and nonempty cases; this does not replace live visual
+or hardware IME qualification.
