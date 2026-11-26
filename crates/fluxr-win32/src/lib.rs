@@ -37,6 +37,8 @@ enum Role {
     Selected,
     Quiet,
     Body,
+    Outgoing,
+    Incoming,
 }
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -58,6 +60,27 @@ enum Theme {
 enum Layout {
     Welcome,
     Workspace,
+    Conversation,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Area {
+    Transcript,
+    Composer,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Icon {
+    Chat,
+    Activity,
+    Graph,
+    Models,
+    Dictionary,
+    Tools,
+    Folder,
+    Add,
+    Attachment,
+    Send,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 struct Control {
@@ -87,6 +110,10 @@ struct Control {
     row_align: Align,
     #[serde(default)]
     expanded: Option<bool>,
+    #[serde(default)]
+    area: Option<Area>,
+    #[serde(default)]
+    icon: Option<Icon>,
 }
 fn yes() -> bool {
     true
@@ -108,6 +135,12 @@ struct Frame {
     layout: Option<Layout>,
     #[serde(default)]
     max_width: Option<u32>,
+    #[serde(default)]
+    conversation: Option<String>,
+    #[serde(default = "yes")]
+    follow_tail: bool,
+    #[serde(default)]
+    composer: Option<String>,
     #[serde(default)]
     title: Option<String>,
     #[serde(default)]
@@ -204,6 +237,32 @@ mod tests {
     use serde_json::json;
     #[test]
     fn validates_typed_keyed_contract() {
+        for icon in [
+            "chat",
+            "activity",
+            "graph",
+            "models",
+            "dictionary",
+            "tools",
+            "folder",
+            "add",
+            "attachment",
+            "send",
+        ] {
+            assert!(
+                validate_frame(
+                    &serde_json::json!({"controls":[{"id":"button","kind":"button","icon":icon}]})
+                )
+                .is_ok()
+            );
+        }
+        assert!(
+            validate_frame(
+                &serde_json::json!({"controls":[{"id":"button","kind":"button","icon":"unknown"}]})
+            )
+            .is_err()
+        );
+        assert!(validate_frame(&json!({"theme":"dark","layout":"conversation","conversation":"project/page","follow_tail":false,"composer":"draft","controls":[{"id":"draft","kind":"multiline","area":"composer"},{"id":"body","kind":"detail","role":"incoming","area":"transcript"},{"id":"reply","kind":"detail","role":"outgoing"}]})).is_ok());
         assert!(parse(json!({"theme":"dark","layout":"workspace","controls":[{"id":"a","kind":"detail","role":"body"}]})).is_ok());
         assert!(parse(json!({"theme":"dark","layout":"welcome","max_width":560,"controls":[{"id":"a","kind":"button","role":"primary","width":160,"row_align":"end","expanded":false}]})).is_ok());
         assert!(parse(json!({"theme":"unknown"})).is_err());

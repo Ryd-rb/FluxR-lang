@@ -56,6 +56,8 @@ Controls accept these optional semantic `role` values:
 | `selected` | Active navigation surface and accent indicator |
 | `quiet` | Low-emphasis action |
 | `body` | Readable selectable prose; a detail control becomes borderless |
+| `incoming` | Selectable, automatically wrapped and sized transcript prose |
+| `outgoing` | Right-aligned, selectable transcript bubble |
 
 Omitted role is neutral. Typography is implemented with native Segoe UI fonts
 and scales with monitor DPI. Standard native button, checkbox, edit, list and
@@ -76,6 +78,11 @@ bounded intrinsic widths; standalone primary and navigation buttons can fill
 the available column. Other unspecified widths share remaining row space.
 Rows wrap at narrow widths so actions cannot escape the client horizontally.
 
+Buttons may specify a decorative `icon`: `chat`, `activity`, `graph`, `models`,
+`dictionary`, `tools`, `folder`, `add`, `attachment`, or `send`. Glyphs use native
+DPI-scaled line drawing and preserve the complete native label and accessible
+name. System/high-contrast painting retains the label without custom icons.
+
 ```json
 {"theme":"dark","layout":"welcome","controls":[
   {"id":"brand","kind":"label","label":"Atlas","role":"brand"},
@@ -86,6 +93,67 @@ Rows wrap at narrow widths so actions cannot escape the client horizontally.
   {"id":"help","kind":"button","label":"Learn more","role":"quiet","width":140,"row":"actions"}
 ]}
 ```
+
+## Conversation viewport and composer
+
+`layout:"conversation"` uses a bounded transcript above a bottom composer.
+Mark composer fields, attachment actions and send buttons with `area:"composer"`;
+other main controls are transcript (`area:"transcript"` is an explicit alias).
+The dark composer is one rounded, focus-accented surface enclosing the native
+input and actions, with a quiet borderless edit instead of nested heavy frames.
+When a composer command row fits and ends in a primary action, leading actions
+stay on the left and the trailing primary action anchors to the right. Wrapped
+rows retain ordinary ordering and spacing.
+Native outlines return in high contrast. Side navigation retains the workspace
+rail rules. When the footer would consume over three fifths of the client or
+leave under 140 logical pixels of transcript, all controls use ordinary shared
+scrolling. This keeps controls reachable in short or compact windows.
+
+`conversation` is an optional stable string identifying the conversation/page.
+With `follow_tail:true` (default), an update follows new content when the view
+was already within 24 logical pixels of the bottom, or when identity changes.
+Reading above that threshold keeps the first surviving visible transcript
+control anchored where scroll bounds permit, including bounded windows that
+drop older items and native resize/DPI reflow. `follow_tail:false` never requests
+tail following; a changed identity resets to the top, suitable for older pages.
+Use stable control IDs and change the conversation identity at page boundaries.
+
+`kind:"detail"` with `role:"incoming"` or `role:"outgoing"` uses the actual
+native edit line count at its assigned width to size selectable, wrapped text.
+`lines` is ignored for these roles. A nonempty `label` appears exactly once as
+the native caption above the body. Outgoing bodies use at most four fifths of
+the column (capped at 720 logical pixels) unless `width` explicitly overrides
+it. Extremely long individual bodies are bounded to the smaller of 12,000
+logical/20,000 physical pixels and retain native internal scrolling. Text is
+never shortened by this sizing policy.
+
+`composer:"draft-id"` opts one multiline field into Enter-to-send using the
+button named by frame `default`. Shift+Enter keeps ordinary native newline
+editing. Ctrl+Enter remains supported. Repeated keydown does not duplicate a
+send, and native IME composition notifications plus the current IMM composition
+buffer prevent Return from submitting while text is being composed. Without
+`composer`, multiline Enter retains its previous behavior. Actual IME and
+assistive-technology qualification remains separate from the bounded contracts.
+
+```json
+{"theme":"dark","layout":"conversation","conversation":"project/newest",
+ "composer":"draft","default":"send","follow_tail":true,"controls":[
+  {"id":"reply","kind":"detail","role":"incoming","label":"Assistant","value":"Readable prose."},
+  {"id":"draft","kind":"multiline","area":"composer","label":"Message","lines":3,"value":""},
+  {"id":"attach","kind":"button","area":"composer","role":"quiet","label":"Attach","icon":"attachment","row":"actions","width":120,"row_align":"end"},
+  {"id":"send","kind":"button","area":"composer","role":"primary","label":"Send","icon":"send","row":"actions","width":100}
+ ]}
+```
+
+Child geometry is deferred without copying old window contents or repainting
+intermediate positions, followed by invalidation of the final parent/child
+bounds. Native window regions clip transcript bodies/captions above the footer,
+so scrolled content cannot cover fixed controls. Passive body wheel messages
+reach the outer viewport; editable fields/lists retain native internal scrolling
+while they have range, then pass the wheel outward. Windows wheel line/page
+preferences and fractional wheel deltas are respected. Default window messages
+are delegated outside the mutable-state guard so native nested resize messages
+are delivered.
 
 Frames are complete desired trees:
 
@@ -174,9 +242,11 @@ must drain it. Invalid initial frames return errors; invalid subsequent frames
 emit an error event. OS allocation failures can leave a partially reconciled
 tree and should be treated as a host failure by the application.
 
-Validation is limited to typed frame checks and an explicitly hidden,
-in-process native lifecycle test. It checks content, UTF16 offsets, stale-edit
-protection, HWND reuse, one-shot UTF16 selection/coalescing, layout, scrolling and destruction. It neither
+Validation is limited to typed frame checks and explicitly hidden,
+in-process native lifecycle and paint-message contracts. They check content,
+UTF16 offsets, stale edits, HWND/selection retention, coalescing, dark/legacy
+layout, native wrapping, footer/rail clipping, tail/history anchors, wheel
+routing, modifier/IME send policy, resize and destruction. They neither
 drives desktop UI nor records screenshots or image metadata. Reproduce with an
 external Cargo target directory:
 
@@ -189,3 +259,13 @@ control workload. These are diagnostic samples, not a cross-platform latency
 guarantee or a completed FluxR release qualification. A custom graph canvas,
 hierarchical tree widget and visual styling beyond native controls are outside
 this slice.
+
+The scroll change was investigated with CDB 10.0.28000.2705 on the source-bound
+hidden probe at baseline `f436488`. The baseline body consumed a wheel event
+without moving the outer viewport (300 to 300 physical pixels); the candidate
+routes body and parent events to the same resulting offset (300 to 192 with
+this host's wheel preference). Debugger stacks identify repainting individual
+MoveWindow calls in the baseline and deferred moves with no redraw/copy plus
+final subtree invalidation in the candidate. Hidden windows produce no ordinary
+spontaneous paint stream, so this is mechanism/correctness evidence, not visual
+reproduction, smoothness measurement or acceptance of the owner's live screen.

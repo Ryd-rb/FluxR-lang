@@ -62,7 +62,8 @@ execution budgets and canonical artifacts.
 Windows applications can opt into the standalone
 [`fluxr-win32` native control host](docs/native-windows-ui.md), which connects
 keyed JSON frames and native events through Rust channels without JavaScript.
-It includes opt-in dark presentation and adaptive welcome/workspace layouts.
+It includes opt-in dark presentation and adaptive welcome/workspace/conversation
+layouts with a pinned composer and native selectable chat bodies.
 
 A source document can contain checked declarations, explicit native declarations
 and length-delimited Rust items. Native code can use Rust crates, ownership,

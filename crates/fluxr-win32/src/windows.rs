@@ -18,6 +18,33 @@ use windows_sys::Win32::{
     UI::{Controls::*, HiDpi::*, Input::KeyboardAndMouse::*, Shell::*, WindowsAndMessaging::*},
 };
 mod dark;
+use windows_sys::Win32::UI::Input::Ime::{
+    GCS_COMPSTR, ImmGetCompositionStringW, ImmGetContext, ImmReleaseContext,
+};
+fn enter_sends(
+    ctrl: bool,
+    shift: bool,
+    alt: bool,
+    repeat: bool,
+    designated: bool,
+    composing: bool,
+) -> bool {
+    !composing && !alt && !repeat && (ctrl || designated && !shift)
+}
+fn composing(w: &Widget) -> bool {
+    unsafe {
+        if w.surface.ime.get() {
+            return true;
+        }
+        let context = ImmGetContext(w.hwnd);
+        if context == 0 {
+            return false;
+        }
+        let active = ImmGetCompositionStringW(context, GCS_COMPSTR, std::ptr::null_mut(), 0) > 0;
+        ImmReleaseContext(w.hwnd, context);
+        active
+    }
+}
 
 const FRAME: u32 = WM_APP + 17;
 // SS_NOPREFIX is a STATIC style: labels are literal text, not mnemonics.
@@ -50,6 +77,47 @@ fn set_text(hwnd: HWND, s: &str) {
         SetWindowTextW(hwnd, wide(s).as_ptr());
     }
 }
+fn clip_window(
+    hwnd: HWND,
+    bounds: (i32, i32, i32, i32),
+    viewport: &RECT,
+    radius: i32,
+    cache: &mut Option<(i32, i32, i32, i32, i32)>,
+) -> bool {
+    unsafe {
+        let (x, y, width, height) = bounds;
+        let left = (viewport.left - x).clamp(0, width);
+        let top = (viewport.top - y).clamp(0, height);
+        let right = (viewport.right - x).clamp(left, width);
+        let bottom = (viewport.bottom - y).clamp(top, height);
+        let next = (left, top, right, bottom, radius);
+        if *cache == Some(next) {
+            return false;
+        }
+        if next == (0, 0, width, height, 0) {
+            SetWindowRgn(hwnd, 0, 0);
+            *cache = Some(next);
+            return true;
+        }
+        let region = CreateRectRgn(left, top, right, bottom);
+        if region == 0 {
+            return false;
+        }
+        if radius > 0 {
+            let rounded = CreateRoundRectRgn(0, 0, width + 1, height + 1, radius, radius);
+            if rounded != 0 {
+                CombineRgn(region, region, rounded, RGN_AND);
+                DeleteObject(rounded);
+            }
+        }
+        if SetWindowRgn(hwnd, region, 0) == 0 {
+            DeleteObject(region);
+        } else {
+            *cache = Some(next);
+        }
+        true
+    }
+}
 struct Widget {
     hwnd: HWND,
     caption: HWND,
@@ -61,6 +129,9 @@ struct Widget {
     serial: u64,
     rect: (i32, i32, i32, i32),
     placed: Option<(i32, i32, i32, i32, i32)>,
+    clip: Option<(i32, i32, i32, i32, i32)>,
+    caption_clip: Option<(i32, i32, i32, i32, i32)>,
+    chat_height: Option<(i32, i32)>,
 }
 impl Drop for Widget {
     fn drop(&mut self) {
@@ -130,6 +201,14 @@ struct State {
     layout_mode: Option<Layout>,
     max_width: Option<u32>,
     fixed_rail: bool,
+    composer_fixed: bool,
+    composer: Option<String>,
+    conversation: Option<String>,
+    follow_tail: bool,
+    follow_on_layout: bool,
+    anchor: Option<(String, i32)>,
+    viewport_height: i32,
+    wheel_remainder: i64,
 }
 impl State {
     fn scale(&self, n: i32) -> i32 {
@@ -259,6 +338,9 @@ impl State {
                 serial: 0,
                 rect: (0, 0, 0, 0),
                 placed: None,
+                clip: None,
+                caption_clip: None,
+                chat_height: None,
             };
             self.update(&mut widget, spec, true, u64::MAX);
             Ok(widget)
@@ -273,7 +355,7 @@ impl State {
                     Role::Brand => 22,
                     Role::Caption => 12,
                     Role::Muted => 14,
-                    Role::Body => 16,
+                    Role::Body | Role::Incoming | Role::Outgoing => 16,
                     _ => {
                         if c.kind == Kind::Heading {
                             21
@@ -316,7 +398,13 @@ impl State {
     }
     fn update(&self, w: &mut Widget, mut c: Control, first: bool, ack: u64) {
         unsafe {
+            if c.value != w.spec.value || c.role != w.spec.role || c.zoom != w.spec.zoom {
+                w.chat_height = None;
+            }
             if w.surface.expanded.replace(c.expanded) != c.expanded {
+                InvalidateRect(w.hwnd, null(), 0);
+            }
+            if w.surface.icon.replace(c.icon) != c.icon {
                 InvalidateRect(w.hwnd, null(), 0);
             }
             w.surface
@@ -498,6 +586,42 @@ impl State {
                 set_text(self.hwnd, &title);
             }
             let theme_changed = self.theme != f.theme;
+            let surviving: std::collections::HashSet<_> =
+                f.controls.iter().map(|c| c.id.as_str()).collect();
+            let same_conversation = self.conversation == f.conversation;
+            let at_tail = (self.scroll_limit() - self.scroll).abs() <= self.scale(24);
+            self.follow_on_layout = f.layout == Some(Layout::Conversation)
+                && f.follow_tail
+                && (!same_conversation || at_tail);
+            self.anchor = if f.layout == Some(Layout::Conversation)
+                && same_conversation
+                && !self.follow_on_layout
+            {
+                self.order
+                    .iter()
+                    .filter_map(|id| {
+                        self.widgets
+                            .get(id)
+                            .filter(|w| {
+                                !w.spec.side
+                                    && w.spec.area != Some(Area::Composer)
+                                    && w.rect.1 + w.rect.3 > self.scroll
+                                    && w.rect.1 < self.scroll + self.viewport_height
+                                    && surviving.contains(id.as_str())
+                            })
+                            .map(|w| (id.clone(), self.scroll - w.rect.1))
+                    })
+                    .next()
+            } else {
+                None
+            };
+            if !same_conversation && f.layout == Some(Layout::Conversation) {
+                self.scroll = 0;
+                self.wheel_remainder = 0;
+            }
+            self.conversation = f.conversation;
+            self.follow_tail = f.follow_tail;
+            self.composer = f.composer;
             self.theme = f.theme;
             self.layout_mode = f.layout;
             self.max_width = f.max_width;
@@ -544,6 +668,14 @@ impl State {
             let reordered = recreated || self.order != order;
             self.widgets = next;
             self.order = order;
+            if reordered {
+                RedrawWindow(
+                    self.hwnd,
+                    null(),
+                    0,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN,
+                );
+            }
             // Maintain native tab order after keyed moves, without recreating controls.
             let mut after = HWND_TOP;
             if reordered {
@@ -631,6 +763,7 @@ impl State {
                     SendMessageW(w.hwnd, WM_SETFONT, font as usize, 1);
                     DeleteObject(w.font);
                     w.font = font;
+                    w.chat_height = None;
                     if w.caption != 0 {
                         SendMessageW(w.caption, WM_SETFONT, caption_font as usize, 1);
                         DeleteObject(w.caption_font);
@@ -655,6 +788,81 @@ impl State {
             SelectObject(dc, old);
             ReleaseDC(w.hwnd, dc);
             size.cx
+        }
+    }
+    fn scroll_limit(&self) -> i32 {
+        (self.content_height - self.viewport_height).max(0)
+    }
+    fn visible_anchor(&self) -> Option<(String, i32)> {
+        self.order.iter().find_map(|id| {
+            let w = &self.widgets[id];
+            (!w.spec.side
+                && w.spec.area != Some(Area::Composer)
+                && w.rect.1 + w.rect.3 > self.scroll
+                && w.rect.1 < self.scroll + self.viewport_height)
+                .then(|| (id.clone(), self.scroll - w.rect.1))
+        })
+    }
+    fn wheel(&mut self, delta: i32) {
+        unsafe {
+            let mut lines = 3u32;
+            SystemParametersInfoW(
+                SPI_GETWHEELSCROLLLINES,
+                0,
+                &mut lines as *mut _ as *mut _,
+                0,
+            );
+            let step = if lines == u32::MAX {
+                self.viewport_height
+            } else {
+                self.scale(24).saturating_mul(lines.min(100) as i32)
+            };
+            self.wheel_remainder += delta as i64 * step as i64;
+            let amount = self.wheel_remainder / 120;
+            self.wheel_remainder %= 120;
+            self.scroll = (self.scroll as i64 - amount).clamp(0, self.scroll_limit() as i64) as i32;
+            self.layout();
+        }
+    }
+    fn font_height(&self, w: &Widget) -> i32 {
+        unsafe {
+            let dc = GetDC(w.hwnd);
+            let old = SelectObject(dc, w.font);
+            let mut m: TEXTMETRICW = std::mem::zeroed();
+            GetTextMetricsW(dc, &mut m);
+            SelectObject(dc, old);
+            ReleaseDC(w.hwnd, dc);
+            (m.tmHeight + m.tmExternalLeading).max(1)
+        }
+    }
+    fn chat_height(&self, w: &Widget, width: i32) -> i32 {
+        unsafe {
+            if let Some((measured_width, height)) = w.chat_height
+                && measured_width == width
+            {
+                return height;
+            }
+            let padding = self.scale(if w.spec.role == Role::Outgoing { 12 } else { 2 });
+            let dc = GetDC(w.hwnd);
+            let old = SelectObject(dc, w.font);
+            let value = wide(w.spec.value.as_str().unwrap_or(""));
+            let mut rect = RECT {
+                left: 0,
+                top: 0,
+                right: (width - padding * 2).max(1),
+                bottom: 0,
+            };
+            DrawTextW(
+                dc,
+                value.as_ptr(),
+                value.len().saturating_sub(1) as i32,
+                &mut rect,
+                DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX,
+            );
+            SelectObject(dc, old);
+            ReleaseDC(w.hwnd, dc);
+            (rect.bottom.max(self.font_height(w)) + padding * 2 + self.scale(4))
+                .min(self.scale(12000).min(20000))
         }
     }
     fn column(
@@ -710,13 +918,21 @@ impl State {
                         && !matches!(c.role, Role::Nav | Role::Selected)
                         && !(c.role == Role::Primary && group_end - first == 1);
                     let explicit = c.width.map(|n| self.scale(n as i32));
-                    let fixed = explicit.or_else(|| {
-                        compact.then(|| {
-                            (self.text_width(w)
-                                + self.scale(if c.expanded.is_some() { 54 } else { 34 }))
-                            .clamp(self.scale(84), self.scale(360))
+                    let fixed = explicit
+                        .or_else(|| {
+                            (c.kind == Kind::Detail && c.role == Role::Outgoing)
+                                .then_some((width * 4 / 5).min(self.scale(720)))
                         })
-                    });
+                        .or_else(|| {
+                            compact.then(|| {
+                                (self.text_width(w)
+                                    + self.scale(
+                                        (if c.expanded.is_some() { 54 } else { 34 })
+                                            + if c.icon.is_some() { 24 } else { 0 },
+                                    ))
+                                .clamp(self.scale(84), self.scale(360))
+                            })
+                        });
                     let minimum = fixed
                         .unwrap_or_else(|| {
                             self.scale(if c.kind == Kind::Button && !(modern && c.side) {
@@ -738,9 +954,22 @@ impl State {
                 let flex = widths.iter().filter(|(_, f)| *f).count() as i32;
                 let remainder = (width - used).max(0);
                 let each = if flex > 0 { remainder / flex } else { 0 };
-                let align = self.widgets[&ids[first]].spec.row_align;
+                let split_actions = flex == 0
+                    && end - begin > 1
+                    && begin == first
+                    && end == group_end
+                    && self.widgets[&ids[end - 1]].spec.role == Role::Primary
+                    && ids[begin..end]
+                        .iter()
+                        .all(|id| self.widgets[id].spec.area == Some(Area::Composer));
+                let align =
+                    if end - begin == 1 && self.widgets[&ids[begin]].spec.role == Role::Outgoing {
+                        Align::End
+                    } else {
+                        self.widgets[&ids[first]].spec.row_align
+                    };
                 let mut x = left
-                    + if flex > 0 {
+                    + if flex > 0 || split_actions {
                         0
                     } else {
                         match align {
@@ -755,6 +984,9 @@ impl State {
                     let id = &ids[begin + index];
                     let c = &self.widgets[id].spec;
                     let cw = minimum + if grow { each } else { 0 };
+                    if split_actions && begin + index == end - 1 {
+                        x = left + width - cw;
+                    }
                     let line = (self.scale(if modern && c.role == Role::Body {
                         25
                     } else {
@@ -763,6 +995,9 @@ impl State {
                         * c.zoom)
                         .round() as i32;
                     let height = match c.kind {
+                        Kind::Detail if matches!(c.role, Role::Incoming | Role::Outgoing) => {
+                            self.chat_height(&self.widgets[id], cw)
+                        }
                         Kind::Multiline | Kind::Detail => {
                             line * c.lines.unwrap_or(5) as i32
                                 + if modern && c.role == Role::Body {
@@ -846,15 +1081,18 @@ impl State {
         (out, y)
     }
     fn layout(&mut self) {
-        self.layout_pass(true);
+        self.layout_pass(0);
+        self.follow_on_layout = false;
+        self.anchor = None;
     }
-    fn layout_pass(&mut self, reconcile_scrollbar: bool) {
+    fn layout_pass(&mut self, pass: u8) {
         unsafe {
             let _guard = UpdateGuard::enter();
             let mut client: RECT = std::mem::zeroed();
             GetClientRect(self.hwnd, &mut client);
             let modern = self.theme == Theme::Dark;
             let welcome = self.layout_mode == Some(Layout::Welcome);
+            let conversation = self.layout_mode == Some(Layout::Conversation);
             let pad = self
                 .scale(if modern || welcome { 32 } else { 16 })
                 .min((client.right / 6).max(self.scale(8)));
@@ -872,39 +1110,79 @@ impl State {
                 0
             };
             let painted_rail = if modern { rail_width } else { 0 };
-            let previous_rail = self.background.rail_width.replace(painted_rail);
+            let old_rail = self.background.rail_width.replace(painted_rail);
             let content_left = rail_width + pad + if rail && !modern { gap } else { 0 };
             let available = (client.right - content_left - pad).max(1);
-            let cap = if modern || welcome {
-                self.scale(self.max_width.unwrap_or(if welcome { 560 } else { 960 }) as i32)
+            let cap = if modern || welcome || conversation {
+                self.scale(self.max_width.unwrap_or(if welcome {
+                    560
+                } else if conversation {
+                    840
+                } else {
+                    960
+                }) as i32)
             } else {
                 available
             };
-            let content_width = available.min(cap).max(1);
-            let left = content_left + (available - content_width) / 2;
+            let width = available.min(cap).max(1);
+            let left = content_left + (available - width) / 2;
+            let composer_ids: Vec<_> = self
+                .order
+                .iter()
+                .filter(|id| {
+                    conversation
+                        && self.widgets[*id].spec.area == Some(Area::Composer)
+                        && !self.widgets[*id].spec.side
+                })
+                .cloned()
+                .collect();
+            let (mut footer, footer_bottom) =
+                self.column(&composer_ids, left, pad, width, gap, modern);
+            let footer_height = if composer_ids.is_empty() {
+                0
+            } else {
+                footer_bottom + pad
+            };
+            self.composer_fixed = conversation
+                && footer_height > 0
+                && footer_height <= client.bottom * 3 / 5
+                && client.bottom - footer_height >= self.scale(140);
+            let footer_top = if self.composer_fixed {
+                client.bottom - footer_height
+            } else {
+                client.bottom
+            };
+            if self.composer_fixed {
+                for (_, _, y, _, _, _) in &mut footer {
+                    *y += footer_top;
+                }
+            }
             let main_ids: Vec<_> = self
                 .order
                 .iter()
-                .filter(|id| !rail || !self.widgets[*id].spec.side)
+                .filter(|id| {
+                    (!rail || !self.widgets[*id].spec.side)
+                        && (!self.composer_fixed
+                            || self.widgets[*id].spec.area != Some(Area::Composer))
+                })
                 .cloned()
                 .collect();
             let (mut placements, mut bottom) =
-                self.column(&main_ids, left, pad, content_width, gap, modern);
+                self.column(&main_ids, left, pad, width, gap, modern);
             if welcome {
                 bottom = placements
                     .iter()
-                    .map(|(_, _, y, _, h, caption)| y + h + caption)
+                    .map(|(_, _, y, _, h, c)| y + h + c)
                     .max()
                     .unwrap_or(pad);
-                let height = bottom + pad;
-                let offset = ((client.bottom - height) / 2).max(0);
+                let offset = ((client.bottom - bottom - pad) / 2).max(0);
                 for (_, _, y, _, _, _) in &mut placements {
                     *y += offset;
                 }
                 bottom += offset;
             }
             if rail {
-                let rail_ids: Vec<_> = self
+                let ids: Vec<_> = self
                     .order
                     .iter()
                     .filter(|id| self.widgets[*id].spec.side)
@@ -912,7 +1190,7 @@ impl State {
                     .collect();
                 let railpad = if modern { self.scale(20) } else { pad };
                 let (mut items, rail_bottom) = self.column(
-                    &rail_ids,
+                    &ids,
                     railpad,
                     if modern { self.scale(28) } else { pad },
                     if modern {
@@ -929,12 +1207,22 @@ impl State {
             } else {
                 self.fixed_rail = false;
             }
+            if self.composer_fixed {
+                placements.append(&mut footer);
+            }
             self.content_height = bottom + pad;
-            self.scroll = self
-                .scroll
-                .clamp(0, (self.content_height - client.bottom).max(0));
-            let panel = modern && welcome && client.right >= self.scale(720);
-            let panel_rect = if panel {
+            self.viewport_height = footer_top.max(1);
+            if self.follow_on_layout {
+                self.scroll = self.scroll_limit();
+            } else if let Some((id, offset)) = &self.anchor
+                && let Some((_, _, y, _, _, caption)) =
+                    placements.iter().find(|(key, ..)| key == id)
+            {
+                self.scroll = *y + *caption + *offset;
+            }
+            self.scroll = self.scroll.clamp(0, self.scroll_limit());
+            let welcome_panel = modern && welcome && client.right >= self.scale(720);
+            let panel_rect = if welcome_panel {
                 let top = placements
                     .iter()
                     .map(|(_, _, y, _, _, _)| *y)
@@ -945,72 +1233,199 @@ impl State {
                 Some((
                     left - pad,
                     top,
-                    left + content_width + pad,
+                    left + width + pad,
                     bottom + pad - self.scroll,
                 ))
             } else {
                 None
             };
-            let previous_panel = self.background.panel_rect.replace(panel_rect);
-            let combo_extra = self.scale(220);
-            for (id, x, y, width, height, caption) in placements {
+            let old_panel = self.background.panel_rect.replace(panel_rect);
+            let footer_rect = self.composer_fixed.then_some((
+                rail_width,
+                footer_top,
+                client.right,
+                client.bottom,
+            ));
+            let old_footer = self.background.footer_rect.replace(footer_rect);
+            let card = if self.composer_fixed {
+                Some((
+                    left - self.scale(16),
+                    footer_top + self.scale(12),
+                    left + width + self.scale(16),
+                    client.bottom - self.scale(12),
+                ))
+            } else {
+                None
+            };
+            let old_card = self.background.footer_card.replace(card);
+            let composer_focus = self.composer_fixed
+                && self
+                    .widgets
+                    .values()
+                    .any(|w| w.hwnd == GetFocus() && w.spec.area == Some(Area::Composer));
+            let old_focus = self.background.composer_focus.replace(composer_focus);
+            let transcript_view = RECT {
+                left: rail_width,
+                top: 0,
+                right: client.right,
+                bottom: footer_top,
+            };
+            let footer_view = RECT {
+                left: rail_width,
+                top: footer_top,
+                right: client.right,
+                bottom: client.bottom,
+            };
+            let mut moves = Vec::new();
+            let mut dirty = old_rail != painted_rail
+                || old_panel != panel_rect
+                || old_footer != footer_rect
+                || old_card != card
+                || old_focus != composer_focus;
+            for (id, x, y, width, height, caption_height) in placements {
                 let w = self.widgets.get_mut(&id).unwrap();
+                let sticky_composer =
+                    self.composer_fixed && w.spec.area == Some(Area::Composer) && !w.spec.side;
+                let panel = welcome_panel || sticky_composer;
+                w.surface.set_composer(sticky_composer);
                 let side_surface = modern && rail && w.spec.side;
-                if w.surface.side.replace(side_surface) != side_surface {
+                let side_changed = w.surface.side.replace(side_surface) != side_surface;
+                let panel_changed = w.surface.panel.replace(panel) != panel;
+                if side_changed || panel_changed {
                     InvalidateRect(w.hwnd, null(), 1);
                 }
-                if w.surface.panel.replace(panel) != panel {
-                    InvalidateRect(w.hwnd, null(), 1);
+                if let Some(caption) = &w.caption_surface {
+                    let side_changed = caption.side.replace(side_surface) != side_surface;
+                    let panel_changed = caption.panel.replace(panel) != panel;
+                    if side_changed || panel_changed {
+                        InvalidateRect(w.caption, null(), 1);
+                    }
                 }
-                if let Some(caption) = &w.caption_surface
-                    && caption.panel.replace(panel) != panel
-                {
-                    InvalidateRect(w.caption, null(), 1);
-                }
-                if let Some(caption) = &w.caption_surface
-                    && caption.side.replace(side_surface) != side_surface
-                {
-                    InvalidateRect(w.caption, null(), 1);
-                }
-                w.rect = (x, y + caption, width, height);
+                w.rect = (x, y + caption_height, width, height);
                 let native_height = if w.spec.kind == Kind::Select {
-                    height + combo_extra
+                    height + 220 * self.dpi as i32 / 96
                 } else {
                     height
                 };
-                let scroll = if self.fixed_rail && w.spec.side {
+                let offset = if self.fixed_rail && w.spec.side || sticky_composer {
                     0
                 } else {
                     self.scroll
                 };
-                let placement = (x, y - scroll, width, native_height, caption);
+                let py = y - offset;
+                let placement = (x, py, width, native_height, caption_height);
                 if w.placed != Some(placement) {
                     if w.caption != 0 {
-                        MoveWindow(w.caption, x, y - scroll, width, caption, 1);
+                        moves.push((w.caption, x, py, width, caption_height));
                     }
-                    MoveWindow(w.hwnd, x, y + caption - scroll, width, native_height, 1);
+                    moves.push((w.hwnd, x, py + caption_height, width, native_height));
                     w.placed = Some(placement);
+                    dirty = true;
                 }
+                let viewport = if w.spec.side && rail {
+                    &client
+                } else if sticky_composer {
+                    &footer_view
+                } else if self.composer_fixed {
+                    &transcript_view
+                } else {
+                    &client
+                };
+                let radius = if w.spec.role == Role::Outgoing && self.background.active.get() {
+                    (16 * self.dpi as i32 / 96).max(1)
+                } else {
+                    0
+                };
+                dirty |= clip_window(
+                    w.hwnd,
+                    (x, py + caption_height, width, native_height),
+                    viewport,
+                    radius,
+                    &mut w.clip,
+                );
+                if w.caption != 0 {
+                    dirty |= clip_window(
+                        w.caption,
+                        (x, py, width, caption_height),
+                        viewport,
+                        0,
+                        &mut w.caption_clip,
+                    );
+                }
+            }
+            // Move every child without copying stale framebuffer contents or painting
+            // intermediate geometry. Repaint the final parent/child bounds together.
+            let flags = SWP_NOREDRAW | SWP_NOCOPYBITS | SWP_NOZORDER | SWP_NOACTIVATE;
+            if !moves.is_empty() {
+                let mut batch = BeginDeferWindowPos(moves.len() as i32);
+                if batch != 0 {
+                    for (hwnd, x, y, w, h) in &moves {
+                        batch = DeferWindowPos(batch, *hwnd, 0, *x, *y, *w, *h, flags);
+                        if batch == 0 {
+                            break;
+                        }
+                    }
+                }
+                if batch == 0 || EndDeferWindowPos(batch) == 0 {
+                    for (hwnd, x, y, w, h) in &moves {
+                        SetWindowPos(*hwnd, 0, *x, *y, *w, *h, flags);
+                    }
+                }
+            }
+            let mut reflow = false;
+            let measured: Vec<_> = self
+                .order
+                .iter()
+                .filter_map(|id| {
+                    let w = &self.widgets[id];
+                    if w.spec.kind != Kind::Detail
+                        || !matches!(w.spec.role, Role::Incoming | Role::Outgoing)
+                    {
+                        return None;
+                    }
+                    let padding = self.scale(if w.spec.role == Role::Outgoing { 12 } else { 2 });
+                    let raw = (SendMessageW(w.hwnd, EM_GETLINECOUNT, 0, 0).max(1) as i32)
+                        .saturating_mul(self.font_height(w))
+                        .saturating_add(padding * 2 + self.scale(4));
+                    Some((
+                        id.clone(),
+                        w.rect.2,
+                        raw.min(self.scale(12000).min(20000)),
+                        raw > self.scale(12000).min(20000),
+                    ))
+                })
+                .collect();
+            for (id, width, height, overflow) in measured {
+                let w = self.widgets.get_mut(&id).unwrap();
+                w.surface.set_overflow(overflow);
+                if w.rect.3 != height {
+                    reflow = true;
+                }
+                w.chat_height = Some((width, height));
             }
             let info = SCROLLINFO {
                 cbSize: std::mem::size_of::<SCROLLINFO>() as u32,
                 fMask: SIF_RANGE | SIF_PAGE | SIF_POS,
                 nMin: 0,
                 nMax: self.content_height - 1,
-                nPage: client.bottom.max(0) as u32,
+                nPage: self.viewport_height as u32,
                 nPos: self.scroll,
                 nTrackPos: 0,
             };
             SetScrollInfo(self.hwnd, SB_VERT, &info, 1);
-            if previous_rail != painted_rail || previous_panel != panel_rect {
-                InvalidateRect(self.hwnd, null(), 1);
+            let mut after: RECT = std::mem::zeroed();
+            GetClientRect(self.hwnd, &mut after);
+            if pass < 3 && (reflow || after.right != client.right || after.bottom != client.bottom)
+            {
+                self.layout_pass(pass + 1);
             }
-            if reconcile_scrollbar {
-                let mut after: RECT = std::mem::zeroed();
-                GetClientRect(self.hwnd, &mut after);
-                if after.right != client.right || after.bottom != client.bottom {
-                    self.layout_pass(false);
-                }
+            if dirty || reflow {
+                RedrawWindow(
+                    self.hwnd,
+                    null(),
+                    0,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME,
+                );
             }
         }
     }
@@ -1019,7 +1434,9 @@ impl State {
             let Some(w) = self.widgets.values().find(|w| w.hwnd == hwnd) else {
                 return;
             };
-            if self.fixed_rail && w.spec.side {
+            if self.fixed_rail && w.spec.side
+                || self.composer_fixed && w.spec.area == Some(Area::Composer)
+            {
                 return;
             }
             let mut r = std::mem::zeroed::<RECT>();
@@ -1027,8 +1444,15 @@ impl State {
             let (_, y, _, h) = w.rect;
             if y < self.scroll {
                 self.scroll = y.saturating_sub(self.scale(16));
-            } else if y + h > self.scroll + r.bottom {
-                self.scroll = (y + h - r.bottom + self.scale(16)).max(0);
+            } else if y + h > self.scroll + self.viewport_height
+                && (h <= self.viewport_height || y >= self.scroll + self.viewport_height)
+            {
+                self.scroll = if h > self.viewport_height {
+                    y - self.scale(16)
+                } else {
+                    y + h - self.viewport_height + self.scale(16)
+                }
+                .max(0);
             }
             self.layout();
         }
@@ -1092,6 +1516,24 @@ impl State {
 }
 
 unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> isize {
+    // Delegation must happen without a State borrow or reentrancy guard:
+    // DefWindowProc(WM_WINDOWPOSCHANGED) synchronously dispatches WM_SIZE.
+    if !matches!(
+        msg,
+        WM_CLOSE
+            | WM_SIZE
+            | WM_COMMAND
+            | FRAME
+            | WM_VSCROLL
+            | WM_MOUSEWHEEL
+            | WM_DPICHANGED
+            | WM_SETTINGCHANGE
+            | WM_SYSCOLORCHANGE
+            | WM_THEMECHANGED
+            | WM_DROPFILES
+    ) {
+        return DefWindowProcW(hwnd, msg, wp, lp);
+    }
     // Native control changes can synchronously notify their parent. Never form
     // a second mutable state reference while processing such a callback.
     if UPDATING.with(Cell::get) {
@@ -1109,6 +1551,12 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
             0
         }
         WM_SIZE => {
+            s.follow_on_layout = s.layout_mode == Some(Layout::Conversation)
+                && s.follow_tail
+                && s.scroll_limit() - s.scroll <= s.scale(24);
+            if s.layout_mode == Some(Layout::Conversation) && !s.follow_on_layout {
+                s.anchor = s.visible_anchor();
+            }
             s.layout();
             0
         }
@@ -1155,11 +1603,16 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
         }
         WM_MOUSEWHEEL => {
             let delta = ((wp >> 16) as u16 as i16) as i32;
-            s.scroll = (s.scroll - delta * s.scale(48) / 120).max(0);
-            s.layout();
+            s.wheel(delta);
             0
         }
         WM_DPICHANGED => {
+            s.follow_on_layout = s.layout_mode == Some(Layout::Conversation)
+                && s.follow_tail
+                && s.scroll_limit() - s.scroll <= s.scale(24);
+            if s.layout_mode == Some(Layout::Conversation) && !s.follow_on_layout {
+                s.anchor = s.visible_anchor();
+            }
             s.dpi = (wp & 0xffff) as u32;
             s.refresh_theme(dark::high_contrast(), true);
             let r = &*(lp as *const RECT);
@@ -1270,6 +1723,14 @@ fn window(
             layout_mode: None,
             max_width: None,
             fixed_rail: false,
+            composer_fixed: false,
+            composer: None,
+            conversation: None,
+            follow_tail: true,
+            follow_on_layout: false,
+            anchor: None,
+            viewport_height: 0,
+            wheel_remainder: 0,
         });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, &mut *s as *mut State as isize);
         Ok(s)
@@ -1343,20 +1804,36 @@ pub(super) fn run(
             if msg.message == WM_KEYDOWN {
                 if msg.wParam == VK_RETURN as usize {
                     let ctrl = GetKeyState(VK_CONTROL as i32) < 0;
-                    let button = if ctrl {
+                    let shift = GetKeyState(VK_SHIFT as i32) < 0;
+                    let alt = GetKeyState(VK_MENU as i32) < 0;
+                    let repeat = msg.lParam as usize & (1 << 30) != 0;
+                    let focus = GetFocus();
+                    let focused = s.widgets.iter().find(|(_, w)| w.hwnd == focus);
+                    let designated = focused.is_some_and(|(id, w)| {
+                        s.composer.as_ref() == Some(id) && w.spec.kind == Kind::Multiline
+                    });
+                    let ime = focused.is_some_and(|(_, w)| composing(w));
+                    let shortcut = enter_sends(ctrl, shift, alt, repeat, designated, ime);
+                    let default = if shortcut || repeat && (ctrl || designated && !shift) && !ime {
                         s.default
                             .as_ref()
                             .and_then(|id| s.widgets.get(id))
                             .filter(|w| w.spec.kind == Kind::Button)
                             .map(|w| w.hwnd)
                     } else {
-                        s.widgets
-                            .values()
-                            .find(|w| w.hwnd == GetFocus() && w.spec.kind == Kind::Button)
-                            .map(|w| w.hwnd)
+                        None
                     };
+                    let button = default.or_else(|| {
+                        (!ctrl && !designated)
+                            .then(|| {
+                                focused
+                                    .filter(|(_, w)| w.spec.kind == Kind::Button)
+                                    .map(|(_, w)| w.hwnd)
+                            })
+                            .flatten()
+                    });
                     if let Some(button) = button {
-                        if IsWindowEnabled(button) != 0 {
+                        if !repeat && IsWindowEnabled(button) != 0 {
                             SendMessageW(button, BM_CLICK, 0, 0);
                         }
                         continue;
@@ -1385,6 +1862,210 @@ pub(super) fn run(
 mod tests {
     use super::*;
     use std::time::Instant;
+    #[test]
+    fn composer_enter_policy_preserves_modifiers_repeats_and_ime() {
+        assert!(enter_sends(false, false, false, false, true, false));
+        assert!(!enter_sends(false, true, false, false, true, false));
+        assert!(!enter_sends(false, false, false, false, false, false));
+        assert!(!enter_sends(false, false, false, false, true, true));
+        assert!(!enter_sends(true, false, false, false, true, true));
+        assert!(!enter_sends(false, false, true, false, true, false));
+        assert!(!enter_sends(false, false, false, true, true, false));
+        assert!(enter_sends(true, false, false, false, false, false));
+    }
+    #[test]
+    fn hidden_conversation_footer_tail_history_wrap_and_compact_fallback() {
+        unsafe {
+            let (tx, _rx) = std::sync::mpsc::channel();
+            let mut s = window(
+                "hidden conversation",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(900), 0);
+            let prose =
+                "A long Unicode paragraph with café, 日本語 and 🙂 remains selectable. ".repeat(70);
+            let mut frame = json!({"theme":"dark","layout":"conversation","conversation":"one","composer":"draft","default":"send","controls":[
+            {"id":"rail","kind":"button","side":true,"role":"selected","label":"Current project","icon":"chat"},
+                {"id":"first","kind":"detail","role":"incoming","label":"Assistant","value":prose},
+                {"id":"out","kind":"detail","role":"outgoing","label":"You","value":"A reply with 🙂 and café.\r\nA second line."},
+                {"id":"draft","kind":"multiline","area":"composer","label":"Message","lines":3,"value":"draft café"},
+            {"id":"attach","kind":"button","area":"composer","role":"quiet","label":"Attach","width":110,"row":"commands","row_align":"end","icon":"attachment"},
+            {"id":"send","kind":"button","area":"composer","role":"primary","label":"Send","width":90,"row":"commands","icon":"send"}
+            ]});
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert!(s.composer_fixed);
+            assert!(s.fixed_rail);
+            assert!(s.scroll > 0);
+            assert_eq!(s.scroll, s.scroll_limit());
+            assert!(s.background.footer_card.get().is_some());
+            assert_eq!(
+                GetWindowLongW(s.widgets["draft"].hwnd, GWL_STYLE) as u32 & WS_BORDER,
+                0
+            );
+            assert_eq!(text(s.widgets["send"].hwnd), "Send");
+            assert_eq!(s.widgets["send"].surface.icon.get(), Some(Icon::Send));
+            let draft = s.widgets["draft"].hwnd;
+            let first = s.widgets["first"].hwnd;
+            SendMessageW(draft, EM_SETSEL, 3, 7);
+            SendMessageW(first, EM_SETSEL, 5, 12);
+            let composer_y = s.widgets["draft"].placed.unwrap().1;
+            assert_eq!(s.widgets["attach"].rect.0, s.widgets["draft"].rect.0);
+            assert_eq!(
+                s.widgets["send"].rect.0 + s.widgets["send"].rect.2,
+                s.widgets["draft"].rect.0 + s.widgets["draft"].rect.2
+            );
+            let rail_y = s.widgets["rail"].placed.unwrap().1;
+            assert!(s.widgets["out"].rect.0 > s.widgets["first"].rect.0);
+            assert!(s.widgets["first"].caption != 0);
+            assert_eq!(text(s.widgets["first"].caption), "Assistant");
+            let native_lines = SendMessageW(first, EM_GETLINECOUNT, 0, 0);
+            assert!(native_lines > 10);
+            assert!(
+                s.widgets["first"].rect.3
+                    >= native_lines as i32 * s.font_height(&s.widgets["first"])
+            );
+            s.scroll = 0;
+            s.layout();
+            assert_eq!(s.widgets["draft"].placed.unwrap().1, composer_y);
+            assert_eq!(s.widgets["rail"].placed.unwrap().1, rail_y);
+            let (.., clip_bottom, _) = s.widgets["first"].clip.unwrap();
+            let (_, py, _, _, caption) = s.widgets["first"].placed.unwrap();
+            assert!(py + caption + clip_bottom <= s.viewport_height);
+            frame["controls"].as_array_mut().unwrap().insert(3,json!({"id":"new","kind":"detail","role":"incoming","label":"Assistant","value":"A new message arriving below the reader."}));
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(
+                s.scroll, 0,
+                "Appending must not pull a history reader to the tail"
+            );
+            s.scroll = s.scroll_limit();
+            s.layout();
+            let old_limit = s.scroll_limit();
+            frame["controls"].as_array_mut().unwrap().insert(4,json!({"id":"next","kind":"detail","role":"incoming","label":"Assistant","value":"Another message."}));
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert!(s.scroll_limit() > old_limit);
+            assert_eq!(s.scroll, s.scroll_limit());
+            s.scroll = 0;
+            s.layout();
+            frame["conversation"] = json!("two");
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.scroll, s.scroll_limit());
+            frame["conversation"] = json!("history");
+            frame["follow_tail"] = json!(false);
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.scroll, 0);
+            // A bounded message window may drop the first visible item. Keep
+            // the next surviving visible item's viewport position when feasible.
+            for i in 0..20 {
+                frame["controls"].as_array_mut().unwrap().insert(3+i,json!({"id":format!("anchor-{i}"),"kind":"detail","role":"incoming","label":"Assistant","value":"A short message in a bounded history window."}));
+            }
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            s.scroll = s.widgets["anchor-3"].rect.1 + s.scale(8);
+            s.layout();
+            let anchor_y = s.widgets["anchor-4"].rect.1 - s.scroll;
+            frame["controls"]
+                .as_array_mut()
+                .unwrap()
+                .retain(|c| c["id"] != "anchor-3");
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.widgets["anchor-4"].rect.1 - s.scroll, anchor_y);
+            let old_height = s.widgets["first"].rect.3;
+            let before_resize = s.widgets["anchor-4"].rect.1 - s.scroll;
+            MoveWindow(s.hwnd, 0, 0, s.scale(700), s.scale(650), 0);
+            assert!(s.composer_fixed);
+            assert!(s.widgets["first"].rect.3 > old_height);
+            assert_eq!(s.widgets["anchor-4"].rect.1 - s.scroll, before_resize);
+            assert_eq!(text(first), prose);
+            let mut lo = 0u32;
+            let mut hi = 0u32;
+            SendMessageW(
+                draft,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (3, 7));
+            SendMessageW(
+                first,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (5, 12));
+            dark::MESSAGES.with(|m| m.set([0; 4]));
+            SendMessageW(s.hwnd, WM_PAINT, 0, 0);
+            SendMessageW(first, WM_PAINT, 0, 0);
+            let messages = dark::MESSAGES.with(Cell::get);
+            assert!(messages[0] >= 2);
+            assert_eq!(messages[3], 0);
+            MoveWindow(s.hwnd, 0, 0, s.scale(370), s.scale(280), 0);
+            assert!(!s.composer_fixed);
+            assert_ne!(GetWindowLongW(draft, GWL_STYLE) as u32 & WS_BORDER, 0);
+            assert!(s.background.footer_rect.get().is_none());
+            s.reveal(draft);
+            assert!(s.scroll > 0);
+            assert_eq!(s.widgets["draft"].hwnd, draft);
+            SendMessageW(
+                draft,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (3, 7));
+            assert_eq!(IsWindowVisible(s.hwnd), 0);
+            destroy(s);
+        }
+    }
+    #[test]
+    fn hidden_scroll_message_probe() {
+        unsafe {
+            let (tx, _rx) = std::sync::mpsc::channel();
+            let mut s = window(
+                "hidden scroll probe",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            let mut controls = vec![
+                json!({"id":"rail","kind":"button","role":"nav","side":true,"label":"Navigation"}),
+            ];
+            controls.extend((0..8).map(|i|json!({"id":format!("body-{i}"),"kind":"detail","role":"body","value":format!("Message {i}: editable selection remains native."),"lines":5})));
+            s.apply(parse(json!({"theme":"dark","controls":controls})).unwrap())
+                .unwrap();
+            s.scroll = s.scale(200);
+            s.layout();
+            let before = s.scroll;
+            let child = s.widgets["body-1"].hwnd;
+            let wheel = (120u32 << 16) as usize;
+            dark::MESSAGES.with(|m| m.set([0; 4]));
+            SendMessageW(child, WM_MOUSEWHEEL, wheel, 0);
+            let child_scroll = s.scroll;
+            s.scroll = before;
+            SendMessageW(s.hwnd, WM_MOUSEWHEEL, wheel, 0);
+            let parent_scroll = s.scroll;
+            s.scroll = s.scale(180);
+            s.layout();
+            let messages = dark::MESSAGES.with(Cell::get);
+            eprintln!(
+                "scroll_probe baseline={} child_wheel={} parent_wheel={} paint_messages={} erase_messages={} nonclient_messages={} paint_during_layout={}",
+                before,
+                child_scroll,
+                parent_scroll,
+                messages[0],
+                messages[1],
+                messages[2],
+                messages[3]
+            );
+            assert_eq!(IsWindowVisible(s.hwnd), 0);
+            assert!(parent_scroll < before);
+            assert_eq!(
+                child_scroll, parent_scroll,
+                "Passive native bodies must route their wheel to the same outer viewport"
+            );
+            destroy(s);
+        }
+    }
     #[test]
     fn hidden_legacy_side_columns_and_compact_dark_navigation_remain_reachable() {
         unsafe {

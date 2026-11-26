@@ -3,8 +3,8 @@
   "optional_native_windows_host": {
     "crate": "crates/fluxr-win32",
     "contract": "docs/native-windows-ui.md",
-    "status": "implemented bounded host slice with opt-in dark presentation, typography roles, adaptive welcome/workspace layout and high-contrast fallback",
-    "validation": "Typed frame contract and explicitly hidden non-image native lifecycle tests: content, UTF16 caret and one-shot selection, coalescing with original request acknowledgments, serial/ack protection, handle reuse, dark welcome/workspace transitions, bounded centering and compact rows, retained system side columns, fixed short rail and scrolling, high-contrast policy, selection and destruction. No desktop automation, screenshot/image test, screen-reader, visual or broad platform qualification.",
+    "status": "implemented bounded host slice with opt-in dark presentation, typography/icons, adaptive welcome/workspace/conversation layout, a pinned composer, conditional tail following and high-contrast fallback",
+    "validation": "Typed frame contract and explicitly hidden non-image native lifecycle/paint-message tests: content, UTF16 selection, original-ack coalescing, stale edits, handle/selection retention, welcome/workspace/conversation transitions, bounded compact layout, fixed short rail and composer, native wrapping, viewport clipping, surviving visible history anchors, tail policy, native wheel routing, resize delivery, modifier/IME send policy, high contrast and destruction. CDB source-bound scroll probes identify individual repainting baseline moves versus deferred final subtree invalidation. No desktop automation, screenshot/image test, screen-reader, visual or broad platform qualification.",
     "qualification_completion": false
   },
   "source_language": {

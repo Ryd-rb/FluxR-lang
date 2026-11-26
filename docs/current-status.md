@@ -24,6 +24,12 @@ a fixed rail when its contents fit. System painting and side columns remain
 available; high contrast overrides dark painting. Hidden geometry, state and
 theme-transition contracts are covered without images or desktop automation.
 Visual, assistive-technology and Windows-version qualification remains open.
+The conversation layout adds a bottom composer, retained transcript anchors,
+conditional tail following, native auto-wrapped incoming/outgoing text and
+IME-aware Enter submission. Deferred child movement, final subtree invalidation,
+native viewport clipping and wheel forwarding address source-bound scrolling
+mechanisms verified with a hidden probe and CDB. Semantic line icons and one
+rounded composer surface remain opt-in; no live visual acceptance is implied.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

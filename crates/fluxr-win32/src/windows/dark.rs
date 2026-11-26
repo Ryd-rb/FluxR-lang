@@ -3,6 +3,8 @@
 use super::*;
 use std::{rc::Rc, sync::OnceLock};
 use windows_sys::Win32::{Graphics::Dwm::DwmSetWindowAttribute, UI::Accessibility::*};
+#[cfg(test)]
+thread_local! {pub(super) static MESSAGES:Cell<[u64;4]>=const{Cell::new([0;4])};}
 
 const fn rgb(r: u32, g: u32, b: u32) -> u32 {
     r | (g << 8) | (b << 16)
@@ -87,6 +89,13 @@ pub(super) struct Surface {
     pub(super) expanded: Cell<Option<bool>>,
     pub(super) panel: Cell<bool>,
     pub(super) panel_rect: Cell<Option<(i32, i32, i32, i32)>>,
+    pub(super) footer_rect: Cell<Option<(i32, i32, i32, i32)>>,
+    pub(super) footer_card: Cell<Option<(i32, i32, i32, i32)>>,
+    pub(super) composer_focus: Cell<bool>,
+    pub(super) icon: Cell<Option<Icon>>,
+    composer: Cell<bool>,
+    pub(super) ime: Cell<bool>,
+    overflow: Cell<bool>,
 }
 impl Surface {
     pub(super) fn attach(hwnd: HWND, kind: Option<Kind>, palette: Rc<Palette>) -> Box<Self> {
@@ -104,6 +113,13 @@ impl Surface {
                 expanded: Cell::new(None),
                 panel: Cell::new(false),
                 panel_rect: Cell::new(None),
+                footer_rect: Cell::new(None),
+                footer_card: Cell::new(None),
+                composer_focus: Cell::new(false),
+                icon: Cell::new(None),
+                composer: Cell::new(false),
+                ime: Cell::new(false),
+                overflow: Cell::new(false),
             });
             let ptr = &*surface as *const Self as usize;
             SetPropW(hwnd, key(), ptr as isize);
@@ -129,9 +145,11 @@ impl Surface {
                 );
                 if matches!(self.kind, Some(Kind::Detail)) {
                     let old = GetWindowLongW(self.hwnd, GWL_STYLE) as u32;
-                    let body = active && role == Role::Body;
+                    let body =
+                        active && matches!(role, Role::Body | Role::Incoming | Role::Outgoing);
                     let style = if body {
                         old & !(WS_BORDER | WS_VSCROLL)
+                            | if self.overflow.get() { WS_VSCROLL } else { 0 }
                     } else {
                         old | WS_BORDER | WS_VSCROLL
                     };
@@ -156,7 +174,7 @@ impl Surface {
                     self.kind,
                     Some(Kind::Input | Kind::Multiline | Kind::Detail)
                 ) {
-                    let margin = if active && role != Role::Body {
+                    let margin = if active && !matches!(role, Role::Body | Role::Incoming) {
                         self.scale(10)
                     } else {
                         0
@@ -189,7 +207,89 @@ impl Surface {
                     );
                     SendMessageW(self.hwnd, CB_SETITEMHEIGHT, 0, self.scale(26) as isize);
                 }
+                self.format_chat();
+                self.composer_style();
             }
+        }
+    }
+    pub(super) fn set_composer(&self, value: bool) {
+        if self.composer.replace(value) != value {
+            unsafe {
+                self.composer_style();
+                InvalidateRect(self.hwnd, null(), 1);
+            }
+        }
+    }
+    unsafe fn composer_style(&self) {
+        if matches!(self.kind, Some(Kind::Input | Kind::Multiline)) {
+            let old = GetWindowLongW(self.hwnd, GWL_STYLE) as u32;
+            let style = if self.active.get() && self.composer.get() {
+                old & !WS_BORDER
+            } else {
+                old | WS_BORDER
+            };
+            if old != style {
+                SetWindowLongW(self.hwnd, GWL_STYLE, style as i32);
+                SetWindowPos(
+                    self.hwnd,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE
+                        | SWP_NOSIZE
+                        | SWP_NOZORDER
+                        | SWP_NOACTIVATE
+                        | SWP_NOREDRAW
+                        | SWP_FRAMECHANGED,
+                );
+            }
+        }
+    }
+    pub(super) fn set_overflow(&self, overflow: bool) {
+        unsafe {
+            if self.overflow.replace(overflow) != overflow {
+                let old = GetWindowLongW(self.hwnd, GWL_STYLE) as u32;
+                let style = if overflow {
+                    old | WS_VSCROLL
+                } else {
+                    old & !WS_VSCROLL
+                };
+                SetWindowLongW(self.hwnd, GWL_STYLE, style as i32);
+                SetWindowPos(
+                    self.hwnd,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE
+                        | SWP_NOSIZE
+                        | SWP_NOZORDER
+                        | SWP_NOACTIVATE
+                        | SWP_NOREDRAW
+                        | SWP_FRAMECHANGED,
+                );
+            }
+        }
+    }
+    unsafe fn format_chat(&self) {
+        if self.kind == Some(Kind::Detail)
+            && matches!(self.role.get(), Role::Incoming | Role::Outgoing)
+        {
+            let mut rect: RECT = std::mem::zeroed();
+            GetClientRect(self.hwnd, &mut rect);
+            let pad = self.scale(if self.role.get() == Role::Outgoing {
+                12
+            } else {
+                2
+            });
+            rect.left += pad;
+            rect.top += pad;
+            rect.right = (rect.right - pad).max(rect.left + 1);
+            rect.bottom = (rect.bottom - pad).max(rect.top + 1);
+            SendMessageW(self.hwnd, EM_SETRECTNP, 0, &rect as *const _ as isize);
         }
     }
     fn scale(&self, n: i32) -> i32 {
@@ -205,10 +305,14 @@ impl Surface {
         }
     }
     fn brush(&self) -> HBRUSH {
+        if self.composer.get() {
+            return self.palette.panel;
+        }
         if matches!(
             self.kind,
             Some(Kind::Input | Kind::Multiline | Kind::Select | Kind::List | Kind::Multi)
-        ) || self.kind == Some(Kind::Detail) && self.role.get() != Role::Body
+        ) || self.kind == Some(Kind::Detail)
+            && !matches!(self.role.get(), Role::Body | Role::Incoming)
         {
             self.palette.field
         } else if self.side.get() {
@@ -249,6 +353,33 @@ impl Surface {
             let oldpen = SelectObject(dc, pen);
             let oldbrush = SelectObject(dc, self.palette.panel);
             let radius = self.scale(16);
+            RoundRect(dc, left, top, right, bottom, radius, radius);
+            SelectObject(dc, oldbrush);
+            SelectObject(dc, oldpen);
+            DeleteObject(pen);
+        }
+        if let Some((left, top, right, bottom)) = self.footer_rect.get() {
+            let rect = RECT {
+                left,
+                top,
+                right,
+                bottom,
+            };
+            FillRect(dc, &rect, self.palette.client);
+        }
+        if let Some((left, top, right, bottom)) = self.footer_card.get() {
+            let pen = CreatePen(
+                PS_SOLID,
+                self.scale(1).max(1),
+                if self.composer_focus.get() {
+                    ACCENT
+                } else {
+                    BORDER
+                },
+            );
+            let oldpen = SelectObject(dc, pen);
+            let oldbrush = SelectObject(dc, self.palette.panel);
+            let radius = self.scale(20);
             RoundRect(dc, left, top, right, bottom, radius, radius);
             SelectObject(dc, oldbrush);
             SelectObject(dc, oldpen);
@@ -458,6 +589,23 @@ impl Surface {
                 DeleteObject(pen);
                 content.left += self.scale(18);
             }
+            if let Some(icon) = self.icon.get() {
+                draw_icon(
+                    dc,
+                    icon,
+                    content.left,
+                    (r.top + r.bottom - self.scale(16)) / 2,
+                    self.scale(16),
+                    if disabled {
+                        DISABLED
+                    } else if role == Role::Selected {
+                        ACCENT
+                    } else {
+                        TEXT
+                    },
+                );
+                content.left += self.scale(24);
+            }
             draw_text(
                 dc,
                 &text(self.hwnd).replace("&&", "&"),
@@ -511,6 +659,101 @@ impl Surface {
         SelectObject(dc, old);
     }
 }
+unsafe fn draw_icon(dc: HDC, icon: Icon, x: i32, y: i32, size: i32, color: u32) {
+    let pen = CreatePen(PS_SOLID, ((size + 8) / 16).max(1), color);
+    let oldpen = SelectObject(dc, pen);
+    let oldbrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+    let px = |n: i32| x + (n * size + 8) / 16;
+    let py = |n: i32| y + (n * size + 8) / 16;
+    let path = |nodes: &[(i32, i32)]| {
+        let points: Vec<POINT> = nodes
+            .iter()
+            .map(|(a, b)| POINT {
+                x: px(*a),
+                y: py(*b),
+            })
+            .collect();
+        Polyline(dc, points.as_ptr(), points.len() as i32);
+    };
+    match icon {
+        Icon::Chat => {
+            RoundRect(dc, px(1), py(2), px(15), py(12), size / 4, size / 4);
+            path(&[(4, 12), (4, 15), (8, 12)]);
+        }
+        Icon::Activity => path(&[(0, 9), (3, 9), (5, 3), (8, 14), (11, 6), (13, 9), (16, 9)]),
+        Icon::Graph => {
+            path(&[(4, 4), (12, 5), (8, 12), (4, 4)]);
+            for (a, b) in [(4, 4), (12, 5), (8, 12)] {
+                Ellipse(dc, px(a - 2), py(b - 2), px(a + 2), py(b + 2));
+            }
+        }
+        Icon::Models => {
+            path(&[(1, 5), (8, 1), (15, 5), (8, 9), (1, 5)]);
+            path(&[(1, 8), (8, 12), (15, 8)]);
+            path(&[(1, 11), (8, 15), (15, 11)]);
+        }
+        Icon::Dictionary => {
+            path(&[
+                (8, 4),
+                (5, 2),
+                (1, 2),
+                (1, 13),
+                (5, 13),
+                (8, 15),
+                (11, 13),
+                (15, 13),
+                (15, 2),
+                (11, 2),
+                (8, 4),
+                (8, 15),
+            ]);
+        }
+        Icon::Tools => {
+            path(&[
+                (10, 1),
+                (9, 5),
+                (12, 8),
+                (16, 7),
+                (13, 10),
+                (10, 10),
+                (4, 16),
+                (1, 13),
+                (7, 7),
+                (7, 4),
+                (10, 1),
+            ]);
+        }
+        Icon::Folder => path(&[(1, 14), (1, 3), (6, 3), (8, 5), (15, 5), (15, 14), (1, 14)]),
+        Icon::Add => {
+            path(&[(8, 2), (8, 14)]);
+            path(&[(2, 8), (14, 8)]);
+        }
+        Icon::Attachment => path(&[
+            (5, 12),
+            (3, 10),
+            (3, 5),
+            (6, 2),
+            (9, 2),
+            (12, 5),
+            (12, 11),
+            (9, 14),
+            (6, 14),
+            (5, 13),
+            (5, 6),
+            (7, 4),
+            (9, 6),
+            (9, 10),
+            (7, 12),
+        ]),
+        Icon::Send => {
+            path(&[(1, 2), (15, 8), (1, 14), (4, 8), (1, 2)]);
+            path(&[(4, 8), (15, 8)]);
+        }
+    }
+    SelectObject(dc, oldbrush);
+    SelectObject(dc, oldpen);
+    DeleteObject(pen);
+}
 impl Drop for Surface {
     fn drop(&mut self) {
         unsafe {
@@ -553,11 +796,67 @@ unsafe extern "system" fn subclass(
     _id: usize,
     data: usize,
 ) -> isize {
+    #[cfg(test)]
+    MESSAGES.with(|m| {
+        let mut n = m.get();
+        if msg == WM_PAINT {
+            n[0] += 1;
+            if UPDATING.with(Cell::get) {
+                n[3] += 1;
+            }
+        } else if msg == WM_ERASEBKGND {
+            n[1] += 1;
+        } else if msg == WM_NCPAINT {
+            n[2] += 1;
+        }
+        m.set(n);
+    });
     let s = &*(data as *const Surface);
+    if matches!(msg, WM_SETFOCUS | WM_KILLFOCUS)
+        && s.composer.get()
+        && let Some(parent) = surface(GetParent(hwnd))
+    {
+        parent
+            .composer_focus
+            .set(msg == WM_SETFOCUS || surface(wp as HWND).is_some_and(|next| next.composer.get()));
+        InvalidateRect(parent.hwnd, null(), 0);
+    }
+    if msg == WM_IME_STARTCOMPOSITION {
+        s.ime.set(true);
+    } else if msg == WM_IME_ENDCOMPOSITION {
+        s.ime.set(false);
+    }
     if msg == WM_NCDESTROY {
         RemovePropW(hwnd, key());
         RemoveWindowSubclass(hwnd, Some(subclass), 1);
         return DefSubclassProc(hwnd, msg, wp, lp);
+    }
+    if msg == WM_MOUSEWHEEL && s.kind.is_some() && s.kind != Some(Kind::Select) {
+        let delta = ((wp >> 16) as u16 as i16) as i32;
+        let mut info: SCROLLINFO = std::mem::zeroed();
+        info.cbSize = std::mem::size_of::<SCROLLINFO>() as u32;
+        info.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
+        let can_scroll = GetScrollInfo(hwnd, SB_VERT, &mut info) != 0
+            && if delta > 0 {
+                info.nPos > info.nMin
+            } else {
+                info.nPos < (info.nMax - info.nPage.saturating_sub(1) as i32).max(info.nMin)
+            };
+        let transcript = self_kind_body(s) && !s.overflow.get();
+        if transcript || !can_scroll {
+            let parent = GetParent(hwnd);
+            if parent != 0 {
+                return SendMessageW(parent, msg, wp, lp);
+            }
+        }
+    }
+    if matches!(msg, WM_SIZE | WM_SETFONT)
+        && s.kind == Some(Kind::Detail)
+        && matches!(s.role.get(), Role::Incoming | Role::Outgoing)
+    {
+        let result = DefSubclassProc(hwnd, msg, wp, lp);
+        s.format_chat();
+        return result;
     }
     if matches!(
         msg,
@@ -672,6 +971,10 @@ unsafe extern "system" fn subclass(
         }
     }
     DefSubclassProc(hwnd, msg, wp, lp)
+}
+fn self_kind_body(s: &Surface) -> bool {
+    s.kind == Some(Kind::Detail)
+        && matches!(s.role.get(), Role::Body | Role::Incoming | Role::Outgoing)
 }
 pub(super) fn title_bar(hwnd: HWND, active: bool) {
     unsafe {
