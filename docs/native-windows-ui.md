@@ -34,6 +34,10 @@ main content scrolls, and is excluded from transcript scroll extent; a taller si
 remains reachable. Narrow dark workspaces stack content and arrange contiguous
 side navigation buttons into compact wrapping rows. Legacy system frames keep
 their original side-column threshold and system painting.
+Dark rail buttons use 36-pixel hit targets with compact section spacing.
+A `selected` button with `icon:"folder"` represents a selected container using
+quiet accent text; other selected navigation keeps its filled active-view
+treatment and leading indicator. Labels and native activation remain intact.
 
 `layout:"welcome"` creates a centered form bounded to 560 logical pixels.
 At regular dark widths, a subtle panel encloses it with 32-pixel internal room;
@@ -124,9 +128,12 @@ Use stable control IDs and change the conversation identity at page boundaries.
 `kind:"detail"` with `role:"incoming"` or `role:"outgoing"` uses the actual
 native edit line count at its assigned width to size selectable, wrapped text.
 `lines` is ignored for these roles. A nonempty `label` appears exactly once as
-the native caption above the body. Outgoing bodies use at most four fifths of
-the column (capped at 720 logical pixels) unless `width` explicitly overrides
-it. Extremely long individual bodies are bounded to the smaller of 12,000
+the native caption above the body unless `caption:false` is supplied.
+Incoming prose is an unthemed borderless native read-only edit in dark mode,
+including its nonclient paint path. Outgoing bubbles size to their unwrapped
+text plus padding, at most three quarters of the column (capped at 640 logical
+pixels), and align to the right unless `width` explicitly overrides sizing.
+Extremely long individual bodies are bounded to the smaller of 12,000
 logical/20,000 physical pixels and retain native internal scrolling. Text is
 never shortened by this sizing policy.
 
@@ -137,6 +144,17 @@ send, and native IME composition notifications plus the current IMM composition
 buffer prevent Return from submitting while text is being composed. Without
 `composer`, multiline Enter retains its previous behavior. Actual IME and
 assistive-technology qualification remains separate from the bounded contracts.
+
+An optional single `kind:"heading",area:"header"` control pins the conversation
+identity above the transcript. `role:"title"` uses compact 20-pixel typography,
+a 52-pixel header and quiet separator; a long title is single-line ellipsized
+while retaining its full native label. Header and composer remain outside the
+clipped transcript. At very short heights the header returns to ordinary flow.
+The composer uses compact inner padding and action rows; `lines:2` is a useful
+starting point. Its borderless inner multiline edit shows an internal scrollbar
+only when actual native text overflows. If there is too little room to pin the
+composer, it returns to the scrollable flow with ordinary native field outlines
+and keyboard reveal, preserving HWNDs, focus, text and selection.
 
 ```json
 {"theme":"dark","layout":"conversation","conversation":"project/newest",
@@ -204,7 +222,14 @@ control's font/line height (default 1, range 0.5..3).
 
 Input, multiline, detail and selection controls draw their nonempty `label`
 above the native field as an adjacent static label. Do not emit duplicate label
-controls. Native standard controls expose their standard accessibility and IME
+controls. `caption:false` hides this visible caption without removing the
+native edit/selection control's accessible name: MSAA dynamic annotations use
+the full `label` (and are cleared at destruction). If annotation fails, the
+visible native caption is retained. Toggling caption visibility keeps HWNDs.
+`placeholder:"Write a message…"` adds an empty-value hint to `input`/`multiline`.
+The hint never becomes text, selection, a value or a change event, and yields
+to native text and IME composition. It uses system text treatment in high
+contrast/system mode. Native standard controls expose their accessibility and IME
 behavior. No screen-reader or visual qualification is claimed.
 Labels are literal: static captions disable prefix processing and button/check
 labels escape Win32 accelerator ampersands. Empty choice arrays are accepted.

@@ -1,7 +1,7 @@
 //! Optional painting around standard Win32 controls. Native classes retain all
 //! input, IME, selection, scrolling, check-state and accessibility behavior.
 use super::*;
-use std::{rc::Rc, sync::OnceLock};
+use std::{cell::RefCell, rc::Rc, sync::OnceLock};
 use windows_sys::Win32::{Graphics::Dwm::DwmSetWindowAttribute, UI::Accessibility::*};
 #[cfg(test)]
 thread_local! {pub(super) static MESSAGES:Cell<[u64;4]>=const{Cell::new([0;4])};}
@@ -95,6 +95,8 @@ pub(super) struct Surface {
     pub(super) footer_rect: Cell<Option<(i32, i32, i32, i32)>>,
     pub(super) footer_card: Cell<Option<(i32, i32, i32, i32)>>,
     pub(super) composer_focus: Cell<bool>,
+    pub(super) header_rect: Cell<Option<(i32, i32, i32, i32)>>,
+    placeholder: RefCell<String>,
     pub(super) icon: Cell<Option<Icon>>,
     composer: Cell<bool>,
     pub(super) ime: Cell<bool>,
@@ -120,6 +122,8 @@ impl Surface {
                 footer_rect: Cell::new(None),
                 footer_card: Cell::new(None),
                 composer_focus: Cell::new(false),
+                header_rect: Cell::new(None),
+                placeholder: RefCell::new(String::new()),
                 icon: Cell::new(None),
                 composer: Cell::new(false),
                 ime: Cell::new(false),
@@ -143,7 +147,11 @@ impl Surface {
             if changed {
                 // The single-line edit reserves custom nonclient padding; do
                 // not let a themed inner edge paint a second, partial frame.
-                let plain_edit = active && self.kind == Some(Kind::Input);
+                let plain_edit = active
+                    && matches!(
+                        self.kind,
+                        Some(Kind::Input | Kind::Multiline | Kind::Detail)
+                    );
                 let theme_name = wide(if plain_edit { "" } else { "DarkMode_Explorer" });
                 let no_parts = wide("");
                 SetWindowTheme(
@@ -228,6 +236,7 @@ impl Surface {
         if self.composer.replace(value) != value {
             unsafe {
                 self.composer_style();
+                self.format_chat();
                 InvalidateRect(self.hwnd, null(), 1);
             }
         }
@@ -236,9 +245,14 @@ impl Surface {
         if matches!(self.kind, Some(Kind::Input | Kind::Multiline)) {
             let old = GetWindowLongW(self.hwnd, GWL_STYLE) as u32;
             let style = if self.active.get() && self.composer.get() {
-                old & !WS_BORDER
+                old & !(WS_BORDER | WS_VSCROLL)
             } else {
                 old | WS_BORDER
+                    | if self.kind == Some(Kind::Multiline) {
+                        WS_VSCROLL
+                    } else {
+                        0
+                    }
             };
             if old != style {
                 SetWindowLongW(self.hwnd, GWL_STYLE, style as i32);
@@ -289,10 +303,13 @@ impl Surface {
     unsafe fn format_chat(&self) {
         if self.kind == Some(Kind::Detail)
             && matches!(self.role.get(), Role::Incoming | Role::Outgoing)
+            || self.active.get() && self.composer.get() && self.kind == Some(Kind::Multiline)
         {
             let mut rect: RECT = std::mem::zeroed();
             GetClientRect(self.hwnd, &mut rect);
-            let pad = self.scale(if self.role.get() == Role::Outgoing {
+            let pad = self.scale(if self.composer.get() {
+                6
+            } else if self.role.get() == Role::Outgoing {
                 12
             } else {
                 2
@@ -302,6 +319,69 @@ impl Surface {
             rect.right = (rect.right - pad).max(rect.left + 1);
             rect.bottom = (rect.bottom - pad).max(rect.top + 1);
             SendMessageW(self.hwnd, EM_SETRECTNP, 0, &rect as *const _ as isize);
+        }
+    }
+    pub(super) fn set_placeholder(&self, value: &str) {
+        if self.placeholder.borrow().as_str() != value {
+            self.placeholder.replace(value.to_owned());
+            unsafe {
+                InvalidateRect(self.hwnd, null(), 0);
+            }
+        }
+    }
+    pub(super) fn show_placeholder(&self) -> bool {
+        matches!(self.kind, Some(Kind::Input | Kind::Multiline))
+            && !self.placeholder.borrow().is_empty()
+            && !self.ime.get()
+            && unsafe { GetWindowTextLengthW(self.hwnd) == 0 }
+    }
+    unsafe fn placeholder(&self, dc: HDC) {
+        let mut rect: RECT = std::mem::zeroed();
+        if self.kind == Some(Kind::Multiline) {
+            SendMessageW(self.hwnd, EM_GETRECT, 0, &mut rect as *mut _ as isize);
+        } else {
+            GetClientRect(self.hwnd, &mut rect);
+            let margins = SendMessageW(self.hwnd, EM_GETMARGINS, 0, 0) as u32;
+            rect.left += (margins & 0xffff) as i32;
+            rect.right -= (margins >> 16) as i32;
+        }
+        let old = SelectObject(dc, SendMessageW(self.hwnd, WM_GETFONT, 0, 0));
+        SetBkMode(dc, TRANSPARENT as i32);
+        SetTextColor(
+            dc,
+            if self.active.get() {
+                MUTED
+            } else {
+                GetSysColor(COLOR_GRAYTEXT)
+            },
+        );
+        draw_text(
+            dc,
+            &self.placeholder.borrow(),
+            &mut rect,
+            DT_LEFT | DT_WORDBREAK | DT_NOPREFIX,
+        );
+        SelectObject(dc, old);
+    }
+    pub(super) unsafe fn composer_overflow(&self) {
+        if !self.active.get() || !self.composer.get() || self.kind != Some(Kind::Multiline) {
+            return;
+        }
+        let mut rect: RECT = std::mem::zeroed();
+        SendMessageW(self.hwnd, EM_GETRECT, 0, &mut rect as *mut _ as isize);
+        let dc = GetDC(self.hwnd);
+        let old = SelectObject(dc, SendMessageW(self.hwnd, WM_GETFONT, 0, 0));
+        let mut metrics: TEXTMETRICW = std::mem::zeroed();
+        GetTextMetricsW(dc, &mut metrics);
+        SelectObject(dc, old);
+        ReleaseDC(self.hwnd, dc);
+        let height = metrics.tmHeight.max(1);
+        let overflow =
+            SendMessageW(self.hwnd, EM_GETLINECOUNT, 0, 0) as i32 * height > rect.bottom - rect.top;
+        let visible = GetWindowLongW(self.hwnd, GWL_STYLE) as u32 & WS_VSCROLL != 0;
+        if overflow != visible {
+            ShowScrollBar(self.hwnd, SB_VERT, i32::from(overflow));
+            self.format_chat();
         }
     }
     fn scale(&self, n: i32) -> i32 {
@@ -382,6 +462,20 @@ impl Surface {
                 bottom,
             };
             FillRect(dc, &rect, self.palette.client);
+        }
+        if let Some((left, top, right, bottom)) = self.header_rect.get() {
+            let rect = RECT {
+                left,
+                top,
+                right,
+                bottom,
+            };
+            FillRect(dc, &rect, self.palette.client);
+            let separator = RECT {
+                top: bottom - 1,
+                ..rect
+            };
+            fill(dc, &separator, BORDER);
         }
         if let Some((left, top, right, bottom)) = self.footer_card.get() {
             let pen = CreatePen(
@@ -528,6 +622,8 @@ impl Surface {
             }
         } else if self.kind == Some(Kind::Button) {
             let role = self.role.get();
+            let selected_container =
+                role == Role::Selected && self.icon.get() == Some(Icon::Folder);
             let pressed = SendMessageW(self.hwnd, BM_GETSTATE, 0, 0) & BST_PUSHED as isize != 0;
             let bg = if disabled {
                 FIELD
@@ -535,6 +631,12 @@ impl Surface {
                 SELECTED
             } else if role == Role::Primary {
                 PRIMARY
+            } else if selected_container {
+                if self.hover.get() {
+                    HOVER
+                } else {
+                    self.background()
+                }
             } else if role == Role::Selected {
                 SELECTED
             } else if self.hover.get() {
@@ -565,7 +667,7 @@ impl Surface {
             SelectObject(dc, oldpen);
             DeleteObject(brush);
             DeleteObject(pen);
-            if role == Role::Selected {
+            if role == Role::Selected && !selected_container {
                 let indicator = RECT {
                     left: r.left,
                     top: r.top + self.scale(10),
@@ -843,8 +945,14 @@ unsafe extern "system" fn subclass(
     }
     if msg == WM_IME_STARTCOMPOSITION {
         s.ime.set(true);
+        if !s.placeholder.borrow().is_empty() {
+            InvalidateRect(hwnd, null(), 0);
+        }
     } else if msg == WM_IME_ENDCOMPOSITION {
         s.ime.set(false);
+        if !s.placeholder.borrow().is_empty() {
+            InvalidateRect(hwnd, null(), 0);
+        }
     }
     if msg == WM_NCDESTROY {
         RemovePropW(hwnd, key());
@@ -871,11 +979,21 @@ unsafe extern "system" fn subclass(
         }
     }
     if matches!(msg, WM_SIZE | WM_SETFONT)
-        && s.kind == Some(Kind::Detail)
-        && matches!(s.role.get(), Role::Incoming | Role::Outgoing)
+        && (s.kind == Some(Kind::Detail) && matches!(s.role.get(), Role::Incoming | Role::Outgoing)
+            || s.composer.get() && s.kind == Some(Kind::Multiline))
     {
         let result = DefSubclassProc(hwnd, msg, wp, lp);
         s.format_chat();
+        s.composer_overflow();
+        return result;
+    }
+    if msg == WM_PAINT && s.show_placeholder() {
+        let result = DefSubclassProc(hwnd, msg, wp, lp);
+        let dc = GetDC(hwnd);
+        HideCaret(hwnd);
+        s.placeholder(dc);
+        ShowCaret(hwnd);
+        ReleaseDC(hwnd, dc);
         return result;
     }
     if matches!(
@@ -975,6 +1093,11 @@ unsafe extern "system" fn subclass(
                 Some(Kind::Input | Kind::Multiline | Kind::Detail | Kind::List | Kind::Multi)
             )
         {
+            if self_kind_body(s) && !s.overflow.get() {
+                // A borderless prose control has no nonclient decoration.
+                // Avoid native theme fallback drawing an input-like edge.
+                return 0;
+            }
             let result = DefSubclassProc(hwnd, msg, wp, lp);
             if s.kind == Some(Kind::Input)
                 || GetWindowLongW(hwnd, GWL_STYLE) as u32 & WS_BORDER != 0

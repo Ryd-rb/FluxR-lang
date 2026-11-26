@@ -38,6 +38,13 @@ time-based endpoints with precision/reduced-motion bypass. Hidden native tests
 cover large logical content, nested command/color/Tab/drop routing and retained
 focus/selection. CDB confirms the bounded scroll path; no live visual or display
 cadence qualification is claimed.
+The conversation component slice adds borderless selectable assistant prose,
+content-sized right-aligned outgoing bubbles, a compact overflow-aware native
+composer, empty-value hints and an optional fixed conversation heading. Hidden
+contracts query the actual MSAA name with a hidden caption, retain selections
+and focus through compact fallback, route wheels over prose and reject disabled
+actions. These deterministic state/geometry checks do not establish live visual
+or screen-reader acceptance.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

@@ -67,6 +67,7 @@ enum Layout {
 enum Area {
     Transcript,
     Composer,
+    Header,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -88,6 +89,10 @@ struct Control {
     kind: Kind,
     #[serde(default)]
     label: String,
+    #[serde(default = "yes")]
+    caption: bool,
+    #[serde(default)]
+    placeholder: String,
     #[serde(default)]
     value: Value,
     #[serde(default)]
@@ -168,6 +173,14 @@ fn parse(value: Value) -> Result<Frame> {
     if frame.max_width.is_some_and(|w| !(320..=1600).contains(&w)) {
         bail!("max_width must be between 320 and 1600")
     }
+    let headers: Vec<_> = frame
+        .controls
+        .iter()
+        .filter(|c| c.area == Some(Area::Header))
+        .collect();
+    if headers.len() > 1 || headers.iter().any(|c| c.kind != Kind::Heading) {
+        bail!("header area accepts one heading")
+    }
     let mut ids = std::collections::HashSet::new();
     for c in &frame.controls {
         if c.id.is_empty() || !ids.insert(&c.id) {
@@ -237,6 +250,11 @@ mod tests {
     use serde_json::json;
     #[test]
     fn validates_typed_keyed_contract() {
+        assert!(validate_frame(&json!({"layout":"conversation","controls":[{"id":"header","kind":"heading","area":"header","role":"title","label":"Project"},{"id":"draft","kind":"multiline","caption":false,"placeholder":"Message…"}]})).is_ok());
+        assert!(
+            validate_frame(&json!({"controls":[{"id":"header","kind":"button","area":"header"}]}))
+                .is_err()
+        );
         for icon in [
             "chat",
             "activity",
