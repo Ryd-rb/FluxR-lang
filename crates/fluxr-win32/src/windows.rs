@@ -21,6 +21,7 @@ use windows_sys::Win32::{
 mod access;
 mod dark;
 mod motion;
+mod touch;
 use motion::Motion;
 use windows_sys::Win32::UI::Input::{
     GetCurrentInputMessageSource, IMDT_TOUCHPAD, INPUT_MESSAGE_SOURCE,
@@ -294,6 +295,7 @@ struct State {
     timer_active: bool,
     acknowledged: u64,
     last_keyboard_intent: u64,
+    touch: touch::Pan,
 }
 impl State {
     fn scale(&self, n: i32) -> i32 {
@@ -802,6 +804,7 @@ impl State {
                 None
             };
             if !same_conversation || layout_changed {
+                self.cancel_touch();
                 self.stop_motion();
                 self.follow_intent = true;
                 if f.layout == Some(Layout::Conversation) || layout_changed {
@@ -862,6 +865,9 @@ impl State {
             let reordered = recreated || self.order != order;
             self.widgets = next;
             self.order = order;
+            if self.touch.owner().is_some_and(|owner| IsWindow(owner) == 0) {
+                self.cancel_touch();
+            }
             self.tab_dirty |= reordered || navigation_changed;
             self.scene_dirty |= reordered;
             self.layout();
@@ -2168,6 +2174,76 @@ impl State {
             self.stop_motion();
         }
     }
+    fn touch_effect(&mut self, effect: touch::Effect) -> bool {
+        if !effect.consumed {
+            return false;
+        }
+        unsafe {
+            if effect.begin {
+                self.stop_motion();
+                self.wheel_remainder = 0;
+                self.follow_intent = false;
+            }
+            if effect.delta != 0 {
+                self.scroll_direct(self.scroll.saturating_add(effect.delta));
+            }
+            if effect.end {
+                self.follow_intent = self.scroll == self.scroll_limit();
+            }
+            if effect.release && GetCapture() == self.hwnd {
+                ReleaseCapture();
+            }
+            if effect.capture {
+                SetCapture(self.hwnd);
+            }
+        }
+        true
+    }
+    fn cancel_touch(&mut self) {
+        let _guard = UpdateGuard::enter();
+        let effect = self.touch.cancel();
+        self.touch_effect(effect);
+    }
+    fn touch_packet(&mut self, packet: &touch::Packet) -> bool {
+        let effect = match *packet {
+            touch::Packet::Contact(event) => {
+                let mut point = POINT {
+                    x: event.x,
+                    y: event.y,
+                };
+                unsafe {
+                    ScreenToClient(self.hwnd, &mut point);
+                }
+                let (x, y, w, h) = self.view_rect;
+                let eligible = self.layout_mode == Some(Layout::Conversation)
+                    && point.x >= x
+                    && point.x < x + w
+                    && point.y >= y
+                    && point.y < y + h;
+                self.touch.handle(event, eligible, self.scale(8))
+            }
+            touch::Packet::MouseCaptureLost if self.touch.mouse_active() => self.touch.cancel(),
+            touch::Packet::OwnerDestroyed(hwnd) if self.touch.owner() == Some(hwnd) => {
+                self.touch.cancel()
+            }
+            touch::Packet::Cancel => self.touch.cancel(),
+            touch::Packet::ForgetPointer(id) => self.touch.forget(id),
+            touch::Packet::UnavailablePointer(id) => self.touch.handle(
+                touch::Event {
+                    source: touch::Source::Pointer(id),
+                    phase: touch::Phase::Cancel,
+                    x: 0,
+                    y: 0,
+                    primary: false,
+                    owner: self.hwnd,
+                },
+                false,
+                1,
+            ),
+            _ => return false,
+        };
+        self.touch_effect(effect)
+    }
 }
 
 unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> isize {
@@ -2179,6 +2255,7 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
             | WM_SIZE
             | WM_COMMAND
             | FRAME
+            | touch::MESSAGE
             | WM_VSCROLL
             | WM_MOUSEWHEEL
             | WM_TIMER
@@ -2202,6 +2279,9 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
     let _guard = UpdateGuard::enter();
     let s = &mut *ptr;
     match msg {
+        touch::MESSAGE => {
+            touch::take(hwnd, wp).map_or(0, |packet| isize::from(s.touch_packet(&packet)))
+        }
         WM_CLOSE => {
             PostQuitMessage(0);
             0
@@ -2529,6 +2609,7 @@ fn window(
             timer_active: false,
             acknowledged: 0,
             last_keyboard_intent: 0,
+            touch: touch::Pan::default(),
         });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, &mut *s as *mut State as isize);
         Ok(s)
@@ -2538,6 +2619,7 @@ fn window(
 #[allow(clippy::boxed_local)]
 fn destroy(mut s: Box<State>) {
     unsafe {
+        s.cancel_touch();
         SetWindowLongPtrW(s.hwnd, GWLP_USERDATA, 0);
         KillTimer(s.hwnd, SCROLL_TIMER);
         s.widgets.clear();
@@ -2664,6 +2746,325 @@ pub(super) fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hidden_touch_pan_routes_children_background_and_cancellation_without_edit_selection() {
+        use windows_sys::Win32::UI::Input::Pointer::*;
+        unsafe fn pointer(
+            target: HWND,
+            kind: i32,
+            id: u16,
+            msg: u32,
+            point: POINT,
+            primary: bool,
+            cancelled: bool,
+        ) {
+            let mut info: POINTER_INFO = std::mem::zeroed();
+            info.pointerType = kind;
+            info.pointerId = id as u32;
+            info.ptPixelLocation = point;
+            info.pointerFlags = POINTER_FLAG_INCONTACT
+                | if primary { POINTER_FLAG_PRIMARY } else { 0 }
+                | if cancelled { POINTER_FLAG_CANCELED } else { 0 };
+            touch::POINTER_SAMPLE.with(|sample| sample.set(Some(info)));
+            SendMessageW(target, msg, id as usize, 0);
+            touch::POINTER_SAMPLE.with(|sample| sample.set(None));
+        }
+        unsafe fn mouse(target: HWND, msg: u32, point: POINT) {
+            let mut client = point;
+            ScreenToClient(target, &mut client);
+            let lp = ((client.x as u16 as u32) | ((client.y as u16 as u32) << 16)) as isize;
+            SendMessageW(
+                target,
+                msg,
+                if msg == WM_LBUTTONUP {
+                    0
+                } else {
+                    windows_sys::Win32::System::SystemServices::MK_LBUTTON as usize
+                },
+                lp,
+            );
+        }
+        unsafe fn selection(hwnd: HWND) -> (u32, u32) {
+            let mut a = 0u32;
+            let mut b = 0u32;
+            SendMessageW(
+                hwnd,
+                EM_GETSEL,
+                &mut a as *mut _ as usize,
+                &mut b as *mut _ as isize,
+            );
+            (a, b)
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Hidden touch contract",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(800), 0);
+            let mut frame = json!({"theme":"dark","layout":"conversation","conversation":"touch-page","default":"send","composer":"draft","controls":[
+                {"id":"rail","kind":"button","role":"selected","side":true,"label":"Navigation"},
+                {"id":"title","kind":"heading","area":"header","role":"title","label":"Conversation"},
+                {"id":"answer","kind":"detail","role":"incoming","value":"Selectable café and 🙂 prose remains native. ".repeat(400)},
+                {"id":"outgoing","kind":"detail","role":"outgoing","value":"An outgoing answer"},
+                {"id":"draft","kind":"multiline","area":"composer","caption":false,"label":"Message","lines":2,"value":"Keep this editable draft"},
+                {"id":"send","kind":"button","area":"composer","label":"Send"}
+            ]});
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(IsWindowVisible(s.hwnd), 0);
+            let body = s.widgets["answer"].hwnd;
+            let draft = s.widgets["draft"].hwnd;
+            let outgoing = s.widgets["outgoing"].hwnd;
+            SendMessageW(body, EM_SETSEL, 11, 19);
+            SendMessageW(draft, EM_SETSEL, 2, 6);
+            SetFocus(draft);
+            s.scroll_direct(0);
+            let (left, top, _, _) = s.view_rect;
+            let mut start = POINT {
+                x: left + s.scale(100),
+                y: top + s.scale(160),
+            };
+            ClientToScreen(s.hwnd, &mut start);
+            let moved = POINT {
+                x: start.x,
+                y: start.y - 100,
+            };
+            pointer(body, PT_TOUCH, 17, WM_POINTERDOWN, start, true, false);
+            assert_eq!(s.touch.owner(), Some(body));
+            assert_eq!(GetCapture(), 0); // Implicit pointer capture is not mouse capture.
+            let extra = SetMessageExtraInfo(0xff515780u32 as isize);
+            mouse(body, WM_LBUTTONDOWN, start);
+            mouse(body, WM_MOUSEMOVE, moved);
+            assert_eq!(s.scroll, 0); // Compatibility stream must not duplicate native pointer motion.
+            SetMessageExtraInfo(extra);
+            pointer(body, PT_TOUCH, 17, WM_POINTERUPDATE, moved, true, false);
+            assert_eq!(s.scroll, 100);
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.scroll, 100);
+            let moved = POINT {
+                x: start.x,
+                y: start.y - 140,
+            };
+            pointer(body, PT_TOUCH, 17, WM_POINTERUPDATE, moved, true, false);
+            assert_eq!(s.scroll, 140);
+            pointer(body, PT_TOUCH, 18, WM_POINTERDOWN, start, false, false);
+            pointer(body, PT_TOUCH, 18, WM_POINTERUPDATE, moved, false, false);
+            assert_eq!(s.scroll, 140);
+            pointer(body, PT_TOUCH, 17, WM_POINTERUP, moved, true, false);
+            pointer(body, PT_TOUCH, 18, WM_POINTERUP, moved, false, false);
+            SendMessageW(body, WM_POINTERCAPTURECHANGED, 17, 0);
+            let extra = SetMessageExtraInfo(0xff515780u32 as isize);
+            mouse(body, WM_LBUTTONUP, moved);
+            // An independent promoted-only gesture after a native one still pans.
+            mouse(body, WM_LBUTTONDOWN, start);
+            assert_eq!(GetCapture(), s.hwnd);
+            let finish = POINT {
+                x: start.x,
+                y: start.y - 50,
+            };
+            mouse(s.hwnd, WM_MOUSEMOVE, finish);
+            mouse(s.hwnd, WM_LBUTTONUP, finish);
+            assert_eq!(GetCapture(), 0);
+            assert_eq!(s.scroll, 190);
+            mouse(body, WM_LBUTTONDOWN, start);
+            assert_eq!(GetCapture(), s.hwnd);
+            SendMessageW(s.hwnd, WM_CANCELMODE, 0, 0);
+            assert!(s.touch.owner().is_none());
+            assert_eq!(GetCapture(), 0);
+            mouse(body, WM_LBUTTONDOWN, start);
+            assert_eq!(GetCapture(), s.hwnd);
+            SetCapture(draft);
+            assert!(s.touch.owner().is_none());
+            assert_eq!(GetCapture(), draft);
+            ReleaseCapture();
+            SetMessageExtraInfo(extra);
+            assert_eq!(selection(body), (11, 19));
+            assert_eq!(selection(draft), (2, 6));
+            assert_eq!(GetFocus(), draft);
+            assert_eq!(s.serial, 0);
+            assert!(rx.try_recv().is_err());
+            // Forged notifications have no pointer payload to dereference.
+            assert_eq!(SendMessageW(s.hwnd, touch::MESSAGE, usize::MAX, 1), 0);
+            s.reveal(outgoing);
+            let (x, y, w, h, _) = s.widgets["outgoing"].placed.unwrap();
+            let mut p = POINT {
+                x: x + w / 2,
+                y: y + h / 2,
+            };
+            ClientToScreen(s.hwnd, &mut p);
+            let before = s.scroll;
+            SendMessageW(outgoing, EM_SETSEL, 3, 7);
+            pointer(outgoing, PT_TOUCH, 31, WM_POINTERDOWN, p, true, false);
+            p.y += 40;
+            pointer(outgoing, PT_TOUCH, 31, WM_POINTERUPDATE, p, true, false);
+            pointer(outgoing, PT_TOUCH, 31, WM_POINTERUP, p, true, false);
+            assert_eq!(s.scroll, before - 40);
+            assert_eq!(selection(outgoing), (3, 7));
+            for target in [s.viewport, s.content, s.hwnd] {
+                s.scroll_direct(0);
+                let mut p = POINT {
+                    x: left + 4,
+                    y: top + 80,
+                };
+                ClientToScreen(s.hwnd, &mut p);
+                pointer(target, PT_TOUCH, 40, WM_POINTERDOWN, p, true, false);
+                p.y -= 30;
+                pointer(target, PT_TOUCH, 40, WM_POINTERUPDATE, p, true, false);
+                pointer(target, PT_TOUCH, 40, WM_POINTERUP, p, true, false);
+                assert_eq!(s.scroll, 30);
+            }
+            s.scroll_direct(0);
+            pointer(body, PT_TOUCH, 50, WM_POINTERDOWN, start, true, false);
+            pointer(body, PT_TOUCH, 50, WM_POINTERUPDATE, moved, true, true);
+            assert!(s.touch.owner().is_none());
+            assert_eq!(s.scroll, 0);
+            pointer(body, PT_TOUCH, 51, WM_POINTERDOWN, start, true, false);
+            assert!(touch::route(body, WM_POINTERUPDATE, 51, 0, true));
+            assert!(s.touch.owner().is_none());
+            pointer(body, PT_TOUCH, 51, WM_POINTERDOWN, start, true, false);
+            SendMessageW(body, WM_POINTERCAPTURECHANGED, 51, 0);
+            assert!(s.touch.owner().is_none());
+            // Reused IDs on the pinned composer/background are not claimed.
+            let mut outside = POINT {
+                x: left + 50,
+                y: s.view_rect.1 + s.view_rect.3 + 20,
+            };
+            ClientToScreen(s.hwnd, &mut outside);
+            let event = touch::Event {
+                source: touch::Source::Pointer(51),
+                phase: touch::Phase::Down,
+                x: outside.x,
+                y: outside.y,
+                primary: true,
+                owner: s.hwnd,
+            };
+            assert!(!s.touch_packet(&touch::Packet::Contact(event)));
+            let mut pen: POINTER_INFO = std::mem::zeroed();
+            pen.pointerType = PT_PEN;
+            touch::POINTER_SAMPLE.with(|sample| sample.set(Some(pen)));
+            assert!(!touch::route(body, WM_POINTERDOWN, 51, 0, true));
+            touch::POINTER_SAMPLE.with(|sample| sample.set(None));
+            assert!(!touch::route(draft, WM_POINTERDOWN, 51, 0, false));
+            // Unmarked mouse and pen-promoted editing still reach native EDIT.
+            for marker in [0isize, 0xff515700u32 as isize] {
+                let extra = SetMessageExtraInfo(marker);
+                SendMessageW(body, EM_SETSEL, 0, 0);
+                mouse(body, WM_LBUTTONDOWN, start);
+                mouse(body, WM_MOUSEMOVE, moved);
+                mouse(body, WM_LBUTTONUP, moved);
+                SetMessageExtraInfo(extra);
+                assert_ne!(selection(body), (0, 0));
+            }
+            // Removing a captured owner cancels state without requiring paired Up.
+            pointer(body, PT_TOUCH, 60, WM_POINTERDOWN, start, true, false);
+            frame["controls"]
+                .as_array_mut()
+                .unwrap()
+                .retain(|c| c["id"] != "answer");
+            s.apply(parse(frame).unwrap()).unwrap();
+            assert!(s.touch.owner().is_none());
+            assert_eq!(IsWindow(body), 0);
+            let root = s.hwnd;
+            let extra = SetMessageExtraInfo(0xff515780u32 as isize);
+            let mut p = POINT {
+                x: s.view_rect.0 + 4,
+                y: s.view_rect.1 + 30,
+            };
+            ClientToScreen(root, &mut p);
+            mouse(root, WM_LBUTTONDOWN, p);
+            assert_eq!(GetCapture(), root);
+            SetMessageExtraInfo(extra);
+            destroy(s);
+            assert_eq!(IsWindow(root), 0);
+            assert_ne!(GetCapture(), root);
+        }
+    }
+    #[test]
+    fn hidden_touch_compatibility_probe() {
+        unsafe extern "system" {
+            fn OutputDebugStringW(message: *const u16);
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Hidden touch route",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1100), s.scale(650), 0);
+            s.apply(parse(json!({"theme":"dark","layout":"conversation","controls":[
+                {"id":"answer","kind":"detail","role":"incoming","value":"A selectable answer with Unicode café and 🙂. ".repeat(300)},
+                {"id":"draft","kind":"multiline","area":"composer","lines":2,"value":"Unchanged composer"}
+            ]})).unwrap()).unwrap();
+            s.scroll_direct(0);
+            let child = s.widgets["answer"].hwnd;
+            SendMessageW(child, EM_SETSEL, 0, 0);
+            let mut start = POINT { x: 20, y: 120 };
+            ClientToScreen(child, &mut start);
+            let finish = POINT {
+                x: start.x,
+                y: start.y - 100,
+            };
+            let previous = SetMessageExtraInfo(0xff515780u32 as isize);
+            let deliver = |target: HWND, msg: u32, point: POINT| {
+                let mut client = point;
+                ScreenToClient(target, &mut client);
+                let lp = ((client.x as u16 as u32) | ((client.y as u16 as u32) << 16)) as isize;
+                SendMessageW(
+                    target,
+                    msg,
+                    if msg == WM_LBUTTONUP {
+                        0
+                    } else {
+                        windows_sys::Win32::System::SystemServices::MK_LBUTTON as usize
+                    },
+                    lp,
+                );
+            };
+            OutputDebugStringW(wide("PHASE compatibility-touch-down").as_ptr());
+            deliver(child, WM_LBUTTONDOWN, start);
+            let captured = GetCapture();
+            OutputDebugStringW(wide("PHASE compatibility-touch-move").as_ptr());
+            deliver(
+                if captured == 0 { child } else { captured },
+                WM_MOUSEMOVE,
+                finish,
+            );
+            OutputDebugStringW(wide("PHASE compatibility-touch-up").as_ptr());
+            let captured = GetCapture();
+            deliver(
+                if captured == 0 { child } else { captured },
+                WM_LBUTTONUP,
+                finish,
+            );
+            SetMessageExtraInfo(previous);
+            let mut a = 0u32;
+            let mut b = 0u32;
+            SendMessageW(
+                child,
+                EM_GETSEL,
+                &mut a as *mut _ as usize,
+                &mut b as *mut _ as isize,
+            );
+            eprintln!(
+                "touch_compat_probe root={:x} answer={child:x} scroll={} selection={a}..{b} capture={:x} serial={} event={:?}",
+                s.hwnd,
+                s.scroll,
+                GetCapture(),
+                s.serial,
+                rx.try_recv().ok()
+            );
+            OutputDebugStringW(wide("PHASE compatibility-touch-finished").as_ptr());
+            assert_eq!(s.scroll, 100);
+            assert_eq!((a, b), (0, 0));
+            assert_eq!(GetCapture(), 0);
+            assert_eq!(s.serial, 0);
+            destroy(s);
+        }
+    }
     #[test]
     fn hidden_sections_segments_and_workspace_header_keep_native_state_and_geometry() {
         let (tx, rx) = std::sync::mpsc::channel();

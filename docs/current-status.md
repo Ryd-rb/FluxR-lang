@@ -55,6 +55,15 @@ same HWNDs, field contents, focus and selections; final live visual acceptance
 remains separate. Conversation content now defaults to a 744-DIP reading width. Workspace and
 conversation headings can stay fixed. Named sections group related controls, and
 segmented tab rows expose native checked state and wrap in narrow windows.
+Conversation touch panning now owns read-only text/background contacts before
+native selection: pointer and promoted mouse paths share physical-coordinate
+scrolling, contact-bounded deduplication and cancellation/capture cleanup. Mouse,
+pen and composer editing remain native. Hidden contracts preserve focus,
+selection and refresh anchors, cover child/background routing, sequential
+input paths, owner removal and scoped message transport. CDB reproduces the
+old compatibility selection and verifies viewport movement without it. Composer
+DC background and its panel brush now use the same surface. Hardware touch and
+final live visual qualification remain separate from these bounded checks.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

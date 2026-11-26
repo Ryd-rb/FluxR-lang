@@ -394,7 +394,7 @@ impl Surface {
         n * self.dpi.get() as i32 / 96
     }
     fn background(&self) -> u32 {
-        if self.role.get() == Role::Tab {
+        if self.composer.get() || self.role.get() == Role::Tab {
             PANEL
         } else if self.side.get() {
             RAIL
@@ -969,6 +969,18 @@ unsafe extern "system" fn subclass(
         m.set(n);
     });
     let s = &*(data as *const Surface);
+    let participant = matches!(
+        s.kind,
+        None | Some(Kind::Detail | Kind::Label | Kind::Heading)
+    );
+    if touch::route(hwnd, msg, wp, lp, participant)
+        && !matches!(
+            msg,
+            WM_NCDESTROY | WM_CANCELMODE | WM_ACTIVATEAPP | WM_CAPTURECHANGED
+        )
+    {
+        return 0;
+    }
     #[cfg(test)]
     if msg == WM_SIZE && matches!(s.kind, Some(Kind::Input | Kind::Multiline | Kind::Detail)) {
         EDIT_SIZES.with(|n| n.set(n.get() + 1));

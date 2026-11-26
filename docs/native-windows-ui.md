@@ -195,6 +195,28 @@ only when actual native text overflows. If there is too little room to pin the
 composer, it returns to the scrollable flow with ordinary native field outlines
 and keyboard reveal, preserving HWNDs, focus, text and selection.
 
+Touchscreen contacts on read-only conversation text (including incoming and
+outgoing bodies), captions and exposed transcript background pan the viewport.
+An 8-DIP direction threshold avoids jitter; movement then follows physical input
+coordinates directly, without extra DPI scaling or invented momentum/zoom.
+The handled contact, including tap/end/cancel and pointer-capture loss, stays
+out of native text selection and click processing. Mouse and pen selection,
+keyboard focus/copy and editable composer gestures retain their native paths.
+Fixed composer, header and navigation areas are excluded from transcript pans.
+
+The host consumes a claimed `PT_TOUCH` contact through its native pointer
+lifecycle and uses Windows' implicit capture. Touch-promoted compatibility mouse
+contacts have a signature/input-source fallback with explicit, owned mouse
+capture. Only overlapping promoted/native contacts are deduplicated: subsequent
+independent compatibility-only drags remain usable. Cancellation, owner removal,
+conversation/layout change and destruction clean up capture; no assumption of
+paired down/up messages is required. Internal routing uses a scoped thread-local
+packet with a root/nonce check, not a message-supplied pointer. No frame/event
+ABI changes are needed. See Microsoft's [pointer contact documentation](https://learn.microsoft.com/en-us/windows/win32/inputmsg/wm-pointerdown)
+and [promoted mouse signature](https://learn.microsoft.com/en-us/windows/win32/tablet/system-events-and-mouse-messages).
+Hidden routing/state contracts and CDB traces do not establish hardware gesture
+qualification; actual touch-device review remains separate.
+
 ```json
 {"theme":"dark","layout":"conversation","conversation":"project/newest",
  "composer":"draft","default":"send","follow_tail":true,"controls":[
