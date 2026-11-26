@@ -16,6 +16,8 @@ The optional standalone `fluxr-win32` crate supplies a keyed JSON-driven native
 Windows control host, with system controls, DPI/resize layout, docking, native
 selection/IME editing, keyboard focus, scrolling, local file-drop events and
 serial/ack protection for edits. See [native-windows-ui.md](native-windows-ui.md).
+One-shot UTF16 caret/selection requests retain their original acknowledgment
+across frame coalescing and yield to newer local interactions.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

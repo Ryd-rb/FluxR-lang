@@ -70,8 +70,39 @@ impl Drop for Widget {
 }
 #[derive(Default)]
 struct Pending {
-    frame: Option<Value>,
+    frame: Option<Frame>,
+    error: Option<String>,
     posted: bool,
+}
+impl Pending {
+    fn push(&mut self, mut frame: Frame) {
+        frame.focus_ack = frame.focus.as_ref().map(|_| frame.ack);
+        frame.selection_ack = frame.selection.as_ref().map(|_| frame.ack);
+        if let Some(previous) = self.frame.take() {
+            if frame.focus.is_none() {
+                frame.focus = previous.focus;
+                frame.focus_ack = previous.focus_ack;
+            }
+            if frame.selection.is_none() {
+                frame.selection = previous.selection;
+                frame.selection_ack = previous.selection_ack;
+            }
+            frame.close |= previous.close;
+        }
+        self.frame = Some(frame);
+    }
+}
+// Clamp to existing text and never bisect a UTF16 surrogate pair.
+fn caret_offset(value: &str, requested: u32) -> u32 {
+    let mut at = 0;
+    for c in value.chars() {
+        let next = at + c.len_utf16() as u32;
+        if next > requested {
+            return at;
+        }
+        at = next;
+    }
+    at
 }
 struct State {
     hwnd: HWND,
@@ -458,11 +489,29 @@ impl State {
                 }
             }
             self.layout();
-            if let Some(id) = f.focus.or(focus_id.filter(|_| GetFocus() == 0))
+            let focus = f
+                .focus
+                .filter(|_| self.serial <= f.focus_ack.unwrap_or(f.ack));
+            if let Some(id) = focus.or(focus_id.filter(|_| GetFocus() == 0))
                 && let Some(w) = self.widgets.get(&id)
             {
                 SetFocus(w.hwnd);
                 self.reveal(w.hwnd);
+            }
+            if let Some(selection) = f.selection
+                && self.serial <= f.selection_ack.unwrap_or(f.ack)
+                && let Some(w) = self.widgets.get(&selection.id)
+                && w.serial <= f.selection_ack.unwrap_or(f.ack)
+                && matches!(w.spec.kind, Kind::Input | Kind::Multiline | Kind::Detail)
+            {
+                let value = text(w.hwnd);
+                SendMessageW(
+                    w.hwnd,
+                    EM_SETSEL,
+                    caret_offset(&value, selection.start) as usize,
+                    caret_offset(&value, selection.end) as isize,
+                );
+                SendMessageW(w.hwnd, EM_SCROLLCARET, 0, 0);
             }
             Ok(())
         }
@@ -678,13 +727,16 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, wp: usize, lp: isize) -> is
             0
         }
         FRAME => {
-            let value = {
+            let (frame, error) = {
                 let mut p = s.pending.lock().unwrap();
                 p.posted = false;
-                p.frame.take()
+                (p.frame.take(), p.error.take())
             };
-            if let Some(value) = value
-                && let Err(error) = parse(value).and_then(|f| s.apply(f))
+            if let Some(error) = error {
+                let _ = s.outgoing.send(json!({"type":"error","message":error}));
+            }
+            if let Some(frame) = frame
+                && let Err(error) = s.apply(frame)
             {
                 let _ = s
                     .outgoing
@@ -880,8 +932,12 @@ pub(super) fn run(
             while !stopped.load(Ordering::Relaxed) {
                 match incoming.recv_timeout(Duration::from_millis(100)) {
                     Ok(value) => {
+                        let parsed = parse(value);
                         let mut p = pending.lock().unwrap();
-                        p.frame = Some(value);
+                        match parsed {
+                            Ok(frame) => p.push(frame),
+                            Err(error) => p.error = Some(error.to_string()),
+                        }
                         if !p.posted {
                             p.posted = true;
                             PostMessageW(handle, FRAME, 0, 0);
@@ -950,6 +1006,24 @@ pub(super) fn run(
 mod tests {
     use super::*;
     use std::time::Instant;
+    #[test]
+    fn coalescing_retains_one_shot_intent_without_acknowledgment_laundering() {
+        let mut pending = Pending::default();
+        pending.push(
+            parse(json!({"ack":2,"focus":"a","selection":{"id":"a","start":4,"end":4}})).unwrap(),
+        );
+        pending.push(parse(json!({"ack":5,"focus":null,"selection":null})).unwrap());
+        let frame = pending.frame.take().unwrap();
+        assert_eq!(frame.ack, 5);
+        assert_eq!(frame.focus.as_deref(), Some("a"));
+        assert_eq!(frame.focus_ack, Some(2));
+        assert_eq!(frame.selection_ack, Some(2));
+        assert_eq!(frame.selection.unwrap().start, 4);
+        pending.push(parse(json!({"ack":6})).unwrap());
+        assert!(pending.frame.as_ref().unwrap().selection.is_none());
+        assert_eq!(caret_offset("x😀y", 2), 1);
+        assert_eq!(caret_offset("x😀y", u32::MAX), 4);
+    }
     #[test]
     fn hidden_native_lifecycle_preserves_handles_edits_and_layout() {
         unsafe {
@@ -1040,6 +1114,45 @@ mod tests {
             s.apply(parse(keep).unwrap()).unwrap();
             assert_eq!(s.scroll, scroll);
             assert_eq!(text(s.hwnd), "updated");
+            let mut requested = json!({"ack":1,"controls":s.order.iter().map(|id|serde_json::to_value(&s.widgets[id].spec).unwrap()).collect::<Vec<_>>(),"focus":"a","selection":{"id":"a","start":5,"end":5}});
+            s.apply(parse(requested.clone()).unwrap()).unwrap();
+            SendMessageW(
+                input,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (5, 5));
+            {
+                let _guard = UpdateGuard::enter();
+                set_text(input, "x😀y");
+            }
+            SendMessageW(input, EM_SETSEL, 3, 3);
+            s.command(input, EN_CHANGE);
+            // A stale request remains stale when a newer pending frame acknowledges
+            // this edit, even when that request also targets focus.
+            let mut pending = Pending::default();
+            pending.push(parse(requested.clone()).unwrap());
+            let latest = json!({"ack":2,"controls":s.order.iter().map(|id|serde_json::to_value(&s.widgets[id].spec).unwrap()).collect::<Vec<_>>()});
+            pending.push(parse(latest.clone()).unwrap());
+            s.apply(pending.frame.take().unwrap()).unwrap();
+            SendMessageW(
+                input,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (3, 3));
+            requested = latest;
+            requested["selection"] = json!({"id":"a","start":2,"end":u32::MAX});
+            s.apply(parse(requested).unwrap()).unwrap();
+            SendMessageW(
+                input,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (1, 4));
             let layout = Instant::now();
             s.layout();
             let layout = layout.elapsed();

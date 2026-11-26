@@ -60,6 +60,15 @@ reveals it. Tab/Shift+Tab follow frame order. Enter activates a focused button;
 Ctrl+Enter invokes the enabled button named by frame `default`. Multiline Enter
 remains ordinary native text editing.
 
+`selection:{"id":"body","start":4,"end":4}` requests a one-shot caret or
+selection on an input, multiline or detail control, applied after focus. Offsets
+are native UTF16 units, including CRLF. Ranges must be nonnegative u32 values
+with start <= end; malformed ranges reject the frame. Valid offsets clamp to
+current text length and snap backward if they bisect a surrogate pair. Unknown
+or non-text targets are ignored. Explicit focus and selection requests are
+ignored when newer local click/change events exist beyond the request's `ack`.
+This prevents delayed completion responses from moving a newer edit's caret.
+
 Outgoing events:
 
 ```json
@@ -80,8 +89,12 @@ offsets together in the application if its model uses LF. Drops contain only
 paths supplied by Windows `WM_DROPFILES`; they do not read or import files.
 
 Incoming delivery holds at most one pending complete frame and one posted
-wakeup. A faster producer replaces the pending frame; it must carry forward
-desired focus/default/close state until consumed. The UI blocks in GetMessage
+wakeup. A faster producer replaces the pending tree. Unconsumed one-shot focus
+and selection requests survive replacement (a newer explicit request wins),
+and retain their original `ack` so newer frames cannot authorize stale caret
+movement. A close request also survives replacement. Invalid later frames emit
+an error without discarding an already pending valid frame. Requests are consumed
+once when the native loop takes that frame. The UI blocks in GetMessage
 when idle. A receiver thread waits on the Rust channel and stops on close;
 outgoing uses the caller-provided unbounded standard Sender, so applications
 must drain it. Invalid initial frames return errors; invalid subsequent frames
@@ -90,7 +103,7 @@ tree and should be treated as a host failure by the application.
 
 Validation is limited to typed frame checks and an explicitly hidden,
 in-process native lifecycle test. It checks content, UTF16 offsets, stale-edit
-protection, HWND reuse, selection, layout, scrolling and destruction. It neither
+protection, HWND reuse, one-shot UTF16 selection/coalescing, layout, scrolling and destruction. It neither
 drives desktop UI nor records screenshots or image metadata. Reproduce with an
 external Cargo target directory:
 

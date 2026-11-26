@@ -51,6 +51,12 @@ fn one() -> f64 {
     1.0
 }
 #[derive(Debug, Deserialize)]
+struct Selection {
+    id: String,
+    start: u32,
+    end: u32,
+}
+#[derive(Debug, Deserialize)]
 struct Frame {
     #[serde(default)]
     title: Option<String>,
@@ -58,6 +64,12 @@ struct Frame {
     controls: Vec<Control>,
     #[serde(default)]
     focus: Option<String>,
+    #[serde(default)]
+    selection: Option<Selection>,
+    #[serde(skip)]
+    focus_ack: Option<u64>,
+    #[serde(skip)]
+    selection_ack: Option<u64>,
     #[serde(default)]
     default: Option<String>,
     #[serde(default)]
@@ -67,6 +79,9 @@ struct Frame {
 }
 fn parse(value: Value) -> Result<Frame> {
     let frame: Frame = serde_json::from_value(value)?;
+    if frame.selection.as_ref().is_some_and(|s| s.start > s.end) {
+        bail!("selection start must not exceed end")
+    }
     let mut ids = std::collections::HashSet::new();
     for c in &frame.controls {
         if c.id.is_empty() || !ids.insert(&c.id) {
@@ -135,5 +150,7 @@ mod tests {
         );
         assert!(parse(json!({"controls":[{"id":"x","kind":"check","value":"yes"}]})).is_err());
         assert!(parse(json!({"controls":[{"id":"x","kind":"list","zoom":4}]})).is_err());
+        assert!(parse(json!({"selection":{"id":"x","start":3,"end":2}})).is_err());
+        assert!(parse(json!({"selection":{"id":"x","start":0,"end":4294967296u64}})).is_err());
     }
 }
