@@ -407,6 +407,18 @@ class SourceParser(Parser):
             elif op == "list":
                 self.checked_type()
                 for _ in range(self.checked_count()): self.checked_expr()
+            elif op == "utf8":
+                self.space()
+                if self.pos >= len(self.source) or self.source[self.pos] != 34:
+                    self.fail("utf8 requires a JSON string literal")
+                literal = self.token().encode("utf-8")
+                if len(literal) > 32768:
+                    self.fail("utf8 literal exceeds list item limit")
+                # Match expanded element-expression work and depth. The Rust
+                # checker remains authoritative for its own type/node limits.
+                for _ in literal:
+                    self.enter()
+                    self.depth -= 1
             elif op == "m":
                 self.checked_expr(); self.checked_name()
                 for _ in range(self.checked_count()): self.checked_expr()

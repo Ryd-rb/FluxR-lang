@@ -1,0 +1,2 @@
+fluxr 1
+pub greeting 0 list uint ret utf8 "Hello café !\n"

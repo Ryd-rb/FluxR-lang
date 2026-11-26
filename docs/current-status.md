@@ -36,6 +36,16 @@ The table identifies available implementation areas and the documents that defin
 
 ## Open acceptance boundaries
 
+Current checked source accepts bounded `utf8 "JSON string"` byte-list literals.
+They lower to the existing `list uint` AST with unchanged canonical artifacts
+and per-call metering. The Rust reader, Python project frontend and canonical
+current-source printer support the notation; released FA1/WK1 syntax and pins
+remain unchanged. The focused regression suite covers expected Unicode bytes,
+malformed strings, source bounds, native spans and portable budget equivalence.
+`Error::host` exposes diagnostic construction for trusted `HostServices`
+implementations. These additive source/API slices add no general string type,
+I/O capability, native execution path or completed qualification scope.
+
 The native Plan supports checked scalar `u64` addition,
 subtraction, multiplication and equality/ordering comparisons in the typed JIT
 and Rust AOT emitter. Exact unsigned tags and all 64 value bits are preserved;

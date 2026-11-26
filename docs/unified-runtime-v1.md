@@ -44,6 +44,48 @@ scalar/list values or application-defined integer handles. A record name does
 not establish a Rust memory layout, so nominal records/enums are rejected at this
 service ABI until their schemas are explicitly bound.
 
+## Checked UTF-8 byte literals
+
+Current source accepts `utf8` followed by one JSON string literal:
+
+```text
+fluxr 1
+pub greeting 0 list uint ret utf8 "hello café\n"
+```
+
+The expression's type is `list uint`. Each element is one unsigned UTF-8 byte,
+including embedded NUL bytes. JSON escapes, Unicode scalars and escaped surrogate
+pairs follow the JSON string rules. Bare tokens, invalid escapes, lone surrogate
+halves, unescaped controls, missing closing quotes and trailing text without
+whitespace are rejected. The decoded string is bounded to 32,768 bytes, matching
+the existing list-item limit; source, node, depth and output bounds also apply.
+
+The reader lowers directly to an ordinary `list uint` of byte constants. It
+charges the same type and expression nodes at the same depths as that expansion.
+ASTs, canonical FSM artifacts and logical fuel/cells/frames are identical. This
+adds no string runtime type, UTF-8 indexing operation or implicit conversion.
+The canonical current-source printer selects the UTF-8 spelling when the list
+contains only valid UTF-8 byte constants and its JSON spelling is shorter.
+Nonbyte values, invalid UTF-8 and computed elements retain explicit lists.
+FA1/WK1 readers and printers keep their released syntax and dictionary pins.
+An existing local named `utf8` remains usable through `local utf8` in current
+source. No language, semantic, artifact or dictionary version changes.
+
+`tests/unified_utf8.rs` checks independent expected bytes, exact lowering,
+portable budget sweeps, malformed input, native spans and host errors. The
+Python frontend tests preserve source bytes and enforce its own input bounds.
+Run both and the static source-token counter independently:
+
+```sh
+cargo test --locked --test unified_utf8
+python3 -B tools/run_python_suite.py tests test_unified_utf8.py
+python3 -B tools/bench_update_tokens.py --catalog benchmarks/unified-utf8-v1.toml \
+  --output /absolute/external/utf8-tokens.json
+```
+
+The counter separates complete source strings, JSON wire data and shared host
+context. It establishes no universal token ratio or live-agent success claim.
+
 ## Compact binary32 literals
 
 Current source accepts finite decimal `float` literals with an `f` suffix,
@@ -289,6 +331,9 @@ The `host` form supplies the service name, result type, argument count, and each
 argument's type/expression. The shared checker validates the expression and the
 runtime validates the native signature before admission. The VM validates actual
 arguments and the returned value. Callback errors become execution errors.
+Direct `structured::HostServices` adapters can return
+`fluxr::Error::host("diagnostic")`; that exact diagnostic propagates through
+portable checked execution. The constructor grants no additional host access.
 Native panics are caught only with `panic = "unwind"`; an abort profile terminates
 the process. Publication locks are not held during the callback. A callback can
 therefore call the runtime again without deadlocking on its own registry lock.

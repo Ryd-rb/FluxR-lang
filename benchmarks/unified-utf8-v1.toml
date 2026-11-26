@@ -1,0 +1,13 @@
+[measurement]
+schema = "fluxr-unified-update-tokens-v1"
+tiktoken_version = "0.14.0"
+tokenizers = ["o200k_base", "cl100k_base"]
+protocol = "benchmarks/unified-utf8-v1/protocol.txt"
+shared_validation_host = "tests/unified_utf8.rs"
+validation = "cargo test --locked --test unified_utf8"
+scope = "One complete byte-list source pair and equivalent Rust byte kernel. Exact source and JSON wire costs are separate from the syntax protocol and regression host. No runtime speed, universal token ratio or live-agent outcome claim."
+
+[case.greeting]
+before = "benchmarks/unified-utf8-v1/greeting.before.fluxr"
+after = "benchmarks/unified-utf8-v1/greeting.after.fluxr"
+rust = "benchmarks/unified-utf8-v1/greeting.rs"

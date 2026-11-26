@@ -39,6 +39,16 @@ type Source = (u16, u32, Vec<TrackSource>);
 #[derive(Debug, PartialEq, Eq)]
 pub struct Error(String);
 
+impl Error {
+    /// Report a failure from a trusted `structured::HostServices` adapter.
+    ///
+    /// The supplied diagnostic propagates as a checked execution error. This
+    /// does not roll back host effects or make callbacks fuel-preemptible.
+    pub fn host(message: impl Into<String>) -> Self {
+        Self(message.into())
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(out)

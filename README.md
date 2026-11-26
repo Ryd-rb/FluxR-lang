@@ -52,6 +52,11 @@ The result identifies its revision, value and execution route. The
 [language and runtime guide](docs/unified-runtime-v1.md) specifies project
 manifests, Value encodings, native services, live control and limits.
 
+Checked `utf8 "hello"` expressions produce owned `list uint` byte values for
+text and host-service payloads. JSON string escapes and Unicode are supported;
+the notation lowers to ordinary checked byte-list literals with identical
+execution budgets and canonical artifacts.
+
 ## Native interoperability and live updates
 
 A source document can contain checked declarations, explicit native declarations

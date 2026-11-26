@@ -598,6 +598,54 @@ impl<'a> Parser<'a> {
         }
         Ok(values)
     }
+    fn utf8_literal(&mut self, depth: usize) -> Result<Expr> {
+        let first = self
+            .words
+            .clone()
+            .next()
+            .ok_or_else(|| error("missing utf8 string literal"))?;
+        let start = first.as_ptr() as usize - self.text.as_ptr() as usize;
+        let bytes = self.text.as_bytes();
+        if bytes[start] != b'"' {
+            return Err(error("utf8 requires a JSON string literal"));
+        }
+        let mut end = start + 1;
+        let mut escaped = false;
+        loop {
+            let byte = *bytes
+                .get(end)
+                .ok_or_else(|| error("unterminated utf8 string literal"))?;
+            end += 1;
+            if byte == b'"' && !escaped {
+                break;
+            }
+            escaped = byte == b'\\' && !escaped;
+        }
+        if bytes
+            .get(end)
+            .is_some_and(|byte| !super::unified_source::space_byte(*byte))
+        {
+            return Err(error("utf8 string literal must end at whitespace"));
+        }
+        // Charge the expanded list's type at depth zero, followed by one U64
+        // expression per decoded byte at the ordinary list-element depth.
+        self.node(0)?;
+        let literal: String = serde_json::from_str(&self.text[start..end])
+            .map_err(|_| error("invalid utf8 JSON string literal"))?;
+        if literal.len() > MAX_ITEMS {
+            return Err(error("utf8 literal exceeds list item limit"));
+        }
+        let mut items = Vec::new();
+        for byte in literal.bytes() {
+            self.node(depth + 1)?;
+            items.push(Expr::U64 { value: byte as u64 });
+        }
+        self.words = unified_words(&self.text[end..]);
+        Ok(Expr::List {
+            element: Type::U64,
+            items,
+        })
+    }
     fn expr(&mut self, depth: usize) -> Result<Expr> {
         self.node(depth)?;
         let token = self.word()?;
@@ -667,6 +715,7 @@ impl<'a> Parser<'a> {
                 element: self.ty(0)?,
                 items: self.expressions(depth + 1)?,
             },
+            "utf8" if self.unified => self.utf8_literal(depth)?,
             "empty" => Expr::Empty {
                 list: self.boxed(depth + 1)?,
             },
@@ -1101,7 +1150,7 @@ impl Printer {
                 }
             }
             Expr::Local { name } => {
-                if reserved(name) || (self.unified && name == "host") {
+                if reserved(name) || (self.unified && matches!(name.as_str(), "host" | "utf8")) {
                     self.token("local")?;
                 }
                 self.token(name)?;
@@ -1170,6 +1219,35 @@ impl Printer {
                 self.token(variant)?;
             }
             Expr::List { element, items } => {
+                if self.unified && *element == Type::U64 {
+                    let bytes: Option<Vec<u8>> = items
+                        .iter()
+                        .map(|item| match item {
+                            Expr::U64 { value } => u8::try_from(*value).ok(),
+                            _ => None,
+                        })
+                        .collect();
+                    if let Some(bytes) = bytes
+                        && let Ok(text) = String::from_utf8(bytes)
+                    {
+                        let quoted =
+                            serde_json::to_string(&text).map_err(|e| error(e.to_string()))?;
+                        let expanded = "list uint ".len()
+                            + items.len().to_string().len()
+                            + items
+                                .iter()
+                                .map(|item| match item {
+                                    Expr::U64 { value } => 2 + value.to_string().len(),
+                                    _ => unreachable!(),
+                                })
+                                .sum::<usize>();
+                        if "utf8 ".len() + quoted.len() < expanded {
+                            self.token("utf8")?;
+                            self.token(&quoted)?;
+                            return Ok(());
+                        }
+                    }
+                }
                 self.token("list")?;
                 self.ty(element)?;
                 self.expressions(items)?;
@@ -1332,6 +1410,34 @@ mod tests {
                         parser.unified = true;
                         parser.nodes = nodes;
                         let result = parser.stmt(depth);
+                        (format!("{result:?}"), parser.nodes)
+                    };
+                    assert_eq!(parse(short), parse(long), "nodes={nodes}, depth={depth}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn unified_utf8_charges_expanded_nodes_at_identical_depths() {
+        for (short, long) in [
+            (r#"utf8 """#, "list uint 0"),
+            (r#"utf8 "\u00e9A""#, "list uint 3 195u 169u 65u"),
+        ] {
+            for nodes in [
+                0,
+                MAX_NODES - 6,
+                MAX_NODES - 4,
+                MAX_NODES - 2,
+                MAX_NODES - 1,
+                MAX_NODES,
+            ] {
+                for depth in [0, MAX_DEPTH - 2, MAX_DEPTH - 1, MAX_DEPTH] {
+                    let parse = |text| {
+                        let mut parser = Parser::new(text).unwrap();
+                        parser.unified = true;
+                        parser.nodes = nodes;
+                        let result = parser.expr(depth);
                         (format!("{result:?}"), parser.nodes)
                     };
                     assert_eq!(parse(short), parse(long), "nodes={nodes}, depth={depth}");

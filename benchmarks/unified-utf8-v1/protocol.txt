@@ -1,0 +1,6 @@
+Current checked FluxR uses the exact header fluxr 1 and prefix expressions.
+utf8 accepts one JSON string literal and expands to list uint byte constants.
+Decoded UTF-8 bytes, including NUL, are unsigned scalar list elements.
+The decoded length is bounded to 32768 bytes. Expanded nodes/depth and portable
+fuel/cells/frames are identical to the explicit byte list. JSON syntax does not
+make untrusted strings executable or grant any host service access.
