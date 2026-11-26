@@ -39,6 +39,7 @@ enum Role {
     Body,
     Outgoing,
     Incoming,
+    Tab,
 }
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -93,6 +94,10 @@ struct Control {
     caption: bool,
     #[serde(default)]
     placeholder: String,
+    #[serde(default)]
+    section: Option<String>,
+    #[serde(default)]
+    selected: bool,
     #[serde(default)]
     value: Value,
     #[serde(default)]
@@ -183,6 +188,9 @@ fn parse(value: Value) -> Result<Frame> {
     }
     let mut ids = std::collections::HashSet::new();
     for c in &frame.controls {
+        if c.role == Role::Tab && c.kind != Kind::Button {
+            bail!("tab role requires a button")
+        }
         if c.id.is_empty() || !ids.insert(&c.id) {
             bail!("control IDs must be nonempty and unique")
         }

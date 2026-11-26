@@ -41,6 +41,11 @@ fn client_animation_enabled() -> bool {
     }
 }
 type NativeMove = (HWND, i32, i32, i32, i32, bool);
+fn section_key(c: &Control) -> Option<&str> {
+    (!c.side && !matches!(c.area, Some(Area::Header | Area::Composer)))
+        .then(|| c.section.as_deref().filter(|s| !s.is_empty()))
+        .flatten()
+}
 use windows_sys::Win32::UI::Input::Ime::{
     GCS_COMPSTR, ImmGetCompositionStringW, ImmGetContext, ImmReleaseContext,
 };
@@ -276,6 +281,8 @@ struct State {
     view_rect: (i32, i32, i32, i32),
     origin: i32,
     content_panel: Option<(i32, i32, i32, i32)>,
+    section_rects: Vec<(i32, i32, i32, i32)>,
+    tab_rects: Vec<(i32, i32, i32, i32)>,
     scroll_rail: i32,
     viewport_box: Option<(i32, i32, i32, i32)>,
     content_box: Option<(i32, i32, i32, i32)>,
@@ -296,7 +303,15 @@ impl State {
         unsafe {
             let (class, style) = match spec.kind {
                 Kind::Label | Kind::Heading => ("STATIC", STATIC_LITERAL),
-                Kind::Button => ("BUTTON", BS_PUSHBUTTON as u32 | WS_TABSTOP),
+                Kind::Button => (
+                    "BUTTON",
+                    (if spec.role == Role::Tab {
+                        BS_RADIOBUTTON | BS_PUSHLIKE
+                    } else {
+                        BS_PUSHBUTTON
+                    }) as u32
+                        | WS_TABSTOP,
+                ),
                 Kind::Check => ("BUTTON", BS_AUTOCHECKBOX as u32 | WS_TABSTOP),
                 Kind::Select => (
                     "COMBOBOX",
@@ -452,16 +467,16 @@ impl State {
                 20
             } else if modern {
                 match c.role {
-                    Role::Title => 34,
+                    Role::Title => 30,
                     Role::Brand => 22,
-                    Role::Caption => 12,
+                    Role::Caption => 11,
                     Role::Muted => 14,
                     Role::Body | Role::Incoming | Role::Outgoing => 16,
                     _ => {
                         if c.kind == Kind::Heading {
-                            21
+                            19
                         } else {
-                            15
+                            14
                         }
                     }
                 }
@@ -476,10 +491,12 @@ impl State {
                 0,
                 0,
                 0,
-                if matches!(
+                if (matches!(
                     c.role,
                     Role::Brand | Role::Title | Role::Primary | Role::Selected
-                ) || c.kind == Kind::Heading
+                ) && !(c.role == Role::Selected && c.icon == Some(Icon::Folder)))
+                    || c.role == Role::Tab && c.selected
+                    || c.kind == Kind::Heading
                 {
                     600
                 } else {
@@ -507,6 +524,38 @@ impl State {
             }
             if w.surface.icon.replace(c.icon) != c.icon {
                 InvalidateRect(w.hwnd, null(), 0);
+            }
+            if w.surface.selected.replace(c.selected) != c.selected {
+                InvalidateRect(w.hwnd, null(), 0);
+            }
+            if c.kind == Kind::Button {
+                if first || c.role != w.spec.role {
+                    let old = GetWindowLongW(w.hwnd, GWL_STYLE) as u32;
+                    let style = if c.role == Role::Tab {
+                        BS_RADIOBUTTON | BS_PUSHLIKE
+                    } else {
+                        BS_PUSHBUTTON
+                    } as u32;
+                    SetWindowLongW(
+                        w.hwnd,
+                        GWL_STYLE,
+                        ((old & !(BS_TYPEMASK as u32 | BS_PUSHLIKE as u32)) | style) as i32,
+                    );
+                }
+                if c.role == Role::Tab
+                    && (first || c.selected != w.spec.selected || c.role != w.spec.role)
+                {
+                    SendMessageW(
+                        w.hwnd,
+                        BM_SETCHECK,
+                        if c.selected {
+                            BST_CHECKED
+                        } else {
+                            BST_UNCHECKED
+                        } as usize,
+                        0,
+                    );
+                }
             }
             w.surface
                 .configure(self.background.active.get(), c.role, c.side, self.dpi);
@@ -684,7 +733,11 @@ impl State {
                     0,
                 );
             }
-            if c.zoom != w.spec.zoom || c.role != w.spec.role || c.area != w.spec.area {
+            if c.zoom != w.spec.zoom
+                || c.role != w.spec.role
+                || c.area != w.spec.area
+                || c.role == Role::Tab && c.selected != w.spec.selected
+            {
                 let font = self.font(&c);
                 SendMessageW(w.hwnd, WM_SETFONT, font as usize, 1);
                 if w.caption != 0 {
@@ -772,10 +825,14 @@ impl State {
                 .map(|(id, _)| id.clone());
             let mut next = HashMap::new();
             let mut recreated = false;
+            let mut navigation_changed = false;
             let mut order = Vec::new();
             for c in f.controls {
                 order.push(c.id.clone());
                 let mut old = self.widgets.remove(&c.id);
+                navigation_changed |= old
+                    .as_ref()
+                    .is_some_and(|w| w.spec.role != c.role || w.spec.row != c.row);
                 // Caption availability and class determine HWND lifetime; ordinary content changes do not.
                 let labelled = |x: &Control| {
                     !x.label.is_empty()
@@ -805,7 +862,7 @@ impl State {
             let reordered = recreated || self.order != order;
             self.widgets = next;
             self.order = order;
-            self.tab_dirty |= reordered;
+            self.tab_dirty |= reordered || navigation_changed;
             self.scene_dirty |= reordered;
             self.layout();
             let focus = f
@@ -1082,14 +1139,43 @@ impl State {
         let mut y = top;
         let mut first = 0;
         while first < ids.len() {
+            let section = if modern {
+                section_key(&self.widgets[&ids[first]].spec)
+            } else {
+                None
+            };
+            let inset = if section.is_some() {
+                self.scale(16).min((width - 1).max(0) / 2)
+            } else {
+                0
+            };
+            if section.is_some()
+                && (first == 0 || section_key(&self.widgets[&ids[first - 1]].spec) != section)
+            {
+                y += inset + if first == 0 { 0 } else { gap };
+            }
+            let left = left + inset;
+            let width = (width - inset * 2).max(1);
             let mut group_end = first + 1;
             if let Some(row) = self.widgets[&ids[first]].spec.row.as_ref() {
                 while group_end < ids.len()
                     && self.widgets[&ids[group_end]].spec.row.as_ref() == Some(row)
+                    && (!modern
+                        || section_key(&self.widgets[&ids[group_end]].spec)
+                            == section_key(&self.widgets[&ids[first]].spec))
                 {
                     group_end += 1;
                 }
             }
+            let gap = if modern
+                && ids[first..group_end]
+                    .iter()
+                    .all(|id| self.widgets[id].spec.role == Role::Tab)
+            {
+                self.scale(4)
+            } else {
+                gap
+            };
             if group_end == first + 1
                 && self.widgets[&ids[first]].spec.row.is_none()
                 && modern
@@ -1123,6 +1209,12 @@ impl State {
                         && !(c.role == Role::Primary && group_end - first == 1);
                     let explicit = c.width.map(|n| self.scale(n as i32));
                     let fixed = explicit
+                        .or_else(|| {
+                            (modern && c.role == Role::Tab).then(|| {
+                                (self.text_width(w) + self.scale(28))
+                                    .clamp(self.scale(64), self.scale(220))
+                            })
+                        })
                         .or_else(|| {
                             (c.kind == Kind::Detail && c.role == Role::Outgoing)
                                 .then(|| self.outgoing_width(w, width))
@@ -1221,15 +1313,15 @@ impl State {
                                 28
                             } else if modern {
                                 match c.role {
-                                    Role::Title => 46,
+                                    Role::Title => 42,
                                     Role::Brand => 42,
-                                    Role::Caption => 20,
+                                    Role::Caption => 18,
                                     Role::Muted => 23,
                                     _ => {
                                         if c.kind == Kind::Heading {
-                                            30
+                                            28
                                         } else {
-                                            24
+                                            22
                                         }
                                     }
                                 }
@@ -1247,28 +1339,30 @@ impl State {
                             self.scale(base) * lines
                         }
                         Kind::Button => self.scale(if modern {
-                            if c.area == Some(Area::Composer) || c.side {
+                            if c.role == Role::Tab {
+                                34
+                            } else if c.area == Some(Area::Composer) || c.side {
                                 36
                             } else if c.role == Role::Primary {
-                                44
-                            } else if c.role == Role::Quiet {
-                                36
-                            } else {
                                 40
+                            } else if c.role == Role::Quiet {
+                                32
+                            } else {
+                                36
                             }
                         } else {
                             30
                         }),
                         _ => {
                             if modern {
-                                self.scale(40)
+                                self.scale(36)
                             } else {
                                 line + self.scale(8)
                             }
                         }
                     };
                     let caption = if self.widgets[id].caption != 0 && c.caption {
-                        self.scale(if modern { 26 } else { 22 })
+                        self.scale(22)
                     } else {
                         0
                     };
@@ -1279,7 +1373,7 @@ impl State {
                             Role::Title => 18,
                             Role::Caption => 4,
                             _ if c.area == Some(Area::Composer) || c.side => 6,
-                            _ => 12,
+                            _ => 10,
                         }));
                     }
                     out.push((id.clone(), x, y, cw, height, caption));
@@ -1287,6 +1381,12 @@ impl State {
                 }
                 y += row_height + row_gap;
                 begin = end;
+            }
+            if section.is_some()
+                && (group_end == ids.len()
+                    || section_key(&self.widgets[&ids[group_end]].spec) != section)
+            {
+                y += inset;
             }
             first = group_end;
         }
@@ -1299,10 +1399,24 @@ impl State {
             }
             let mut after: HashMap<HWND, HWND> = HashMap::new();
             let mut viewport_inserted = false;
+            let mut tab_group: Option<(HWND, Option<&str>)> = None;
             let flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOCOPYBITS;
             for id in &self.order {
                 let w = &self.widgets[id];
                 let parent = GetParent(w.hwnd);
+                if w.spec.kind == Kind::Button {
+                    let group =
+                        (w.spec.role == Role::Tab).then_some((parent, w.spec.row.as_deref()));
+                    let first = group.is_some() && group != tab_group;
+                    let old = GetWindowLongW(w.hwnd, GWL_STYLE) as u32;
+                    let style = (old & !WS_GROUP) | if first { WS_GROUP } else { 0 };
+                    if old != style {
+                        SetWindowLongW(w.hwnd, GWL_STYLE, style as i32);
+                    }
+                    tab_group = group;
+                } else {
+                    tab_group = None;
+                }
                 if parent == self.content && !viewport_inserted {
                     let previous = *after.get(&self.hwnd).unwrap_or(&HWND_TOP);
                     SetWindowPos(self.viewport, previous, 0, 0, 0, 0, flags);
@@ -1356,6 +1470,22 @@ impl State {
             dirty |= self.content_surface.panel_rect.replace(panel) != panel;
             dirty |= self.content_surface.rail_width.replace(self.scroll_rail) != self.scroll_rail;
             dirty |= self.viewport_surface.rail_width.replace(self.scroll_rail) != self.scroll_rail;
+            let transform = |rects: &[(i32, i32, i32, i32)]| {
+                rects
+                    .iter()
+                    .map(|&(l, t, r, b)| (l - left, t - self.origin, r - left, b - self.origin))
+                    .collect::<Vec<_>>()
+            };
+            let sections = transform(&self.section_rects);
+            if *self.content_surface.sections.borrow() != sections {
+                self.content_surface.sections.replace(sections);
+                dirty = true;
+            }
+            let tabs = transform(&self.tab_rects);
+            if *self.content_surface.tabs.borrow() != tabs {
+                self.content_surface.tabs.replace(tabs);
+                dirty = true;
+            }
             for w in self.widgets.values_mut() {
                 let (x, body_y, ww, body_height) = w.rect;
                 let caption_height = w.placed.map(|p| p.4).unwrap_or(0);
@@ -1519,15 +1649,21 @@ impl State {
             let welcome = self.layout_mode == Some(Layout::Welcome);
             let conversation = self.layout_mode == Some(Layout::Conversation);
             let pad = self
-                .scale(if modern || welcome { 32 } else { 16 })
+                .scale(if welcome {
+                    32
+                } else if modern {
+                    24
+                } else {
+                    16
+                })
                 .min((client.right / 6).max(self.scale(8)));
-            let gap = self.scale(if modern { 12 } else { 8 });
+            let gap = self.scale(if modern { 10 } else { 8 });
             let rail = !welcome
                 && self.order.iter().any(|id| self.widgets[id].spec.side)
                 && client.right >= self.scale(if modern { 760 } else { 600 });
             let rail_width = if rail {
                 if modern {
-                    self.scale(248)
+                    self.scale(224)
                 } else {
                     self.scale(250).min((client.right - pad * 2) / 3)
                 }
@@ -1555,7 +1691,7 @@ impl State {
                 .order
                 .iter()
                 .filter(|id| {
-                    conversation
+                    !welcome
                         && self.widgets[*id].spec.area == Some(Area::Header)
                         && !self.widgets[*id].spec.side
                 })
@@ -1664,6 +1800,48 @@ impl State {
             if header_height > 0 {
                 placements.append(&mut header);
             }
+            self.section_rects.clear();
+            self.tab_rects.clear();
+            let mut active_section: Option<&str> = None;
+            let mut active_tabs: Option<(&str, i32)> = None;
+            if modern {
+                for (id, x, y, cw, height, caption) in &placements {
+                    let c = &self.widgets[id].spec;
+                    let section = section_key(c);
+                    if let Some(key) = section {
+                        let inset = self.scale(16).min((width - 1).max(0) / 2);
+                        let bottom = y + height + caption + inset;
+                        if active_section == Some(key) {
+                            if let Some(rect) = self.section_rects.last_mut() {
+                                rect.3 = rect.3.max(bottom);
+                            }
+                        } else {
+                            self.section_rects
+                                .push((left, y - inset, left + width, bottom));
+                        }
+                    }
+                    active_section = section;
+                    let tabs = (c.role == Role::Tab && !c.side && c.area != Some(Area::Composer))
+                        .then(|| c.row.as_deref().map(|key| (key, *y)))
+                        .flatten();
+                    if let Some(key) = tabs {
+                        let right = x + cw + self.scale(3);
+                        if active_tabs == Some(key) {
+                            if let Some(rect) = self.tab_rects.last_mut() {
+                                rect.2 = rect.2.max(right);
+                            }
+                        } else {
+                            self.tab_rects.push((
+                                x - self.scale(3),
+                                y - self.scale(3),
+                                x + cw + self.scale(3),
+                                y + height + self.scale(3),
+                            ));
+                        }
+                    }
+                    active_tabs = tabs;
+                }
+            }
             self.content_height = bottom + pad;
             self.viewport_height = (footer_top - header_height).max(1);
             if self.follow_on_layout {
@@ -1740,7 +1918,12 @@ impl State {
                     dirty = true;
                 }
                 w.fixed = fixed;
-                let panel = welcome_panel || sticky_composer;
+                let panel = welcome_panel
+                    || sticky_composer
+                    || modern
+                        && !w.spec.side
+                        && w.spec.area != Some(Area::Header)
+                        && w.spec.section.as_ref().is_some_and(|s| !s.is_empty());
                 w.surface.set_composer(sticky_composer);
                 let side_surface = modern && rail && w.spec.side;
                 let side_changed = w.surface.side.replace(side_surface) != side_surface;
@@ -2333,6 +2516,8 @@ fn window(
             view_rect: (0, 0, 1, 1),
             origin: 0,
             content_panel: None,
+            section_rects: Vec::new(),
+            tab_rects: Vec::new(),
             scroll_rail: 0,
             viewport_box: None,
             content_box: None,
@@ -2456,6 +2641,8 @@ pub(super) fn run(
                     }
                 }
                 if (msg.wParam == VK_TAB as usize
+                    || msg.wParam == VK_LEFT as usize
+                    || msg.wParam == VK_RIGHT as usize
                     || msg.wParam == VK_UP as usize
                     || msg.wParam == VK_DOWN as usize)
                     && IsDialogMessageW(s.hwnd, &msg) != 0
@@ -2477,6 +2664,108 @@ pub(super) fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hidden_sections_segments_and_workspace_header_keep_native_state_and_geometry() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Toolkit contracts",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(650), 0);
+            let mut frame = json!({"theme":"dark","layout":"workspace","controls":[
+                {"id":"header","kind":"heading","role":"title","area":"header","label":"Workspace"},
+                {"id":"nav","kind":"button","role":"selected","side":true,"label":"Tools","icon":"tools"},
+                {"id":"library","kind":"button","role":"tab","row":"pages","label":"Library","selected":true},
+                {"id":"versions","kind":"button","role":"tab","row":"pages","label":"Versions"},
+                {"id":"changes","kind":"button","role":"tab","row":"pages","label":"Changes"},
+                {"id":"search","kind":"input","section":"library","label":"Search","value":"A query"},
+                {"id":"list","kind":"list","section":"library","label":"Results","choices":[{"label":"A tool","value":"a"}],"value":"a","lines":6},
+                {"id":"caption","kind":"heading","role":"caption","section":"settings","label":"Settings"},
+                {"id":"check","kind":"check","section":"settings","label":"Enabled","value":true},
+                {"id":"details","kind":"detail","role":"body","section":"settings","value":"Readable selected detail","lines":18}
+            ]});
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(IsWindowVisible(s.hwnd), 0);
+            assert!(s.widgets["header"].fixed);
+            assert_eq!(s.view_rect.1, s.scale(52));
+            assert_eq!(s.section_rects.len(), 2);
+            assert!(s.section_rects[1].1 > s.section_rects[0].3);
+            assert_eq!(s.tab_rects.len(), 1);
+            let a = s.widgets["library"].hwnd;
+            let b = s.widgets["versions"].hwnd;
+            let field = s.widgets["search"].hwnd;
+            assert_eq!(SendMessageW(a, BM_GETCHECK, 0, 0), BST_CHECKED as isize);
+            assert_eq!(SendMessageW(b, BM_GETCHECK, 0, 0), BST_UNCHECKED as isize);
+            assert_eq!(access::native_name(a), "Library");
+            assert_eq!(
+                access::native_variant(a, 13),
+                windows_sys::Win32::UI::Accessibility::ROLE_SYSTEM_RADIOBUTTON as i32
+            );
+            assert_ne!(
+                access::native_variant(a, 14) as u32 & STATE_SYSTEM_CHECKED,
+                0
+            );
+            assert_eq!(GetNextDlgGroupItem(s.content, a, 0), b);
+            assert_ne!(GetWindowLongW(a, GWL_STYLE) as u32 & WS_GROUP, 0);
+            assert_eq!(GetWindowLongW(b, GWL_STYLE) as u32 & WS_GROUP, 0);
+            assert!(s.widgets["search"].rect.0 >= s.section_rects[0].0 + s.scale(16));
+            assert!(
+                s.widgets["search"].rect.0 + s.widgets["search"].rect.2
+                    <= s.section_rects[0].2 - s.scale(16)
+            );
+            SetFocus(field);
+            SendMessageW(field, EM_SETSEL, 2, 5);
+            s.command(b, BN_CLICKED);
+            assert_eq!(rx.try_recv().unwrap()["id"], "versions");
+            frame["controls"][2]["selected"] = json!(false);
+            frame["controls"][3]["selected"] = json!(true);
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.widgets["library"].hwnd, a);
+            assert_eq!(s.widgets["versions"].hwnd, b);
+            assert_eq!(s.widgets["search"].hwnd, field);
+            assert_eq!(GetFocus(), field);
+            assert_ne!(
+                access::native_variant(b, 14) as u32 & STATE_SYSTEM_CHECKED,
+                0
+            );
+            assert_eq!(
+                access::native_variant(a, 14) as u32 & STATE_SYSTEM_CHECKED,
+                0
+            );
+            let y = s.widgets["header"].placed.unwrap().1;
+            s.scroll_direct(s.scroll_limit());
+            assert_eq!(s.widgets["header"].placed.unwrap().1, y);
+            MoveWindow(s.hwnd, 0, 0, s.scale(360), s.scale(500), 0);
+            s.layout();
+            for rect in &s.section_rects {
+                assert!(rect.2 > rect.0 && rect.3 > rect.1);
+            }
+            assert!(!s.tab_rects.is_empty());
+            s.reveal(field);
+            assert_eq!(GetFocus(), field);
+            let mut lo = 0u32;
+            let mut hi = 0u32;
+            SendMessageW(
+                field,
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (2, 5));
+            frame["layout"] = json!("welcome");
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_eq!(s.section_rects.len(), 2);
+            frame["theme"] = json!("system");
+            s.apply(parse(frame).unwrap()).unwrap();
+            assert!(s.section_rects.is_empty());
+            assert!(s.tab_rects.is_empty());
+            assert_eq!(text(field), "A query");
+            destroy(s);
+        }
+    }
     #[test]
     fn hidden_edit_paint_message_probe() {
         unsafe extern "system" {

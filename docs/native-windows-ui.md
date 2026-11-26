@@ -28,7 +28,7 @@ The renderer does not change process-wide or user theme settings.
 
 `layout:"workspace"` explicitly selects the default workspace arrangement.
 Dark workspace content is bounded to 960 logical pixels by default, with a
-248-pixel rail when `side:true` controls exist and the client is at least 760
+224-pixel rail when `side:true` controls exist and the client is at least 760
 logical pixels wide. A sidebar that fits the viewport remains fixed while the
 main content scrolls, and is excluded from transcript scroll extent; a taller sidebar scrolls with content so every control
 remains reachable. Narrow dark workspaces stack content and arrange contiguous
@@ -38,6 +38,29 @@ Dark rail buttons use 36-pixel hit targets with compact section spacing.
 A `selected` button with `icon:"folder"` represents a selected container using
 quiet accent text; other selected navigation keeps its filled active-view
 treatment and leading indicator. Labels and native activation remain intact.
+Dark workspace padding is 24 logical pixels, with a 14-pixel Segoe UI base,
+30-pixel display titles, 19-pixel headings and 11-pixel captions. Quiet, primary
+and segmented actions use distinct compact dimensions and native disabled,
+pressed, hover, checked and keyboard-focus state. The shared slate/graphite
+surfaces use restrained teal emphasis; high contrast keeps native system colors.
+
+`role:"tab"` is an opt-in segmented page/action switcher on `kind:"button"`.
+Give consecutive segments the same `row` and set `selected:true` on the active
+segment. Each remains a real native radio-style button with its own accessible
+name, checked state, keyboard group and ordinary `click` ID. Native left/right
+arrow-group and Tab handling is retained through intermediate viewports; the
+controller sets selection in its next frame. The host does not invent page
+semantics. Segments wrap at narrow widths and keep stable HWNDs. Their optional
+explicit `width` uses the existing width contract.
+
+`section:"stable-group-key"` groups consecutive main-content controls with that
+same nonempty key into one quietly outlined surface with 16-pixel inner padding.
+It supports dark workspace, Welcome and conversation transcript layouts, can
+span multiple rows, and ends at a different/missing key. Header, composer and
+rail controls keep their existing dedicated surfaces. Section keys are opaque,
+not visible titles: supply a heading/caption control for an accessible title.
+These are presentation groups; the native children retain their names, values,
+selection and focus. System mode ignores decorative section geometry.
 
 `layout:"welcome"` creates a centered form bounded to 560 logical pixels.
 At regular dark widths, a subtle panel encloses it with 32-pixel internal room;
@@ -161,7 +184,7 @@ fallback is limited to one intent per edit serial and never enables the native
 button or permits disabled mouse activation. Empty/acknowledged drafts, IME
 composition and repeated keys do not use the fallback.
 
-An optional single `kind:"heading",area:"header"` control pins the conversation
+An optional single `kind:"heading",area:"header"` control pins the conversation or workspace
 identity above the transcript. `role:"title"` uses compact 20-pixel typography,
 a 52-pixel header and quiet separator; a long title is single-line ellipsized
 while retaining its full native label. Header and composer remain outside the

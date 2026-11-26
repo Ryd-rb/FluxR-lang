@@ -86,3 +86,22 @@ pub(super) unsafe fn native_name(hwnd: HWND) -> String {
     release(object);
     name
 }
+#[cfg(test)]
+pub(super) unsafe fn native_variant(hwnd: HWND, index: usize) -> i32 {
+    use windows_sys::Win32::System::Variant::{VARIANT, VT_I4};
+    let iid = GUID::from_u128(0x618736e0_3c3d_11cf_810c_00aa00389b71);
+    let mut object = null_mut();
+    assert!(AccessibleObjectFromWindow(hwnd, OBJID_CLIENT as u32, &iid, &mut object) >= 0);
+    let table = *(object as *const *const usize);
+    let get: unsafe extern "system" fn(*mut c_void, VARIANT, *mut VARIANT) -> i32 =
+        std::mem::transmute(*table.add(index));
+    let mut child: VARIANT = std::mem::zeroed();
+    child.Anonymous.Anonymous.vt = VT_I4;
+    let mut result: VARIANT = std::mem::zeroed();
+    assert!(get(object, child, &mut result) >= 0);
+    assert_eq!(result.Anonymous.Anonymous.vt, VT_I4);
+    let value = result.Anonymous.Anonymous.Anonymous.lVal;
+    let release: unsafe extern "system" fn(*mut c_void) -> u32 = std::mem::transmute(*table.add(2));
+    release(object);
+    value
+}

@@ -11,18 +11,18 @@ thread_local! {pub(super) static EDIT_SIZES:Cell<u64>=const{Cell::new(0)};}
 const fn rgb(r: u32, g: u32, b: u32) -> u32 {
     r | (g << 8) | (b << 16)
 }
-const CLIENT: u32 = rgb(21, 27, 32);
-const RAIL: u32 = rgb(15, 21, 25);
-const FIELD: u32 = rgb(29, 38, 45);
-const PANEL: u32 = rgb(25, 33, 39);
-const HOVER: u32 = rgb(39, 52, 60);
-const BORDER: u32 = rgb(57, 70, 79);
+const CLIENT: u32 = rgb(24, 27, 32);
+const RAIL: u32 = rgb(17, 20, 24);
+const FIELD: u32 = rgb(34, 39, 46);
+const PANEL: u32 = rgb(29, 33, 39);
+const HOVER: u32 = rgb(43, 50, 59);
+const BORDER: u32 = rgb(54, 62, 72);
 const TEXT: u32 = rgb(237, 240, 239);
-const MUTED: u32 = rgb(156, 173, 183);
+const MUTED: u32 = rgb(151, 164, 178);
 const DISABLED: u32 = rgb(113, 130, 141);
 const ACCENT: u32 = rgb(62, 202, 177);
-const PRIMARY: u32 = rgb(13, 112, 102);
-const SELECTED: u32 = rgb(27, 61, 59);
+const PRIMARY: u32 = rgb(21, 117, 105);
+const SELECTED: u32 = rgb(30, 55, 56);
 fn key() -> *const u16 {
     static KEY: OnceLock<Vec<u16>> = OnceLock::new();
     KEY.get_or_init(|| wide("FluxR.NativeSurface.v1")).as_ptr()
@@ -96,6 +96,9 @@ pub(super) struct Surface {
     pub(super) footer_card: Cell<Option<(i32, i32, i32, i32)>>,
     pub(super) composer_focus: Cell<bool>,
     pub(super) header_rect: Cell<Option<(i32, i32, i32, i32)>>,
+    pub(super) sections: RefCell<Vec<(i32, i32, i32, i32)>>,
+    pub(super) tabs: RefCell<Vec<(i32, i32, i32, i32)>>,
+    pub(super) selected: Cell<bool>,
     placeholder: RefCell<String>,
     pub(super) icon: Cell<Option<Icon>>,
     composer: Cell<bool>,
@@ -123,6 +126,9 @@ impl Surface {
                 footer_card: Cell::new(None),
                 composer_focus: Cell::new(false),
                 header_rect: Cell::new(None),
+                sections: RefCell::new(Vec::new()),
+                tabs: RefCell::new(Vec::new()),
+                selected: Cell::new(false),
                 placeholder: RefCell::new(String::new()),
                 icon: Cell::new(None),
                 composer: Cell::new(false),
@@ -388,7 +394,9 @@ impl Surface {
         n * self.dpi.get() as i32 / 96
     }
     fn background(&self) -> u32 {
-        if self.side.get() {
+        if self.role.get() == Role::Tab {
+            PANEL
+        } else if self.side.get() {
             RAIL
         } else if self.panel.get() {
             PANEL
@@ -444,6 +452,25 @@ impl Surface {
             return;
         }
         FillRect(dc, &r, self.palette.client);
+        for (rects, radius) in [(&self.sections, 16), (&self.tabs, 12)] {
+            for &(l, t, right, bottom) in rects.borrow().iter() {
+                let pen = CreatePen(PS_SOLID, 1, BORDER);
+                let old_pen = SelectObject(dc, pen);
+                let old_brush = SelectObject(dc, self.palette.panel);
+                RoundRect(
+                    dc,
+                    l,
+                    t,
+                    right,
+                    bottom,
+                    self.scale(radius),
+                    self.scale(radius),
+                );
+                SelectObject(dc, old_brush);
+                SelectObject(dc, old_pen);
+                DeleteObject(pen);
+            }
+        }
         if let Some((left, top, right, bottom)) = self.panel_rect.get() {
             let pen = CreatePen(PS_SOLID, 1, BORDER);
             let oldpen = SelectObject(dc, pen);
@@ -622,6 +649,7 @@ impl Surface {
             }
         } else if self.kind == Some(Kind::Button) {
             let role = self.role.get();
+            let tab = role == Role::Tab;
             let selected_container =
                 role == Role::Selected && self.icon.get() == Some(Icon::Folder);
             let pressed = SendMessageW(self.hwnd, BM_GETSTATE, 0, 0) & BST_PUSHED as isize != 0;
@@ -631,6 +659,8 @@ impl Surface {
                 SELECTED
             } else if role == Role::Primary {
                 PRIMARY
+            } else if tab && self.selected.get() {
+                FIELD
             } else if selected_container {
                 if self.hover.get() {
                     HOVER
@@ -641,7 +671,7 @@ impl Surface {
                 SELECTED
             } else if self.hover.get() {
                 HOVER
-            } else if matches!(role, Role::Quiet | Role::Nav) {
+            } else if matches!(role, Role::Quiet | Role::Nav | Role::Tab) {
                 self.background()
             } else {
                 FIELD
@@ -652,7 +682,7 @@ impl Surface {
                 1,
                 if focus {
                     ACCENT
-                } else if matches!(role, Role::Quiet | Role::Nav | Role::Selected) {
+                } else if matches!(role, Role::Quiet | Role::Nav | Role::Selected | Role::Tab) {
                     bg
                 } else {
                     BORDER
@@ -673,6 +703,15 @@ impl Surface {
                     top: r.top + self.scale(10),
                     right: r.left + self.scale(3),
                     bottom: r.bottom - self.scale(10),
+                };
+                fill(dc, &indicator, ACCENT);
+            }
+            if tab && self.selected.get() {
+                let indicator = RECT {
+                    left: r.left + self.scale(12),
+                    right: r.right - self.scale(12),
+                    top: r.bottom - self.scale(3),
+                    bottom: r.bottom - self.scale(1),
                 };
                 fill(dc, &indicator, ACCENT);
             }
