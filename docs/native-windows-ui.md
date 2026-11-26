@@ -30,7 +30,7 @@ The renderer does not change process-wide or user theme settings.
 Dark workspace content is bounded to 960 logical pixels by default, with a
 248-pixel rail when `side:true` controls exist and the client is at least 760
 logical pixels wide. A sidebar that fits the viewport remains fixed while the
-main content scrolls; a taller sidebar scrolls with content so every control
+main content scrolls, and is excluded from transcript scroll extent; a taller sidebar scrolls with content so every control
 remains reachable. Narrow dark workspaces stack content and arrange contiguous
 side navigation buttons into compact wrapping rows. Legacy system frames keep
 their original side-column threshold and system painting.
@@ -110,8 +110,11 @@ leave under 140 logical pixels of transcript, all controls use ordinary shared
 scrolling. This keeps controls reachable in short or compact windows.
 
 `conversation` is an optional stable string identifying the conversation/page.
-With `follow_tail:true` (default), an update follows new content when the view
-was already within 24 logical pixels of the bottom, or when identity changes.
+With `follow_tail:true` (default), an update follows new content when the user
+has actually reached the bottom, or when identity changes. Any explicit upward
+scroll disables following immediately, including a fractional movement or a
+coarse-wheel motion that has not yet produced its first animation tick. An
+identical refresh therefore cannot snap a reader back from near the bottom.
 Reading above that threshold keeps the first surviving visible transcript
 control anchored where scroll bounds permit, including bounded windows that
 drop older items and native resize/DPI reflow. `follow_tail:false` never requests
@@ -145,13 +148,35 @@ assistive-technology qualification remains separate from the bounded contracts.
  ]}
 ```
 
-Child geometry is deferred without copying old window contents or repainting
-intermediate positions, followed by invalidation of the final parent/child
-bounds. Native window regions clip transcript bodies/captions above the footer,
-so scrolled content cannot cover fixed controls. Passive body wheel messages
+Scrollable controls live under a dedicated clipped, composited native viewport
+and a translated content host, separated from the stationary rail and composer.
+Pure scrolling moves that single host with no sizing, copying old contents,
+control remeasurement or per-control viewport-region changes. Only the viewport
+subtree is invalidated, without a full-root erase/frame redraw; custom background
+painting occurs once in WM_PAINT rather than also during WM_ERASEBKGND. The
+ancestor viewport clips bodies/captions above the footer. Rounded bubble shapes
+remain independent of scroll position.
+
+Win32 caps native window height, so the content host uses a bounded 60,000-pixel
+canvas and a moving 30,000-pixel origin. Crossing a band repositions descendants
+without recreating HWNDs, preserving logical history beyond 65,535 pixels.
+Off-band controls remain reachable through native keyboard navigation and
+reveal. Both intermediate windows use WS_EX_CONTROLPARENT; native commands,
+colors, focus/selection, Tab order, wheel events and file drops retain their
+routes. Single-line dark edits paint all their reserved nonclient padding and
+use one custom border, avoiding partially themed inner frames.
+
+Passive body wheel messages
 reach the outer viewport; editable fields/lists retain native internal scrolling
 while they have range, then pass the wheel outward. Windows wheel line/page
-preferences and fractional wheel deltas are respected. Default window messages
+preferences and fractional wheel deltas are respected. Precision/touchpad input
+remains immediate. Coarse detents use a 120-ms time-based trajectory when client
+area animation is enabled; the nominal 10-ms timer exists only while motion is
+active. Reversal retargets from the current position, direct scrollbar dragging
+and explicit edits/activations take immediate control, and reduced-motion
+settings bypass the trajectory. Input-source identity survives native parent
+forwarding. Changing page/layout cancels motion. No display-refresh-rate or
+frame-time guarantee is implied. Default window messages
 are delegated outside the mutable-state guard so native nested resize messages
 are delivered.
 
@@ -245,8 +270,10 @@ tree and should be treated as a host failure by the application.
 Validation is limited to typed frame checks and explicitly hidden,
 in-process native lifecycle and paint-message contracts. They check content,
 UTF16 offsets, stale edits, HWND/selection retention, coalescing, dark/legacy
-layout, native wrapping, footer/rail clipping, tail/history anchors, wheel
-routing, modifier/IME send policy, resize and destruction. They neither
+layout, native wrapping, nested viewport/Tab/color/command/drop routing,
+large-content origin changes, explicit scroll-away intent, deterministic motion
+endpoints/reversal/timer shutdown, footer/rail clipping, history anchors,
+wheel routing, modifier/IME send policy, resize and destruction. They neither
 drives desktop UI nor records screenshots or image metadata. Reproduce with an
 external Cargo target directory:
 
@@ -260,12 +287,16 @@ guarantee or a completed FluxR release qualification. A custom graph canvas,
 hierarchical tree widget and visual styling beyond native controls are outside
 this slice.
 
-The scroll change was investigated with CDB 10.0.28000.2705 on the source-bound
-hidden probe at baseline `f436488`. The baseline body consumed a wheel event
-without moving the outer viewport (300 to 300 physical pixels); the candidate
-routes body and parent events to the same resulting offset (300 to 192 with
-this host's wheel preference). Debugger stacks identify repainting individual
-MoveWindow calls in the baseline and deferred moves with no redraw/copy plus
-final subtree invalidation in the candidate. Hidden windows produce no ordinary
-spontaneous paint stream, so this is mechanism/correctness evidence, not visual
-reproduction, smoothness measurement or acceptance of the owner's live screen.
+The updated investigation used CDB 10.0.28000.2705 and a source-bound hidden probe
+at baseline `b7d560e`: a synthetic 33-character outgoing message, a 1,013-character
+incoming message with four newlines, a composer/rail, and an ordinary workspace.
+It reproduced precision-scroll/refresh snap-back (307 to 294 to 307 physical
+pixels), 269 pixels of blank short-chat range from the fixed rail, and one
+workspace wheel event doing a full layout, six region changes, 40 child moves
+and full-root subtree redraw. The candidate preserves 307 to 294 to 294, has
+zero blank short-chat range, and uses a scroll-only translated-host path with
+zero layout/region/root-redraw/edit-size work. Coarse movement is sampled over
+time with deterministic monotonicity, endpoint and reversal contracts.
+Hidden windows produce no ordinary spontaneous paint stream, so these are
+mechanism/state guarantees and debugger evidence, not live visual acceptance
+or a frame-time benchmark.

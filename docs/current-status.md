@@ -30,6 +30,14 @@ IME-aware Enter submission. Deferred child movement, final subtree invalidation,
 native viewport clipping and wheel forwarding address source-bound scrolling
 mechanisms verified with a hidden probe and CDB. Semantic line icons and one
 rounded composer surface remain opt-in; no live visual acceptance is implied.
+Scrollable controls now share a dedicated clipped/composited viewport with a
+bounded moving-origin host. Pure scroll avoids full layout and shell repaint;
+explicit scroll-away intent prevents near-tail refresh snap-back, fitting rails
+do not inflate transcript extent, and coarse wheel motion has deterministic
+time-based endpoints with precision/reduced-motion bypass. Hidden native tests
+cover large logical content, nested command/color/Tab/drop routing and retained
+focus/selection. CDB confirms the bounded scroll path; no live visual or display
+cadence qualification is claimed.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

@@ -5,6 +5,8 @@ use std::{rc::Rc, sync::OnceLock};
 use windows_sys::Win32::{Graphics::Dwm::DwmSetWindowAttribute, UI::Accessibility::*};
 #[cfg(test)]
 thread_local! {pub(super) static MESSAGES:Cell<[u64;4]>=const{Cell::new([0;4])};}
+#[cfg(test)]
+thread_local! {pub(super) static EDIT_SIZES:Cell<u64>=const{Cell::new(0)};}
 
 const fn rgb(r: u32, g: u32, b: u32) -> u32 {
     r | (g << 8) | (b << 16)
@@ -81,6 +83,7 @@ pub(super) struct Surface {
     kind: Option<Kind>,
     palette: Rc<Palette>,
     pub(super) active: Cell<bool>,
+    pub(super) host: Cell<bool>,
     role: Cell<Role>,
     pub(super) side: Cell<bool>,
     dpi: Cell<u32>,
@@ -105,6 +108,7 @@ impl Surface {
                 kind,
                 palette,
                 active: Cell::new(false),
+                host: Cell::new(false),
                 role: Cell::new(Role::Neutral),
                 side: Cell::new(false),
                 dpi: Cell::new(96),
@@ -137,11 +141,19 @@ impl Surface {
             self.side.set(side);
             self.dpi.set(dpi);
             if changed {
-                let theme_name = wide("DarkMode_Explorer");
+                // The single-line edit reserves custom nonclient padding; do
+                // not let a themed inner edge paint a second, partial frame.
+                let plain_edit = active && self.kind == Some(Kind::Input);
+                let theme_name = wide(if plain_edit { "" } else { "DarkMode_Explorer" });
+                let no_parts = wide("");
                 SetWindowTheme(
                     self.hwnd,
                     if active { theme_name.as_ptr() } else { null() },
-                    null(),
+                    if plain_edit {
+                        no_parts.as_ptr()
+                    } else {
+                        null()
+                    },
                 );
                 if matches!(self.kind, Some(Kind::Detail)) {
                     let old = GetWindowLongW(self.hwnd, GWL_STYLE) as u32;
@@ -347,6 +359,10 @@ impl Surface {
     unsafe fn root(&self, dc: HDC) {
         let mut r: RECT = std::mem::zeroed();
         GetClientRect(self.hwnd, &mut r);
+        if !self.active.get() {
+            FillRect(dc, &r, GetSysColorBrush(COLOR_WINDOW));
+            return;
+        }
         FillRect(dc, &r, self.palette.client);
         if let Some((left, top, right, bottom)) = self.panel_rect.get() {
             let pen = CreatePen(PS_SOLID, 1, BORDER);
@@ -812,6 +828,10 @@ unsafe extern "system" fn subclass(
         m.set(n);
     });
     let s = &*(data as *const Surface);
+    #[cfg(test)]
+    if msg == WM_SIZE && matches!(s.kind, Some(Kind::Input | Kind::Multiline | Kind::Detail)) {
+        EDIT_SIZES.with(|n| n.set(n.get() + 1));
+    }
     if matches!(msg, WM_SETFOCUS | WM_KILLFOCUS)
         && s.composer.get()
         && let Some(parent) = surface(GetParent(hwnd))
@@ -846,7 +866,7 @@ unsafe extern "system" fn subclass(
         if transcript || !can_scroll {
             let parent = GetParent(hwnd);
             if parent != 0 {
-                return SendMessageW(parent, msg, wp, lp);
+                return forward_wheel(parent, wp, lp);
             }
         }
     }
@@ -871,7 +891,7 @@ unsafe extern "system" fn subclass(
             return s.colors(wp as HDC);
         }
     }
-    if s.active.get() {
+    if s.active.get() || s.host.get() {
         if msg == WM_NCCALCSIZE && s.kind == Some(Kind::Input) {
             let result = DefSubclassProc(hwnd, msg, wp, lp);
             let rect = if wp != 0 {
@@ -916,9 +936,8 @@ unsafe extern "system" fn subclass(
             )
             || s.role.get() == Role::Brand;
         if msg == WM_ERASEBKGND && custom {
-            if s.kind.is_none() {
-                s.root(wp as HDC);
-            }
+            // WM_PAINT supplies the complete clipped background. Painting it
+            // again during erase exposes an intermediate blank surface.
             return 1;
         }
         if msg == WM_PAINT && custom {
@@ -957,14 +976,60 @@ unsafe extern "system" fn subclass(
             )
         {
             let result = DefSubclassProc(hwnd, msg, wp, lp);
-            if GetWindowLongW(hwnd, GWL_STYLE) as u32 & WS_BORDER != 0 {
+            if s.kind == Some(Kind::Input)
+                || GetWindowLongW(hwnd, GWL_STYLE) as u32 & WS_BORDER != 0
+            {
                 let dc = GetWindowDC(hwnd);
                 let mut r: RECT = std::mem::zeroed();
                 GetWindowRect(hwnd, &mut r);
+                let mut origin = POINT { x: 0, y: 0 };
+                ClientToScreen(hwnd, &mut origin);
+                let mut client: RECT = std::mem::zeroed();
+                GetClientRect(hwnd, &mut client);
+                let client_left = origin.x - r.left;
+                let client_top = origin.y - r.top;
                 let left = r.left;
                 let top = r.top;
                 OffsetRect(&mut r, -left, -top);
-                border(dc, &r, if GetFocus() == hwnd { ACCENT } else { BORDER });
+                if s.kind == Some(Kind::Input) {
+                    let client = RECT {
+                        left: client_left.clamp(0, r.right),
+                        top: client_top.clamp(0, r.bottom),
+                        right: (client_left + client.right).clamp(0, r.right),
+                        bottom: (client_top + client.bottom).clamp(0, r.bottom),
+                    };
+                    for band in [
+                        RECT {
+                            left: 0,
+                            top: 0,
+                            right: r.right,
+                            bottom: client.top,
+                        },
+                        RECT {
+                            left: 0,
+                            top: client.bottom,
+                            right: r.right,
+                            bottom: r.bottom,
+                        },
+                        RECT {
+                            left: 0,
+                            top: client.top,
+                            right: client.left,
+                            bottom: client.bottom,
+                        },
+                        RECT {
+                            left: client.right,
+                            top: client.top,
+                            right: r.right,
+                            bottom: client.bottom,
+                        },
+                    ] {
+                        FillRect(dc, &band, s.brush());
+                    }
+                }
+                if GetWindowLongW(hwnd, GWL_STYLE) as u32 & WS_BORDER != 0 {
+                    border(dc, &r, if GetFocus() == hwnd { ACCENT } else { BORDER });
+                }
                 ReleaseDC(hwnd, dc);
             }
             return result;
