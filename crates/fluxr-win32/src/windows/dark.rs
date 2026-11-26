@@ -1009,6 +1009,21 @@ unsafe extern "system" fn subclass(
             return s.colors(wp as HDC);
         }
     }
+    let edit_outline = matches!(msg, WM_PRINT | WM_NCPAINT)
+        && matches!(s.kind, Some(Kind::Input | Kind::Multiline | Kind::Detail))
+        && GetWindowLongW(hwnd, GWL_STYLE) as u32 & WS_BORDER != 0;
+    if msg == WM_PRINT && lp as i32 & PRF_NONCLIENT != 0 && edit_outline {
+        let result = DefSubclassProc(hwnd, msg, wp, lp);
+        edit_outline_rect(s, wp as HDC);
+        return result;
+    }
+    if msg == WM_NCPAINT && !s.active.get() && edit_outline {
+        let result = DefSubclassProc(hwnd, msg, wp, lp);
+        let dc = GetWindowDC(hwnd);
+        edit_outline_rect(s, dc);
+        ReleaseDC(hwnd, dc);
+        return result;
+    }
     if s.active.get() || s.host.get() {
         if msg == WM_NCCALCSIZE && s.kind == Some(Kind::Input) {
             let result = DefSubclassProc(hwnd, msg, wp, lp);
@@ -1163,6 +1178,21 @@ unsafe extern "system" fn subclass(
 fn self_kind_body(s: &Surface) -> bool {
     s.kind == Some(Kind::Detail)
         && matches!(s.role.get(), Role::Body | Role::Incoming | Role::Outgoing)
+}
+unsafe fn edit_outline_rect(s: &Surface, dc: HDC) {
+    let mut rect: RECT = std::mem::zeroed();
+    GetWindowRect(s.hwnd, &mut rect);
+    let (x, y) = (rect.left, rect.top);
+    OffsetRect(&mut rect, -x, -y);
+    if s.active.get() {
+        border(
+            dc,
+            &rect,
+            if GetFocus() == s.hwnd { ACCENT } else { BORDER },
+        );
+    } else {
+        FrameRect(dc, &rect, GetSysColorBrush(COLOR_WINDOWFRAME));
+    }
 }
 pub(super) fn title_bar(hwnd: HWND, active: bool) {
     unsafe {

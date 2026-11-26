@@ -130,7 +130,14 @@ native edit line count at its assigned width to size selectable, wrapped text.
 `lines` is ignored for these roles. A nonempty `label` appears exactly once as
 the native caption above the body unless `caption:false` is supplied.
 Incoming prose is an unthemed borderless native read-only edit in dark mode,
-including its nonclient paint path. Outgoing bubbles size to their unwrapped
+including its client and nonclient paint paths. All edits are constructed
+without the classic control's cached client border; ordinary fields receive a
+mutable window outline afterward, using system colors outside dark mode.
+This also preserves borderless painting after theme/role changes on the same
+HWND. Native client/print paint calls and ordinary nonclient outlines have a
+bounded CDB call-trace contract; public style bits alone are insufficient.
+The default conversation column is 744 logical pixels; workspace bounds are
+unchanged. Outgoing bubbles size to their unwrapped
 text plus padding, at most three quarters of the column (capped at 640 logical
 pixels), and align to the right unless `width` explicitly overrides sizing.
 Extremely long individual bodies are bounded to the smaller of 12,000

@@ -47,6 +47,12 @@ mouse actions. A designated composer's first local edit can precede an ordered
 keyboard submission intent while presentation readiness remains unacknowledged;
 the controller retains authoritative readiness checks. These deterministic state/geometry checks do not establish live visual
 or screen-reader acceptance.
+An additional native paint trace reproduced classic EDIT's cached creation-time
+client border despite cleared public style flags. Borderless construction plus
+mutable ordinary window outlines removes that native DrawFrame path, including
+after theme/role and compact composer transitions. Hidden tests preserve the
+same HWNDs, field contents, focus and selections; final live visual acceptance
+remains separate. Conversation content now defaults to a 744-pixel reading width.
 Its bounded hidden lifecycle and schema checks do not close a full task or
 qualification scope; visuals and assistive-technology behavior remain unqualified.
 

@@ -335,12 +335,18 @@ impl State {
                 ),
                 Kind::Input => ("EDIT", ES_AUTOHSCROLL as u32 | WS_TABSTOP | WS_BORDER),
             };
+            let edit = matches!(spec.kind, Kind::Input | Kind::Multiline | Kind::Detail);
+            // Classic EDIT caches WS_BORDER during creation and draws that
+            // frame inside WM_PAINT/WM_PRINTCLIENT even after its public style
+            // is cleared. Create without that immutable internal decoration;
+            // ordinary modes use the mutable window/nonclient outline below.
+            let creation_style = if edit { style & !WS_BORDER } else { style };
             let instance = GetModuleHandleW(null());
             let hwnd = CreateWindowExW(
                 0,
                 wide(class).as_ptr(),
                 wide("").as_ptr(),
-                WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | style,
+                WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | creation_style,
                 0,
                 0,
                 0,
@@ -352,6 +358,19 @@ impl State {
             );
             if hwnd == 0 {
                 bail!("CreateWindowExW failed: {}", GetLastError())
+            }
+            if edit && style & WS_BORDER != 0 {
+                let current = GetWindowLongW(hwnd, GWL_STYLE) as u32;
+                SetWindowLongW(hwnd, GWL_STYLE, (current | WS_BORDER) as i32);
+                SetWindowPos(
+                    hwnd,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+                );
             }
             let labelled = matches!(
                 spec.kind,
@@ -1523,7 +1542,7 @@ impl State {
                 self.scale(self.max_width.unwrap_or(if welcome {
                     560
                 } else if conversation {
-                    840
+                    744
                 } else {
                     960
                 }) as i32)
@@ -2458,6 +2477,113 @@ pub(super) fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hidden_edit_paint_message_probe() {
+        unsafe extern "system" {
+            fn OutputDebugStringW(message: *const u16);
+        }
+        let (tx, _rx) = std::sync::mpsc::channel();
+        unsafe {
+            let mut s = window(
+                "Edit paint probe",
+                tx,
+                Arc::new(Mutex::new(Pending::default())),
+            )
+            .unwrap();
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(900), 0);
+            let mut frame = json!({"theme":"dark","layout":"conversation","composer":"draft","controls":[
+                {"id":"body","kind":"detail","role":"incoming","value":"Selectable native prose.\r\nA second line."},
+                {"id":"out","kind":"detail","role":"outgoing","value":"A short reply."},
+                {"id":"draft","kind":"multiline","area":"composer","label":"Message","caption":false,"placeholder":"Message…","value":"","lines":2},
+                {"id":"field","kind":"input","label":"Field","value":"Editable field"}
+            ]});
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            let handles: Vec<_> = ["body", "out", "draft", "field"]
+                .iter()
+                .map(|id| s.widgets[*id].hwnd)
+                .collect();
+            let probe = |s: &State, stage: &str| {
+                for id in ["body", "out", "draft", "field"] {
+                    let hwnd = s.widgets[id].hwnd;
+                    // A DC only: no bitmap allocation, capture or pixel inspection.
+                    // CDB observes native drawing calls and their stacks.
+                    let dc = CreateCompatibleDC(0);
+                    eprintln!(
+                        "edit_paint_probe stage={stage} {id} hwnd={hwnd:x} style={:x} exstyle={:x}",
+                        GetWindowLongW(hwnd, GWL_STYLE),
+                        GetWindowLongW(hwnd, GWL_EXSTYLE)
+                    );
+                    OutputDebugStringW(
+                        wide(&format!("PHASE {stage}-{id}-native-client-paint")).as_ptr(),
+                    );
+                    InvalidateRect(hwnd, null(), 0);
+                    SendMessageW(hwnd, WM_PAINT, 0, 0);
+                    OutputDebugStringW(
+                        wide(&format!("PHASE {stage}-{id}-native-printclient")).as_ptr(),
+                    );
+                    SendMessageW(hwnd, WM_PRINTCLIENT, dc as usize, PRF_CLIENT as isize);
+                    OutputDebugStringW(wide(&format!("PHASE {stage}-{id}-native-print")).as_ptr());
+                    SendMessageW(
+                        hwnd,
+                        WM_PRINT,
+                        dc as usize,
+                        (PRF_CLIENT | PRF_ERASEBKGND | PRF_NONCLIENT) as isize,
+                    );
+                    OutputDebugStringW(
+                        wide(&format!("PHASE {stage}-{id}-native-nonclient")).as_ptr(),
+                    );
+                    SendMessageW(hwnd, WM_NCPAINT, 1, 0);
+                    DeleteDC(dc);
+                }
+            };
+            probe(&s, "dark");
+            SendMessageW(handles[0], EM_SETSEL, 3, 11);
+            SetFocus(handles[3]);
+            SendMessageW(handles[3], EM_SETSEL, 1, 5);
+            frame["controls"][0]["role"] = json!("neutral");
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            assert_ne!(GetWindowLongW(handles[0], GWL_STYLE) as u32 & WS_BORDER, 0);
+            probe(&s, "ordinary-role");
+            frame["theme"] = json!("system");
+            s.apply(parse(frame.clone()).unwrap()).unwrap();
+            probe(&s, "system");
+            frame["theme"] = json!("dark");
+            frame["controls"][0]["role"] = json!("incoming");
+            s.apply(parse(frame).unwrap()).unwrap();
+            probe(&s, "dark-return");
+            MoveWindow(s.hwnd, 0, 0, s.scale(420), s.scale(220), 0);
+            s.layout();
+            assert!(!s.composer_fixed);
+            probe(&s, "compact");
+            MoveWindow(s.hwnd, 0, 0, s.scale(1200), s.scale(900), 0);
+            s.layout();
+            assert!(s.composer_fixed);
+            probe(&s, "dark-restored");
+            for (id, hwnd) in ["body", "out", "draft", "field"].iter().zip(handles.iter()) {
+                assert_eq!(s.widgets[*id].hwnd, *hwnd);
+            }
+            assert_eq!(GetFocus(), handles[3]);
+            assert_eq!(text(handles[3]), "Editable field");
+            let mut lo = 0u32;
+            let mut hi = 0u32;
+            SendMessageW(
+                handles[3],
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (1, 5));
+            SendMessageW(
+                handles[0],
+                EM_GETSEL,
+                &mut lo as *mut _ as usize,
+                &mut hi as *mut _ as isize,
+            );
+            assert_eq!((lo, hi), (3, 11));
+            OutputDebugStringW(wide("PHASE edit-paint-finished").as_ptr());
+            destroy(s);
+        }
+    }
     #[test]
     fn composer_first_keystroke_can_submit_before_readiness_ack_without_mouse_bypass() {
         let (tx, rx) = std::sync::mpsc::channel();
